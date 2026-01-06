@@ -34,6 +34,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Copy static assets
+        run: |
+          cp -r prop dist/
+          cp -r resources dist/
+          cp -r examples dist/
+          cp -r css dist/
+          cp -r gif dist/
+          cp builddate.js dist/
+          cp favicon.ico dist/ || true
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

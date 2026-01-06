@@ -1,5 +1,4 @@
 import { defineConfig } from "vite";
-import { viteSingleFile } from "vite-plugin-singlefile";
 
 const formatDate = () => {
   const now = new Date();
@@ -20,27 +19,9 @@ export default defineConfig({
   },
   build: {
     target: "es2017", // Match your tsconfig.json
-    /*minify: "terser",*/ // Minifies the output
-    //minify: false, // Disable minification for easier debugging
     outDir: "dist",
-    manifest: false, // We handle this ourselves, not through Vite
     rollupOptions: {
-      input: {
-        main: "index.html",
-      },
-      output: {
-        inlineDynamicImports: true, // Forces everything into one file
-        format: "esm", // Keeps ES module format
-        entryFileNames: "bundle.js", // Generates `bundle.js`
-      },
-      external: [
-        "prop/prop_scripts_js.js",
-        "builddate.js",
-        "pako/pako.min.js",
-        "jsPDF/jspdf.umd.min.js",
-        "jsPDF/print.js",
-      ],
+      input: "index.html",
     },
   },
-  plugins: [viteSingleFile()],
 });
