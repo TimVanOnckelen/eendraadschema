@@ -1,224 +1,317 @@
 import { download_by_blob } from "../importExport/importExport";
 import { SVGelement } from "../SVGelement";
 import { flattenSVGfromString } from "../general";
-import { printPDF } from './printToJsPDF';
+import { printPDF } from "./printToJsPDF";
 
 globalThis.HLDisplayPage = () => {
-    globalThis.structure.print_table.displaypage = parseInt((document.getElementById("id_select_page") as HTMLInputElement).value)-1;
-    printsvg();
-}
+  globalThis.structure.print_table.displaypage =
+    parseInt(
+      (document.getElementById("id_select_page") as HTMLInputElement).value
+    ) - 1;
+  printsvg();
+};
 
 globalThis.dosvgdownload = () => {
-    const printsvgarea = document.getElementById("printsvgarea");    
-    let filename: string;
+  const printsvgarea = document.getElementById("printsvgarea");
+  let filename: string;
 
-    if (printsvgarea == null) return;
-    let prtContent = printsvgarea.innerHTML;
- 
-    const dosvgname = (document.getElementById("dosvgname") as HTMLInputElement);
-    if (dosvgname == null)
-        filename = "eendraadschema.svg";
-    else
-        filename = (document.getElementById("dosvgname") as HTMLInputElement).value;
+  if (printsvgarea == null) return;
+  let prtContent = printsvgarea.innerHTML;
 
-    download_by_blob(prtContent, filename, 'data:image/svg+xml;charset=utf-8'); //Was text/plain
-}
+  const dosvgname = document.getElementById("dosvgname") as HTMLInputElement;
+  if (dosvgname == null) filename = "eendraadschema.svg";
+  else
+    filename = (document.getElementById("dosvgname") as HTMLInputElement).value;
 
-export function getPrintSVGWithoutAddress(outSVG: SVGelement, page:number = globalThis.structure.print_table.displaypage) {
-    var scale = 1;
+  download_by_blob(prtContent, filename, "data:image/svg+xml;charset=utf-8"); //Was text/plain
+};
 
-    var startx = globalThis.structure.print_table.pages[page].start;
-    var width = globalThis.structure.print_table.pages[page].stop - startx;
-    var starty = globalThis.structure.print_table.getstarty();
-    var height = globalThis.structure.print_table.getstopy() - starty;
+export function getPrintSVGWithoutAddress(
+  outSVG: SVGelement,
+  page: number = globalThis.structure.print_table.displaypage
+) {
+  var scale = 1;
 
-    var viewbox = '' + startx + ' ' + starty + ' ' + width + ' ' + height;
+  var startx = globalThis.structure.print_table.pages[page].start;
+  var width = globalThis.structure.print_table.pages[page].stop - startx;
+  var starty = globalThis.structure.print_table.getstarty();
+  var height = globalThis.structure.print_table.getstopy() - starty;
 
-    var outstr = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" transform="scale(1,1)" style="border:1px solid white" ' +
-              'height="' + (height*scale) + '" width="' + (width*scale) + '" viewBox="' + viewbox + '">' +
-              flattenSVGfromString(outSVG.data) + '</svg>';
+  var viewbox = "" + startx + " " + starty + " " + width + " " + height;
 
-    return(outstr);
+  var outstr =
+    '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" transform="scale(1,1)" style="border:1px solid white" ' +
+    'height="' +
+    height * scale +
+    '" width="' +
+    width * scale +
+    '" viewBox="' +
+    viewbox +
+    '">' +
+    flattenSVGfromString(outSVG.data) +
+    "</svg>";
+
+  return outstr;
 }
 
 export function printsvg() {
+  function generatePdf() {
+    if (typeof globalThis.structure.properties.dpi == "undefined")
+      globalThis.structure.properties.dpi = 300;
 
-    function generatePdf() {
+    let svg = flattenSVGfromString(
+      globalThis.structure.toSVG(0, "horizontal").data
+    );
 
-        if (typeof(globalThis.structure.properties.dpi) == 'undefined') globalThis.structure.properties.dpi = 300;
-    
-        let svg = flattenSVGfromString(globalThis.structure.toSVG(0,"horizontal").data);
-        
-        let pages: (number | null)[];
-        const totalPages = globalThis.structure.print_table.pages.length + (globalThis.structure.sitplan ? globalThis.structure.sitplan.getNumPages() : 0);
+    let pages: (number | null)[];
+    const totalPages =
+      globalThis.structure.print_table.pages.length +
+      (globalThis.structure.sitplan
+        ? globalThis.structure.sitplan.getNumPages()
+        : 0);
 
-        const modeSelect = document.getElementById("print_page_mode") as HTMLSelectElement | null;
-        const rangeInput = document.getElementById("print_page_range") as HTMLInputElement | null;
-        if (!globalThis.structure.print_table.canPrint()) {
-            modeSelect.value = "all";
-            rangeInput.value = "";
-            rangeInput.style.display = "none";
-            let rangeError = document.getElementById("print_range_error");
-            if (rangeError) {
-                rangeError.style.display = "none";
-            }
-        }
-
-        let pagerange = "1-" + totalPages; // Default to all pages
-
-        if (modeSelect && modeSelect.value === "custom" && rangeInput && rangeInput.value.trim() !== "") {
-            pagerange = rangeInput.value.trim();
-        }
-
-        const sitplanprint = globalThis.structure.sitplan.toSitPlanPrint();
-
-        // If autopage, overwrite the input fields
-        if (globalThis.structure.print_table.enableAutopage) {
-            const info = globalThis.structure.properties.info;
-            for (let page of globalThis.structure.print_table.pages) {
-                page.info = info;
-            }
-        }
-
-        // Print everything
-    
-        printPDF(
-            svg,
-            globalThis.structure.print_table,
-            globalThis.structure.properties,
-            pagerange,
-            (document.getElementById("dopdfname") as HTMLInputElement).value, //filename
-            document.getElementById("progress_pdf"), //HTML element where callback status can be given
-            sitplanprint
-        );
+    const modeSelect = document.getElementById(
+      "print_page_mode"
+    ) as HTMLSelectElement | null;
+    const rangeInput = document.getElementById(
+      "print_page_range"
+    ) as HTMLInputElement | null;
+    if (!globalThis.structure.print_table.canPrint()) {
+      modeSelect.value = "all";
+      rangeInput.value = "";
+      rangeInput.style.display = "none";
+      let rangeError = document.getElementById("print_range_error");
+      if (rangeError) {
+        rangeError.style.display = "none";
+      }
     }
 
-    function renderPrintSVG_EDS(outSVG: SVGelement) {
-        const printarea = document.getElementById("printarea");
-        if (printarea == null) return;
-        printarea.innerHTML = '<div id="printsvgarea">' + getPrintSVGWithoutAddress(outSVG) + '</div>';
+    let pagerange = "1-" + totalPages; // Default to all pages
+
+    if (
+      modeSelect &&
+      modeSelect.value === "custom" &&
+      rangeInput &&
+      rangeInput.value.trim() !== ""
+    ) {
+      pagerange = rangeInput.value.trim();
     }
 
-    function renderPrintSVG_sitplan(page: number) {
-        const outstruct = globalThis.structure.sitplan.toSitPlanPrint();
-        const printarea = document.getElementById("printarea");
-        if (printarea == null) return;
-        printarea.innerHTML = '<div id="printsvgarea">' + outstruct.pages[page].svg + '</div>';
+    const sitplanprint = globalThis.structure.sitplan.toSitPlanPrint();
+
+    // If autopage, overwrite the input fields
+    if (globalThis.structure.print_table.enableAutopage) {
+      const info = globalThis.structure.properties.info;
+      for (let page of globalThis.structure.print_table.pages) {
+        page.info = info;
+      }
     }
-    
-    // First we generate an SVG image. We do this first because we need the size
-    // We will display it at the end of this function    
 
-    var outSVG = new SVGelement();
-    outSVG = globalThis.structure.toSVG(0,"horizontal");
+    // Print everything
 
-    var height = outSVG.yup + outSVG.ydown;
-    var width = outSVG.xleft + outSVG.xright;
+    printPDF(
+      svg,
+      globalThis.structure.print_table,
+      globalThis.structure.properties,
+      pagerange,
+      (document.getElementById("dopdfname") as HTMLInputElement).value, //filename
+      document.getElementById("progress_pdf"), //HTML element where callback status can be given
+      sitplanprint
+    );
+  }
 
-    globalThis.structure.print_table.setHeight(height);
-    globalThis.structure.print_table.setMaxWidth(width+10);
+  function renderPrintSVG_EDS(outSVG: SVGelement) {
+    const printarea = document.getElementById("printarea");
+    if (printarea == null) return;
+    printarea.innerHTML =
+      '<div id="printsvgarea">' + getPrintSVGWithoutAddress(outSVG) + "</div>";
+  }
 
-    // Then we display all the print options
+  function renderPrintSVG_sitplan(page: number) {
+    const outstruct = globalThis.structure.sitplan.toSitPlanPrint();
+    const printarea = document.getElementById("printarea");
+    if (printarea == null) return;
+    printarea.innerHTML =
+      '<div id="printsvgarea">' + outstruct.pages[page].svg + "</div>";
+  }
 
-    let outstr: string = "";
-    var strleft: string = "";
+  // First we generate an SVG image. We do this first because we need the size
+  // We will display it at the end of this function
 
-    const configsection = document.getElementById("configsection");
+  var outSVG = new SVGelement();
+  outSVG = globalThis.structure.toSVG(0, "horizontal");
+
+  var height = outSVG.yup + outSVG.ydown;
+  var width = outSVG.xleft + outSVG.xright;
+
+  globalThis.structure.print_table.setHeight(height);
+  globalThis.structure.print_table.setMaxWidth(width + 10);
+
+  // Then we display all the print options
+
+  let outstr: string = "";
+  var strleft: string = "";
+
+  const configsection = document.getElementById("configsection");
+  if (configsection != null)
+    configsection.innerHTML =
+      '<div class="modern-settings-container">' +
+      '<div class="modern-settings-header">' +
+      "<h1>🖨️ Afdrukken</h1>" +
+      "</div>" +
+      '<div style="max-width: 1200px; margin: 0 auto;">' +
+      '<div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">' +
+      '<h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">📄 PDF Genereren</h2>' +
+      '<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">' +
+      '<button id="button_pdfdownload" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">🖨️ Genereer PDF</button>' +
+      '<span id="select_papersize"></span>' +
+      '<span id="select_dpi"></span>' +
+      '<input id="dopdfname" size="20" value="eendraadschema_print.pdf" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">' +
+      "</div>" +
+      '<div id="progress_pdf" style="margin-top: 12px; font-size: 14px; color: var(--text-secondary);"></div>' +
+      '<div id="select_page_range" style="margin-top: 16px;"></div>' +
+      "</div>" +
+      "</div>" +
+      "</div>";
+
+  const button_pdfdownload = document.getElementById("button_pdfdownload");
+  if (button_pdfdownload != null) button_pdfdownload.onclick = generatePdf;
+
+  globalThis.structure.print_table.insertHTMLselectPaperSize(
+    document.getElementById("select_papersize") as HTMLElement,
+    printsvg
+  );
+  globalThis.structure.print_table.insertHTMLselectdpi(
+    document.getElementById("select_dpi") as HTMLElement,
+    printsvg
+  );
+
+  // Insert page range selector
+  globalThis.structure.print_table.insertHTMLselectPageRange(
+    document.getElementById("select_page_range") as HTMLElement,
+    printsvg
+  );
+
+  outstr =
+    '<div style="max-width: 1200px; margin: 0 auto;">' +
+    '<div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">' +
+    '<h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">⚙️ Pagina Instellingen</h2>' +
+    '<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">' +
+    '<span id="check_autopage"></span>' +
+    '<span id="id_verticals"></span>' +
+    '<span id="id_suggest_xpos_button"></span>' +
+    "</div>" +
+    "</div>" +
+    "</div>";
+
+  if (configsection != null)
+    configsection.insertAdjacentHTML("beforeend", outstr);
+
+  globalThis.structure.print_table.insertHTMLcheckAutopage(
+    document.getElementById("check_autopage") as HTMLElement,
+    printsvg
+  );
+  if (!globalThis.structure.print_table.enableAutopage) {
+    globalThis.structure.print_table.insertHTMLchooseVerticals(
+      document.getElementById("id_verticals") as HTMLElement,
+      printsvg
+    );
+    globalThis.structure.print_table.insertHTMLsuggestXposButton(
+      document.getElementById("id_suggest_xpos_button") as HTMLElement,
+      printsvg
+    );
+  }
+
+  if (!globalThis.structure.print_table.enableAutopage) {
+    outstr =
+      '<div style="max-width: 1200px; margin: 0 auto;">' +
+      '<div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">' +
+      '<h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">📐 Pagina Verdeling</h2>' +
+      '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">' +
+      '<div id="id_print_table"></div>' +
+      '<div style="color: var(--text-secondary); font-size: 14px; line-height: 1.8;">' +
+      '<p style="margin-bottom: 12px;">Klik op de groene pijl om het schema over meerdere pagina\'s te printen en kies voor elke pagina de start- en stop-positie in het schema (in pixels).</p>' +
+      '<p style="margin-bottom: 12px;">Je kan eventueel ook de tekst (info) aanpassen die op elke pagina rechts onderaan komt te staan.</p>' +
+      "<p>Onderaan kan je bekijken welk deel van het schema op welke pagina belandt.</p>" +
+      "</div>" +
+      "</div>" +
+      "</div>" +
+      "</div>";
+
     if (configsection != null)
-        configsection.innerHTML 
-            = '<div>'
-            +   '<button id="button_pdfdownload">Genereer PDF</button>&nbsp;'
-            +   '<span id="select_papersize"></span>&nbsp;'
-            +   '<span id="select_dpi"></span>&nbsp;'
-            +   '<input id="dopdfname" size="20" value="eendraadschema_print.pdf">&nbsp;'
-            +   '<span id="progress_pdf"></span>' // Area where status of pdf generation can be displayed
-            + '</div>'
-            + '<div id="select_page_range"></div>';
+      configsection.insertAdjacentHTML("beforeend", outstr);
 
-    const button_pdfdownload = document.getElementById('button_pdfdownload');
-    if (button_pdfdownload != null)
-        button_pdfdownload.onclick = generatePdf;
+    globalThis.structure.print_table.insertHTMLposxTable(
+      document.getElementById("id_print_table") as HTMLElement,
+      printsvg
+    );
+  }
 
-    globalThis.structure.print_table.insertHTMLselectPaperSize(document.getElementById('select_papersize') as HTMLElement, printsvg);
-    globalThis.structure.print_table.insertHTMLselectdpi(document.getElementById('select_dpi') as HTMLElement, printsvg);
+  strleft +=
+    '<div style="max-width: 1200px; margin: 0 auto;"><hr style="border: none; border-top: 2px solid var(--border); margin: 32px 0;"></div>';
 
-    // Insert page range selector
-    globalThis.structure.print_table.insertHTMLselectPageRange(document.getElementById('select_page_range') as HTMLElement, printsvg);
+  const numPages =
+    globalThis.structure.print_table.pages.length +
+    (globalThis.structure.sitplan
+      ? globalThis.structure.sitplan.getNumPages()
+      : 0);
+  if (globalThis.structure.print_table.displaypage >= numPages) {
+    globalThis.structure.print_table.displaypage = numPages - 1;
+  }
 
-    outstr 
-        = '<div>'
-        +   '<span style="margin-right: 2em" id="check_autopage"></span>' // Checkbox to choose if we want to auto paginate or not comes here
-        +   '<span style="margin-right: 2em" id="id_verticals"></span>' // An optional area to choose what part of the y-space of the image is shown
-        +   '<span id="id_suggest_xpos_button"></span>' // A button to force auto pagination comes here
-        + '</div>';
+  strleft +=
+    '<div style="max-width: 1200px; margin: 0 auto;">' +
+    '<div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">' +
+    '<h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">👁️ Printvoorbeeld</h2>' +
+    '<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">' +
+    '<span style="font-weight: 500; color: var(--text-primary);">Pagina:</span>' +
+    '<select onchange="HLDisplayPage()" id="id_select_page" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">';
 
-    if (configsection != null)
-        configsection.insertAdjacentHTML('beforeend', outstr);
-        
-    globalThis.structure.print_table.insertHTMLcheckAutopage(document.getElementById('check_autopage') as HTMLElement, printsvg);
-    if (!globalThis.structure.print_table.enableAutopage) {
-        globalThis.structure.print_table.insertHTMLchooseVerticals(document.getElementById('id_verticals') as HTMLElement, printsvg);
-        globalThis.structure.print_table.insertHTMLsuggestXposButton(document.getElementById('id_suggest_xpos_button') as HTMLElement, printsvg);
-    }
-
-    if (!globalThis.structure.print_table.enableAutopage) {
-        outstr 
-            = '<br>'
-            + '<table border="0">'
-                + '<tr>'
-                    + '<td style="vertical-align:top;">'
-                        + '<div id="id_print_table"></div>' // Table with all startx and stopx comes here
-                    + '</td>'
-                    + '<td style="vertical-align:top;padding:5px">'
-                        + '<div>Klik op de groene pijl om het schema over meerdere pagina\'s te printen en kies voor elke pagina de start- en stop-positie in het schema (in pixels).</div>'
-                        + '<div>Je kan eventueel ook de tekst (info) aanpassen die op elke pagina rechts onderaan komt te staan.</div>'
-                        + '<div>Onderaan kan je bekijken welk deel van het schema op welke pagina belandt.</div>'
-                    + '</td>'
-                + '</tr>'
-            + '</table>'
-            + '<br>';
-        
-        if (configsection != null)
-            configsection.insertAdjacentHTML('beforeend', outstr);    
-
-        globalThis.structure.print_table.insertHTMLposxTable(document.getElementById('id_print_table') as HTMLElement, printsvg)
-    }
-
-    strleft += '<hr>';
-
-    const numPages = globalThis.structure.print_table.pages.length + (globalThis.structure.sitplan? globalThis.structure.sitplan.getNumPages() : 0);
-    if (globalThis.structure.print_table.displaypage >= numPages) {
-        globalThis.structure.print_table.displaypage = numPages-1;
-    }
-
-    strleft += '<b>Printvoorbeeld: </b>Pagina <select onchange="HLDisplayPage()" id="id_select_page">'
-    for (let i=0; i<numPages; i++) {
-        if (i==globalThis.structure.print_table.displaypage) {
-            strleft += '<option value=' + (i+1) + ' selected>' + (i+1) + '</option>';
-        } else {
-            strleft += '<option value=' + (i+1) + '>' + (i+1) + '</option>';
-        }  
-    }
-    strleft += '</select>&nbsp;&nbsp;(Enkel tekening, kies "Genereer PDF" om ook de tekstuele gegevens te zien)';
-    
-    strleft += '<br><br>';
-    
-    strleft += '<table border="0"><tr><td style="vertical-align:top"><button onclick="dosvgdownload()">Zichtbare pagina als SVG opslaan</button></td><td>&nbsp;</td><td style="vertical-align:top"><input id="dosvgname" size="20" value="eendraadschema_print.svg"></td><td>&nbsp;&nbsp;</td><td>Sla tekening hieronder op als SVG en converteer met een ander programma naar PDF (bvb Inkscape).</td></tr></table><br>';
-    
-    strleft += globalThis.displayButtonPrintToPdf(); // This is only for the online version
-
-    strleft += '<div id="printarea"></div>';
-
-    if (configsection != null)
-        configsection.insertAdjacentHTML('beforeend', strleft);
-
-    // Finally we show the actual SVG
-
-    if (globalThis.structure.print_table.displaypage < globalThis.structure.print_table.pages.length) { //displaypage starts counting at 0
-        renderPrintSVG_EDS(outSVG);    
+  for (let i = 0; i < numPages; i++) {
+    if (i == globalThis.structure.print_table.displaypage) {
+      strleft +=
+        "<option value=" + (i + 1) + " selected>" + (i + 1) + "</option>";
     } else {
-        renderPrintSVG_sitplan(globalThis.structure.print_table.displaypage - globalThis.structure.print_table.pages.length);
+      strleft += "<option value=" + (i + 1) + ">" + (i + 1) + "</option>";
     }
+  }
+  strleft +=
+    "</select>" +
+    '<span style="color: var(--text-secondary); font-size: 13px;">(Enkel tekening, kies "Genereer PDF" om ook de tekstuele gegevens te zien)</span>' +
+    "</div>";
 
-    globalThis.toggleAppView('config');
+  strleft +=
+    '<div style="background: var(--background); border-radius: 8px; padding: 16px; margin-bottom: 16px;">' +
+    '<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">' +
+    '<button onclick="dosvgdownload()" style="background: white; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">💾 Zichtbare pagina als SVG opslaan</button>' +
+    '<input id="dosvgname" size="20" value="eendraadschema_print.svg" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">' +
+    "</div>" +
+    '<p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Sla tekening hieronder op als SVG en converteer met een ander programma naar PDF (bvb Inkscape).</p>' +
+    "</div>";
+
+  strleft += globalThis.displayButtonPrintToPdf(); // This is only for the online version
+
+  strleft +=
+    '<div id="printarea" style="border: 2px solid var(--border); border-radius: 8px; padding: 16px; background: #f9fafb; overflow: auto;"></div>';
+  strleft += "</div></div>"; // Close card and container
+
+  if (configsection != null)
+    configsection.insertAdjacentHTML("beforeend", strleft);
+
+  // Finally we show the actual SVG
+
+  if (
+    globalThis.structure.print_table.displaypage <
+    globalThis.structure.print_table.pages.length
+  ) {
+    //displaypage starts counting at 0
+    renderPrintSVG_EDS(outSVG);
+  } else {
+    renderPrintSVG_sitplan(
+      globalThis.structure.print_table.displaypage -
+        globalThis.structure.print_table.pages.length
+    );
+  }
+
+  globalThis.toggleAppView("config");
 }

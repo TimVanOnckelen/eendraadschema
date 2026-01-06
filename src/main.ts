@@ -640,33 +640,7 @@ function openSettings() {
 }
 
 function restart_all() {
-  var strleft: string = globalThis.CONFIGPAGE_LEFT;
-
-  strleft += `
-      Hoofddifferentieel (in mA) <input id="differentieel_droog" type="text" size="5" maxlength="5" value="300"><br><br>
-      Hoofdzekering (in A) <input id="hoofdzekering" type="text" size="4" maxlength="4" value="65"><br><br>
-      Aantal fazen:
-      <select id="aantal_fazen_droog"><option value="2">2p</option><option value="3">3p</option><option value="4">4p (3p+n)</option></select>`;
-
-  strleft += globalThis.CONFIGPAGE_RIGHT;
-
-  strleft += PROP_development_options();
-
-  // --- Changelog section ---
-  strleft += `<h2>Recent toegevoegde functionaliteiten</h2>`;
-  if (Array.isArray(changelog)) {
-    strleft += `<table style="width:100%;border-collapse:collapse;">`;
-    for (let i = 0; i < Math.min(10, changelog.length); i++) {
-      const entry = changelog[i];
-      strleft += `
-                <tr>
-                    <td style="vertical-align:top; font-weight:bold; white-space:nowrap; padding-right:10px;">${entry.date}</td>
-                    <td style="vertical-align:top;">${entry.msg}</td>
-                </tr>
-            `;
-    }
-    strleft += `</table>`;
-  }
+  var strleft: string = renderNewPageModern();
 
   const configsection = document.getElementById("configsection");
   if (configsection != null) configsection.innerHTML = strleft;
@@ -677,6 +651,126 @@ function restart_all() {
       "Deze appicatie werkt niet in Internet Explorer. Wij raden aan een moderne browser te gebruiken zoals Edge, Firefox, Google Chrome, Opera, Vivaldi, ..."
     );
   }
+}
+
+function renderNewPageModern(): string {
+  let changelogHTML = "";
+  if (Array.isArray(changelog)) {
+    changelogHTML = `<div style="margin-top: 30px;">
+      <h2 style="color: var(--primary-color); margin-bottom: 16px; font-size: 20px; font-weight: 600;">Recent toegevoegde functionaliteiten</h2>
+      <div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">`;
+
+    for (let i = 0; i < Math.min(10, changelog.length); i++) {
+      const entry = changelog[i];
+      changelogHTML += `
+        <div style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="font-weight: 600; white-space: nowrap; color: var(--primary-color); min-width: 90px;">${entry.date}</div>
+          <div style="flex: 1; color: var(--text-primary);">${entry.msg}</div>
+        </div>`;
+    }
+    changelogHTML += `</div></div>`;
+  }
+
+  return `
+    <div class="modern-settings-container">
+      <div class="modern-settings-header">
+        <button onclick="location.reload()" class="modern-settings-back">
+          ← Terug
+        </button>
+        <h1>Nieuw Schema</h1>
+      </div>
+      
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">
+          <h2 style="font-size: 24px; font-weight: 600; color: var(--primary-color); margin-bottom: 12px;">
+            Welkom op ééndraadschema
+          </h2>
+          <p style="font-size: 16px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px;">
+            Deze gratis tool laat toe zowel ééndraadschema's als situatieschema's te tekenen, inclusief complexere schema's
+            met bijvoorbeeld domotica. De schema's kunnen als PDF bestand worden geëxporteerd en geprint.
+            Voor de experts kunnen schema's eveneens worden omgezet in SVG vectorformaat om in andere programma's verder te bewerken.
+          </p>
+          <p style="font-size: 16px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px;">
+            Kies één van onderstaande voorbeelden om van te starten of start van een leeg schema (optie 3).
+          </p>
+          <p style="font-size: 14px; color: var(--text-secondary); font-style: italic; background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent-color);">
+            <b>Tip: </b>Om de mogelijkheden van het programma te leren kennen is het vaak beter eerst een voorbeeldschema te
+            bekijken alvorens van een leeg schema te vertrekken.
+          </p>
+        </div>
+
+        <div id="autoSaveRecover"></div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 32px;">
+          <!-- Voorbeeld 1 -->
+          <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; text-align: center;">
+            <h3 style="color: var(--primary-color); font-size: 18px; font-weight: 600; margin-bottom: 16px;">Voorbeeld 1</h3>
+            <img src="examples/example000.svg" style="height: 200px; margin-bottom: 16px; border-radius: 8px;">
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 16px; flex: 1;">
+              Eenvoudig schema, enkel contactdozen en lichtpunten.
+            </p>
+            <button onclick="load_example(0)" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+              Verdergaan met deze optie
+            </button>
+          </div>
+
+          <!-- Voorbeeld 2 -->
+          <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; text-align: center;">
+            <h3 style="color: var(--primary-color); font-size: 18px; font-weight: 600; margin-bottom: 16px;">Voorbeeld 2</h3>
+            <img src="examples/example001.svg" style="height: 200px; margin-bottom: 16px; border-radius: 8px;">
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 16px; flex: 1;">
+              Iets complexer schema met teleruptoren, verbruikers achter contactdozen en gesplitste kringen.
+            </p>
+            <button onclick="load_example(1)" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+              Verdergaan met deze optie
+            </button>
+          </div>
+
+          <!-- Leeg Schema -->
+          <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; text-align: center;">
+            <h3 style="color: var(--primary-color); font-size: 18px; font-weight: 600; margin-bottom: 16px;">Leeg Schema</h3>
+            <img src="examples/gear.svg" style="height: 100px; margin: 50px 0; opacity: 0.7;">
+            <div style="flex: 1;">
+              <div class="modern-form-group" style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px;">Hoofddifferentieel (in mA)</label>
+                <input id="differentieel_droog" type="text" value="300" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              </div>
+              <div class="modern-form-group" style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px;">Hoofdzekering (in A)</label>
+                <input id="hoofdzekering" type="text" value="65" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              </div>
+              <div class="modern-form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px;">Aantal fazen</label>
+                <select id="aantal_fazen_droog" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
+                  <option value="2">2p</option>
+                  <option value="3">3p</option>
+                  <option value="4">4p (3p+n)</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="read_settings()" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; width: 100%;">
+              Verdergaan met deze optie
+            </button>
+          </div>
+
+          <!-- Openen -->
+          <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; text-align: center;">
+            <h3 style="color: var(--primary-color); font-size: 18px; font-weight: 600; margin-bottom: 16px;">Openen</h3>
+            <img src="examples/import_icon.svg" style="height: 100px; margin: 50px 0; opacity: 0.7;">
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 16px; flex: 1;">
+              Open een schema dat u eerder heeft opgeslagen op uw computer (EDS-bestand). Enkel bestanden aangemaakt na 12 juli 2019 worden herkend.
+            </p>
+            <button onclick="loadClicked()" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; width: 100%;">
+              Verdergaan met deze optie
+            </button>
+          </div>
+        </div>
+
+        ${PROP_development_options()}
+        ${changelogHTML}
+      </div>
+    </div>
+  `;
 }
 
 globalThis.toggleAppView = (type: "2col" | "3col" | "config" | "draw") => {

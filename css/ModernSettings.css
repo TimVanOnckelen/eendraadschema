@@ -147,3 +147,52 @@
     justify-content: center;
   }
 }
+
+/* Modern back button styling for Nieuw page */
+.modern-settings-back {
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.modern-settings-back:hover {
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--accent-color) 100%
+  );
+  border-color: var(--primary-color);
+  color: white;
+  transform: translateX(-4px);
+}
+
+/* Modern settings header for Nieuw page */
+.modern-settings-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Hover effects for New page buttons */
+.modern-settings-container button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
+}
+
+.modern-settings-container button:active {
+  transform: translateY(0);
+}
+
+/* Card hover effects */
+.modern-settings-container > div > div[style*="box-shadow"]:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-4px);
+  transition: all 0.3s ease;
+}
