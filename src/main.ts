@@ -694,7 +694,7 @@ function renderNewPageModern(): string {
             Kies één van onderstaande voorbeelden om van te starten of start van een leeg schema (optie 3).
           </p>
           <p style="font-size: 14px; color: var(--text-secondary); font-style: italic; background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent-color);">
-            <b>Tip: </b>Om de mogelijkheden van het programma te leren kennen is het vaak beter eerst een voorbeeldschema te
+             <b>Tip: </b>Om de mogelijkheden van het programma te leren kennen is het vaak beter eerst een voorbeeldschema te
             bekijken alvorens van een leeg schema te vertrekken.
           </p>
         </div>
