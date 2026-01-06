@@ -271,9 +271,8 @@ export class Print_Table {
         this.maxwidth - pos > maxsvgwidth
       ) {
         // The undivided part still does not fit on a page
-        if (forceMarker)
-          pos =
-            forceMarker.xpos; // If there is a forceNewPage marker, we take that position
+        if (forceMarker) pos = forceMarker.xpos;
+        // If there is a forceNewPage marker, we take that position
         else
           pos = this.pagemarkers.findMinDepth(
             pos + minsvgwidth,
@@ -339,21 +338,21 @@ export class Print_Table {
     var label: HTMLLabelElement = document.createElement("label");
     label.style.display = "flex";
     label.style.alignItems = "center";
-    label.style.gap = "8px";
-    label.style.fontSize = "14px";
+    label.style.gap = "6px";
+    label.style.fontSize = "13px";
     label.style.fontWeight = "500";
     label.style.color = "var(--text-primary)";
 
     var labelText = document.createElement("span");
-    labelText.textContent = "Papierformaat:";
+    labelText.textContent = "Papier:";
     label.appendChild(labelText);
 
     var select: HTMLSelectElement = document.createElement("select");
     select.id = "select_papersize_input";
-    select.style.padding = "8px 12px";
+    select.style.padding = "6px 10px";
     select.style.border = "1px solid #d1d5db";
     select.style.borderRadius = "6px";
-    select.style.fontSize = "14px";
+    select.style.fontSize = "13px";
     select.style.background = "white";
     select.style.cursor = "pointer";
 
@@ -396,31 +395,31 @@ export class Print_Table {
     var label: HTMLLabelElement = document.createElement("label");
     label.style.display = "flex";
     label.style.alignItems = "center";
-    label.style.gap = "8px";
-    label.style.fontSize = "14px";
+    label.style.gap = "6px";
+    label.style.fontSize = "13px";
     label.style.fontWeight = "500";
     label.style.color = "var(--text-primary)";
 
     var labelText = document.createElement("span");
-    labelText.textContent = "Resolutie:";
+    labelText.textContent = "Kwaliteit:";
     label.appendChild(labelText);
 
     var select: HTMLSelectElement = document.createElement("select");
     select.id = "select_dpi_input";
-    select.style.padding = "8px 12px";
+    select.style.padding = "6px 10px";
     select.style.border = "1px solid #d1d5db";
     select.style.borderRadius = "6px";
-    select.style.fontSize = "14px";
+    select.style.fontSize = "13px";
     select.style.background = "white";
     select.style.cursor = "pointer";
 
     var option300: HTMLOptionElement = document.createElement("option");
     option300.value = "300";
-    option300.textContent = "300dpi (standaard)";
+    option300.textContent = "300dpi";
 
     var option600: HTMLOptionElement = document.createElement("option");
     option600.value = "600";
-    option600.textContent = "600dpi (beter maar trager)";
+    option600.textContent = "600dpi";
 
     if (typeof globalThis.structure.properties.dpi == "undefined")
       globalThis.structure.properties.dpi = 300;
@@ -455,19 +454,19 @@ export class Print_Table {
     const container = document.createElement("div");
     container.style.display = "flex";
     container.style.alignItems = "center";
-    container.style.gap = "12px";
+    container.style.gap = "10px";
     container.style.flexWrap = "wrap";
-    container.style.marginTop = "16px";
+    container.style.marginTop = "12px";
     container.innerHTML =
-      '<label for="print_page_mode" style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-primary);">' +
+      '<label for="print_page_mode" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-primary);">' +
       "<span>Pagina's:</span>" +
-      '<select id="print_page_mode" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">' +
+      '<select id="print_page_mode" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">' +
       '<option value="all">Alles</option>' +
       '<option value="custom">Aangepast</option>' +
       "</select>" +
       "</label>" +
-      '<input type="text" id="print_page_range" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; width: 150px;" placeholder="bijv. 1-2, 4">' +
-      '<span id="print_range_error" style="color: #dc2626; font-size: 13px; display: none;"></span>';
+      '<input type="text" id="print_page_range" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 130px;" placeholder="bijv. 1-2, 4">' +
+      '<span id="print_range_error" style="color: #dc2626; font-size: 12px; display: none;"></span>';
 
     // Get references to elements
     const select =
