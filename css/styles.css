@@ -1,5 +1,7 @@
 /* ROOT */
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
 :root {
   --selectPadding: 2;
   --paperPadding: 10px;
@@ -15,6 +17,18 @@
   );
 
   --EDStekenFoutKleur: #8c5a00; /* Very dark amber */
+
+  /* Modern color palette */
+  --primary-color: #4f46e5; /* Indigo */
+  --primary-dark: #4338ca;
+  --primary-light: #6366f1;
+  --secondary-color: #06b6d4; /* Cyan */
+  --accent-color: #8b5cf6; /* Purple */
+  --background: #f9fafb;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
 }
 
 /* DOCUMENT */
@@ -25,13 +39,20 @@
 
 html {
   height: 100%;
-  background-color: #ffffff;
+  background-color: var(--background);
 }
 
 body {
   margin: 0;
   padding: 0;
   cursor: default;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* SPINNER STUFF */
@@ -90,47 +111,68 @@ td[contenteditable="true"] {
 #topmenu {
   height: var(--menu-height);
   width: 100%;
-  background-color: #e8e8e8;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--accent-color) 100%
+  );
   align-items: center;
-  padding: 0px 7px 0px 7px;
-  border-bottom: 1px solid #b8b8b8;
+  padding: 0px 20px;
+  border-bottom: none;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
   -webkit-user-select: none; /* Safari */
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none;
+  z-index: 1000;
 }
+
 ul#minitabs {
   display: flex;
   height: 100%;
   list-style: none;
   margin: 0;
-  padding: 1px 0; /* 7px */
-  font-weight: bold;
+  padding: 0;
+  font-weight: 600;
   text-align: left;
   align-items: center;
   white-space: nowrap;
+  gap: 8px;
 }
+
 ul#minitabs li {
   display: inline;
-  margin: 0 6px;
+  margin: 0;
 }
+
 ul#minitabs li.menu-item {
   display: inline;
-  margin: 0 6px;
+  margin: 0;
 }
+
 ul#minitabs a {
   text-decoration: none;
-  padding: 0 0 3px;
-  border-bottom: 4px solid #e8e8e8;
-  color: #555565;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
+  display: inline-block;
+  border-bottom: none;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
+
 ul#minitabs a#current {
-  border-color: #f60;
-  color: #06f;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-weight: 700;
 }
+
 ul#minitabs a:hover {
-  border-color: #f60;
-  color: #333;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
   cursor: pointer;
+  transform: translateY(-1px);
 }
 
 /* RIBBON */
@@ -141,98 +183,86 @@ ul#minitabs a:hover {
   height: var(--ribbon-height);
   left: 0px;
   right: 0px;
-  bottom: 0;
   justify-content: space-between;
-  /*padding: 0px 12px 0px 12px;*/
+  padding: 0 16px;
   display: flex;
-  background-color: #f8f8f8;
+  background: white;
   align-items: center;
   width: 100%;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #e0e0e0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
   flex-direction: row;
+  z-index: 999;
 }
 
 #left-icons {
-  top: var(--menu-height);
-  height: var(--ribbon-height);
-  left: 0px;
-  right: 0px;
-  bottom: 0;
-  justify-content: left;
-  /*padding: 0px 12px 0px 12px;*/
   display: flex;
-  background-color: #f8f8f8;
   align-items: center;
-  width: 100%;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8;
-  flex-direction: row;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-start;
 }
 
 #right-icons {
-  top: var(--menu-height);
-  height: var(--ribbon-height);
-  left: 0px;
-  right: 0px;
-  bottom: 0;
-  justify-content: right;
-  /*padding: 0px 12px 0px 12px;*/
   display: flex;
-  background-color: #f8f8f8;
   align-items: center;
-  width: 100%;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8;
-  flex-direction: row;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .icon {
-  /*width: 50px;*/
-  margin: 0 0 0 10px;
+  margin: 0;
   text-align: center;
   cursor: pointer;
-  color: black;
+  color: #333;
   border-radius: 8px;
-  padding: 4px;
-  /*transition: background-color 0.3s;*/
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .icon:hover {
-  background-color: #ccc;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  transform: translateY(-1px);
 }
 
 .icon-image {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   justify-content: center;
-  align-items: baseline;
-  margin: 0 auto;
+  align-items: center;
+  margin: 0;
 }
 
 .icon-text {
-  display: inline-block;
-  font-size: 12px;
-  margin-top: 4px;
-  white-space: nowrap; /* Prevent text from wrapping */
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #555;
 }
 
 .icon-button {
-  height: 50px;
-  margin: 0 0 0 5px;
+  height: auto;
+  margin: 0;
   text-align: center;
   cursor: pointer;
-  font-size: 24px;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
 }
 
 .box {
@@ -381,6 +411,54 @@ ul#minitabs a:hover {
 #right_col_inner {
   padding: 10px;
   color: #000000;
+}
+
+/* 3-kolommen layout */
+#canvas_3col {
+  display: flex;
+  position: absolute;
+  top: var(--menu-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+#left_col_3 {
+  flex: 1;
+  overflow: hidden;
+  background: var(--background);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+#middle_col_3 {
+  flex: 3;
+  overflow: hidden;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+#right_col_3 {
+  flex: 1;
+  overflow: hidden;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+#left_col_3_inner,
+#middle_col_3_inner,
+#right_col_3_inner {
+  padding: 0;
+  color: #000000;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* TABLE */

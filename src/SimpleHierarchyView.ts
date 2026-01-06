@@ -17,12 +17,13 @@ class SimpleHierarchyView {
   render() {
     console.log("SimpleHierarchyView: Rendering...");
 
-    // Make sure we're in 2col view
+    // Make sure we're in 3col view
     if ((globalThis as any).toggleAppView) {
-      (globalThis as any).toggleAppView("2col");
+      (globalThis as any).toggleAppView("3col");
     }
 
     this.renderList();
+    this.renderSVG();
     this.renderPropertiesPanel();
   }
 
@@ -31,9 +32,9 @@ class SimpleHierarchyView {
    */
   private renderList() {
     console.log("SimpleHierarchyView: renderList() called");
-    const leftColInner = document.getElementById("left_col_inner");
+    const leftColInner = document.getElementById("left_col_3_inner");
     if (!leftColInner) {
-      console.error("SimpleHierarchyView: left_col_inner not found!");
+      console.error("SimpleHierarchyView: left_col_3_inner not found!");
       return;
     }
 
@@ -108,6 +109,10 @@ class SimpleHierarchyView {
         naam || adres || ""
       }</div>`;
       html += `  </div>`;
+      html += `  <div class="simple-item-actions">`;
+      html += `    <button class="simple-item-action-btn" onclick="event.stopPropagation(); simpleHierarchyView.addChild(${id})" title="Voeg kind toe">↳</button>`;
+      html += `    <button class="simple-item-action-btn delete-btn" onclick="event.stopPropagation(); simpleHierarchyView.deleteElement(${id})" title="Verwijder">🗑️</button>`;
+      html += `  </div>`;
       html += `</li>`;
     }
 
@@ -181,6 +186,28 @@ class SimpleHierarchyView {
   }
 
   /**
+   * Clean up properties HTML by removing commas and adding better formatting
+   */
+  private cleanPropertiesHTML(html: string): string {
+    // Replace commas followed by text with line breaks
+    html = html.replace(/,\s*([A-Za-zΔ])/g, "<br>$1");
+
+    // Remove standalone commas at the end of lines
+    html = html.replace(/,\s*<br>/g, "<br>");
+
+    // Remove trailing commas before closing tags
+    html = html.replace(/,\s*$/g, "");
+
+    // Add some spacing around inputs for better readability
+    html = html.replace(/<br>/g, "<br><br>");
+
+    // Remove excessive &nbsp; entities
+    html = html.replace(/(&nbsp;){2,}/g, "&nbsp;");
+
+    return html;
+  }
+
+  /**
    * Select an element
    */
   selectElement(id: number) {
@@ -221,18 +248,16 @@ class SimpleHierarchyView {
   }
 
   /**
-   * Render the right side properties panel
-   * Made public so InteractiveSVG can call it
+   * Render the middle SVG column
    */
-  renderPropertiesPanel() {
-    console.log("SimpleHierarchyView: renderPropertiesPanel() called");
-    const rightColInner = document.getElementById("right_col_inner");
-    if (!rightColInner) {
-      console.error("SimpleHierarchyView: right_col_inner not found!");
+  private renderSVG() {
+    console.log("SimpleHierarchyView: renderSVG() called");
+    const middleColInner = document.getElementById("middle_col_3_inner");
+    if (!middleColInner) {
+      console.error("SimpleHierarchyView: middle_col_3_inner not found!");
       return;
     }
 
-    // First render SVG at the top
     const structure = (globalThis as any).structure;
     let html = '<div class="simple-svg-container">';
     html +=
@@ -258,8 +283,34 @@ class SimpleHierarchyView {
     html += "</div>";
     html += "</div>";
 
-    // Then add properties panel below
-    html += '<div class="simple-properties-divider"></div>';
+    middleColInner.innerHTML = html;
+
+    // Re-attach interactive SVG handlers
+    if ((window as any).interactiveSVG) {
+      (window as any).interactiveSVG.attachHandlers();
+    }
+
+    // Attach zoom handlers
+    this.attachZoomHandlers();
+  }
+
+  /**
+   * Render the right side properties panel
+   * Made public so InteractiveSVG can call it
+   */
+  renderPropertiesPanel(preserveScroll: boolean = false) {
+    console.log("SimpleHierarchyView: renderPropertiesPanel() called");
+    const rightColInner = document.getElementById("right_col_3_inner");
+    if (!rightColInner) {
+      console.error("SimpleHierarchyView: right_col_3_inner not found!");
+      return;
+    }
+
+    // Save scroll position if needed
+    const scrollTop = preserveScroll ? rightColInner.scrollTop : 0;
+
+    const structure = (globalThis as any).structure;
+    let html = "";
 
     if (this.selectedElementId === null) {
       html += `
@@ -269,11 +320,6 @@ class SimpleHierarchyView {
                 </div>
             `;
       rightColInner.innerHTML = html;
-
-      // Re-attach interactive SVG handlers
-      if ((window as any).interactiveSVG) {
-        (window as any).interactiveSVG.attachHandlers();
-      }
       return;
     }
 
@@ -283,11 +329,6 @@ class SimpleHierarchyView {
       html +=
         '<div class="simple-properties-empty">Element niet gevonden</div>';
       rightColInner.innerHTML = html;
-
-      // Re-attach interactive SVG handlers
-      if ((window as any).interactiveSVG) {
-        (window as any).interactiveSVG.attachHandlers();
-      }
       return;
     }
 
@@ -301,6 +342,9 @@ class SimpleHierarchyView {
       ""
     );
 
+    // Clean up the HTML: remove commas and add better formatting
+    elementHTML = this.cleanPropertiesHTML(elementHTML);
+
     // Create properties panel
     html += '<div class="simple-properties-panel">';
     html += '<div class="simple-properties-header">';
@@ -311,7 +355,7 @@ class SimpleHierarchyView {
     html += "</div>";
 
     html += '<div class="simple-properties-form">';
-    html += elementHTML; // Use existing HTML generation (without buttons)
+    html += elementHTML; // Use cleaned HTML
     html += "</div>";
 
     // Add action buttons
@@ -327,6 +371,11 @@ class SimpleHierarchyView {
 
     html += "</div>";
     rightColInner.innerHTML = html;
+
+    // Restore scroll position if needed
+    if (preserveScroll) {
+      rightColInner.scrollTop = scrollTop;
+    }
 
     // Re-attach interactive SVG handlers after rendering
     if ((window as any).interactiveSVG) {
@@ -623,6 +672,35 @@ class SimpleHierarchyView {
         }
       });
     });
+  }
+
+  /**
+   * Add a child element to the selected parent
+   */
+  public addChild(parentId: number) {
+    console.log("SimpleHierarchyView: addChild() called for parent", parentId);
+
+    // Call the global HLInsertChild function
+    if (typeof (globalThis as any).HLInsertChild === "function") {
+      (globalThis as any).HLInsertChild(parentId);
+    }
+  }
+
+  /**
+   * Delete an element
+   */
+  public deleteElement(id: number) {
+    console.log("SimpleHierarchyView: deleteElement() called for", id);
+
+    // Confirm deletion
+    if (!confirm("Weet je zeker dat je dit element wilt verwijderen?")) {
+      return;
+    }
+
+    // Call the global HLDelete function
+    if (typeof (globalThis as any).HLDelete === "function") {
+      (globalThis as any).HLDelete(id);
+    }
   }
 }
 

@@ -637,7 +637,7 @@ function restart_all() {
   }
 }
 
-globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
+globalThis.toggleAppView = (type: "2col" | "3col" | "config" | "draw") => {
   let lastview = globalThis.structure.properties.currentView;
   if (
     globalThis.structure.sitplanview != null &&
@@ -651,10 +651,23 @@ globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
   const outerdiv = document.getElementById("outerdiv");
   const ribbon = document.getElementById("ribbon");
   const canvas_2col = document.getElementById("canvas_2col");
+  const canvas_3col = document.getElementById("canvas_3col");
   const left_col_inner = document.getElementById("left_col_inner");
   const EDSSVG = document.getElementById("EDSSVG");
 
-  if (type === "2col") {
+  if (type === "3col") {
+    // 3-kolommen layout voor SimpleHierarchyView
+    if (configsection == null) return;
+    if (outerdiv == null) return;
+    if (ribbon == null) return;
+    if (canvas_3col == null) return;
+
+    configsection.style.display = "none";
+    outerdiv.style.display = "none";
+    canvas_2col.style.display = "none";
+    canvas_3col.style.display = "flex";
+    ribbon.style.display = "none"; // Hide ribbon in 3col view
+  } else if (type === "2col") {
     if (configsection == null) return;
     if (outerdiv == null) return;
     if (ribbon == null) return;
@@ -663,6 +676,7 @@ globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
     if (canvas_2col.style.display === "none") {
       ribbon.style.display = "flex";
       canvas_2col.style.display = "flex";
+      canvas_3col.style.display = "none";
       configsection.style.display = "none";
       outerdiv.style.display = "none";
 
@@ -675,6 +689,7 @@ globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
     if (outerdiv == null) return;
     if (ribbon == null) return;
     if (left_col_inner == null) return;
+    if (canvas_3col == null) return;
     if (canvas_2col == null) return;
 
     if (configsection.style.display === "none") {
@@ -690,9 +705,11 @@ globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
     // We zetten bewist het SVG element EDS niet op nul want is nodig voor het print-voorbeeld
 
     canvas_2col.style.display = "none";
+    canvas_3col.style.display = "none";
   } else if (type === "draw") {
     if (configsection == null) return;
     if (outerdiv == null) return;
+    if (canvas_3col == null) return;
     if (ribbon == null) return;
     if (left_col_inner == null) return;
     if (canvas_2col == null) return;
@@ -702,6 +719,7 @@ globalThis.toggleAppView = (type: "2col" | "config" | "draw") => {
       ribbon.style.display = "flex";
       configsection.style.display = "none";
       canvas_2col.style.display = "none";
+      canvas_3col.style.display = "none";
 
       configsection.innerHTML = "";
       left_col_inner.innerHTML = ""; // Voor performance redenen
@@ -792,6 +810,17 @@ container.innerHTML = `
     </div>
     <div id="right_col">
     <div id="right_col_inner"></div>
+    </div>
+</div>
+<div id="canvas_3col" style="display:none;"> <!-- 3-kolommen layout voor SimpleHierarchyView -->
+    <div id="left_col_3">
+    <div id="left_col_3_inner"></div>
+    </div>
+    <div id="middle_col_3">
+    <div id="middle_col_3_inner"></div>
+    </div>
+    <div id="right_col_3">
+    <div id="right_col_3_inner"></div>
     </div>
 </div>
 <div id="outerdiv" style="display:none;"> <!-- Situatieschets -->

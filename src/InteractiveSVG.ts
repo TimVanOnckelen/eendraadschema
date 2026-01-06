@@ -129,8 +129,8 @@ class InteractiveSVG {
         selectedItem.classList.add("selected");
       }
 
-      // Render only the properties panel
-      (window as any).simpleHierarchyView.renderPropertiesPanel();
+      // Render only the properties panel, preserving scroll position
+      (window as any).simpleHierarchyView.renderPropertiesPanel(true);
     } else {
       // Fallback: Show properties panel
       this.showPropertiesPanel(elementId, element);
