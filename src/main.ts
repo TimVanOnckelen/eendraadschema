@@ -200,6 +200,8 @@ globalThis.HLDelete = (my_id: number) => {
   }
 };
 
+globalThis.openSettings = openSettings;
+
 globalThis.HLAdd = () => {
   globalThis.structure.addItem("");
   globalThis.undostruct.store();
@@ -545,31 +547,63 @@ function renderAddressStacked() {
   if (!globalThis.structure.properties.control)
     globalThis.structure.properties.control = "<br>";
 
-  outHTML =
-    "Plaats van de elektrische installatie" +
-    '<table width="90%" cols="1" rows="1" style="border-collapse: collapse;border-style: solid; border-width:thin;" cellpadding="5">' +
-    '<tr><td style="border-style: solid; border-width:thin;" contenteditable="true" valign="top" id="conf_owner" onblur="javascript:forceUndoStore()" onkeyup="javascript:changeAddressParams()">' +
-    globalThis.structure.properties.owner +
-    "</td></tr>" +
-    "</table><br>" +
-    "Installateur" +
-    '<table width="90%" cols="1" rows="1" style="border-collapse: collapse;border-style: solid; border-width:thin;" cellpadding="5">' +
-    '<tr><td style="border-style: solid; border-width:thin;" contenteditable="true" valign="top" id="conf_installer" onblur="javascript:forceUndoStore()" onkeyup="javascript:changeAddressParams()">' +
-    globalThis.structure.properties.installer +
-    "</td></tr>" +
-    "</table><br>" +
-    "Erkend organisme (keuring)" +
-    '<table width="90%" cols="1" rows="1" style="border-collapse: collapse;border-style: solid; border-width:thin;" cellpadding="5">' +
-    '<tr><td style="border-style: solid; border-width:thin;" contenteditable="true" valign="top" id="conf_control" onblur="javascript:forceUndoStore()" onkeyup="javascript:changeAddressParams()">' +
-    globalThis.structure.properties.control +
-    "</td></tr>" +
-    "</table><br>" +
-    "Info <i>(wordt overschreven bij handmatig pagineren in het print-menu)</i>" +
-    '<table width="90%" cols="1" rows="1" style="border-collapse: collapse;border-style: solid; border-width:thin;" cellpadding="5">' +
-    '<tr><td style="border-style: solid; border-width:thin;" contenteditable="true" valign="top" id="conf_info" onblur="javascript:forceUndoStore()" onkeyup="javascript:changeAddressParams()">' +
-    globalThis.structure.properties.info +
-    "</td></tr>" +
-    "</table>";
+  outHTML = `
+    <div class="modern-settings-container">
+      <div class="modern-settings-header">
+        <h2>⚙️ Algemene Instellingen</h2>
+        <button class="modern-back-btn" onclick="globalThis.simpleHierarchyView.render();">← Terug naar schema</button>
+      </div>
+      
+      <div class="modern-settings-form">
+        <div class="modern-form-group">
+          <label for="conf_owner">📍 Plaats van de elektrische installatie</label>
+          <div 
+            class="modern-textarea" 
+            contenteditable="true" 
+            id="conf_owner" 
+            onblur="javascript:forceUndoStore()" 
+            onkeyup="javascript:changeAddressParams()"
+          >${globalThis.structure.properties.owner}</div>
+        </div>
+
+        <div class="modern-form-group">
+          <label for="conf_installer">👷 Installateur</label>
+          <div 
+            class="modern-textarea" 
+            contenteditable="true" 
+            id="conf_installer" 
+            onblur="javascript:forceUndoStore()" 
+            onkeyup="javascript:changeAddressParams()"
+          >${globalThis.structure.properties.installer}</div>
+        </div>
+
+        <div class="modern-form-group">
+          <label for="conf_control">✅ Erkend organisme (keuring)</label>
+          <div 
+            class="modern-textarea" 
+            contenteditable="true" 
+            id="conf_control" 
+            onblur="javascript:forceUndoStore()" 
+            onkeyup="javascript:changeAddressParams()"
+          >${globalThis.structure.properties.control}</div>
+        </div>
+
+        <div class="modern-form-group">
+          <label for="conf_info">
+            ℹ️ Info 
+            <span class="label-hint">(wordt overschreven bij handmatig pagineren in het print-menu)</span>
+          </label>
+          <div 
+            class="modern-textarea" 
+            contenteditable="true" 
+            id="conf_info" 
+            onblur="javascript:forceUndoStore()" 
+            onkeyup="javascript:changeAddressParams()"
+          >${globalThis.structure.properties.info}</div>
+        </div>
+      </div>
+    </div>
+  `;
 
   return outHTML;
 }
@@ -594,6 +628,14 @@ function openContactForm() {
   strleft = strleft.replace(/Bewerken/g, "Eéndraadschema");
   const configsection = document.getElementById("configsection");
   if (configsection != null) configsection.innerHTML = strleft;
+  globalThis.toggleAppView("config");
+}
+
+function openSettings() {
+  const configsection = document.getElementById("configsection");
+  if (configsection != null) {
+    configsection.innerHTML = renderAddressStacked();
+  }
   globalThis.toggleAppView("config");
 }
 

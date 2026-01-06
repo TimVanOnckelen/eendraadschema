@@ -46,7 +46,12 @@ class SimpleHierarchyView {
 
     console.log("SimpleHierarchyView: Building list...");
 
-    let html = '<div class="simple-hierarchy-search">';
+    let html = '<div class="simple-hierarchy-header">';
+    html += '<h3 style="margin: 0;">📋 Elementen</h3>';
+    html +=
+      '<button class="simple-settings-btn" onclick="globalThis.openSettings();" title="Algemene instellingen">⚙️</button>';
+    html += "</div>";
+    html += '<div class="simple-hierarchy-search">';
     html +=
       '<input type="text" placeholder="🔍 Zoek element..." id="simple-search-input">';
     html += "</div>";
@@ -371,6 +376,14 @@ class SimpleHierarchyView {
 
     html += "</div>";
     rightColInner.innerHTML = html;
+    html += `<button class="simple-icon-btn" id="btn-clone-2" title="Dupliceer dit element">📋</button>`;
+    html += `<button class="simple-icon-btn" id="btn-move-up-2" title="Verplaats omhoog">⬆</button>`;
+    html += `<button class="simple-icon-btn" id="btn-move-down-2" title="Verplaats omlaag">⬇</button>`;
+    html += `<button class="simple-icon-btn danger" id="btn-delete-2" title="Verwijder dit element">🗑️</button>`;
+    html += "</div>";
+
+    html += "</div>";
+    rightColInner.innerHTML = html;
 
     // Restore scroll position if needed
     if (preserveScroll) {
@@ -469,82 +482,74 @@ class SimpleHierarchyView {
     const elementId = this.selectedElementId;
     if (elementId === null) return;
 
-    const btnInsertBefore = document.getElementById("btn-insert-before");
-    const btnInsertAfter = document.getElementById("btn-insert-after");
-    const btnInsertChild = document.getElementById("btn-insert-child");
-    const btnClone = document.getElementById("btn-clone");
-    const btnMoveUp = document.getElementById("btn-move-up");
-    const btnMoveDown = document.getElementById("btn-move-down");
-    const btnDelete = document.getElementById("btn-delete");
+    // Get all buttons
+    const buttons = [
+      {
+        id: "btn-insert-before",
+        action: () => (globalThis as any).HLInsertBefore(elementId),
+      },
+      {
+        id: "btn-insert-after",
+        action: () => (globalThis as any).HLInsertAfter(elementId),
+      },
+      {
+        id: "btn-insert-child",
+        action: () => (globalThis as any).HLInsertChild(elementId),
+      },
+      { id: "btn-clone", action: () => (globalThis as any).HLClone(elementId) },
+      {
+        id: "btn-move-up",
+        action: () => (globalThis as any).HLMoveUp(elementId),
+      },
+      {
+        id: "btn-move-down",
+        action: () => (globalThis as any).HLMoveDown(elementId),
+      },
+      {
+        id: "btn-delete",
+        action: () => {
+          if (confirm("Weet je zeker dat je dit element wilt verwijderen?"))
+            (globalThis as any).HLDelete(elementId);
+        },
+      },
+    ];
 
-    if (btnInsertBefore) {
-      btnInsertBefore.addEventListener("click", () => {
-        (globalThis as any).HLInsertBefore(elementId);
-        this.render();
-      });
-    }
-
-    if (btnInsertAfter) {
-      btnInsertAfter.addEventListener("click", () => {
-        (globalThis as any).HLInsertAfter(elementId);
-        this.render();
-      });
-    }
-
-    if (btnInsertChild) {
-      btnInsertChild.addEventListener("click", () => {
-        (globalThis as any).HLInsertChild(elementId);
-        this.render();
-      });
-    }
-
-    if (btnClone) {
-      btnClone.addEventListener("click", () => {
-        (globalThis as any).HLClone(elementId);
-        this.render();
-      });
-    }
-
-    if (btnMoveUp) {
-      btnMoveUp.addEventListener("click", () => {
-        (globalThis as any).HLMoveUp(elementId);
-        this.render();
-      });
-    }
-
-    if (btnMoveDown) {
-      btnMoveDown.addEventListener("click", () => {
-        (globalThis as any).HLMoveDown(elementId);
-        this.render();
-      });
-    }
-
-    if (btnDelete) {
-      btnDelete.addEventListener("click", () => {
-        if (confirm("Dit element en alle kinderen verwijderen?")) {
-          (globalThis as any).HLDelete(elementId);
-          this.selectedElementId = null;
+    buttons.forEach(({ id, action }) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener("click", () => {
+          action();
           this.render();
-        }
-      });
-    }
+        });
+      }
+    });
   }
 
   /**
-   * Attach change handlers to property inputs
+   * Attach handlers for property input changes
    */
   private attachPropertyChangeHandlers() {
     const propertyPanel = document.querySelector(".simple-properties-form");
-    if (!propertyPanel) return;
+    if (!propertyPanel) {
+      console.error("Property panel not found!");
+      return;
+    }
 
     const structure = (globalThis as any).structure;
-    if (!structure) return;
+    if (!structure) {
+      console.error("Structure not found!");
+      return;
+    }
 
     const element = structure.getElectroItemById(this.selectedElementId);
-    if (!element) return;
+    if (!element) {
+      console.error("Element not found!");
+      return;
+    }
 
     // Find all inputs, selects, and checkboxes
     const inputs = propertyPanel.querySelectorAll("input, select");
+    console.log(`Found ${inputs.length} inputs in property panel`);
 
     inputs.forEach((input) => {
       input.addEventListener("change", (e) => {
