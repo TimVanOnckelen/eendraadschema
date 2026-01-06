@@ -7,7 +7,8 @@
     "dev": "vite",
     "clean": "rimraf dist",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
   },
   "devDependencies": {
     "typescript": "~5.8.3",
