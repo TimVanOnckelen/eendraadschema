@@ -4,15 +4,17 @@
   --selectPadding: 2;
   --paperPadding: 10px;
 
-  --menu-height: 40px; 
-  --ribbon-height: 68px; 
-  --status-bar-height: 0px; 
+  --menu-height: 40px;
+  --ribbon-height: 68px;
+  --status-bar-height: 0px;
 
   --sideBarWidth: 0px; /* Can be overwritte in propstyles */
 
-  --total-offset: calc(var(--menu-height) + var(--ribbon-height) + var(--status-bar-height));
+  --total-offset: calc(
+    var(--menu-height) + var(--ribbon-height) + var(--status-bar-height)
+  );
 
-  --EDStekenFoutKleur: #8C5A00; /* Very dark amber */
+  --EDStekenFoutKleur: #8c5a00; /* Very dark amber */
 }
 
 /* DOCUMENT */
@@ -21,7 +23,10 @@
   box-sizing: border-box; /* Ensure all elements include border and padding in their dimensions */
 }
 
-html {height:100%; background-color: #FFFFFF;}
+html {
+  height: 100%;
+  background-color: #ffffff;
+}
 
 body {
   margin: 0;
@@ -32,29 +37,36 @@ body {
 /* SPINNER STUFF */
 
 .spinner {
-    display: none;
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(0, 0, 0, 0.1);
-    border-top: 5px solid #000;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  display: none;
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-top: 5px solid #000;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading .spinner {
-    display: block;
+  display: block;
 }
 
-button, select, select option, input[type="checkbox"] {
+button,
+select,
+select option,
+input[type="checkbox"] {
   cursor: pointer;
 }
 
@@ -62,8 +74,8 @@ select option {
   background-color: #f7f7f7;
 }
 
-td[contenteditable="true"] { 
-  cursor: text; /* Set the cursor to text edit pointer */ 
+td[contenteditable="true"] {
+  cursor: text; /* Set the cursor to text edit pointer */
 }
 
 /* CONTAINER */
@@ -77,7 +89,7 @@ td[contenteditable="true"] {
 
 #topmenu {
   height: var(--menu-height);
-  width: 100%; 
+  width: 100%;
   background-color: #e8e8e8;
   align-items: center;
   padding: 0px 7px 0px 7px;
@@ -101,24 +113,24 @@ ul#minitabs li {
   display: inline;
   margin: 0 6px;
 }
-ul#minitabs li.menu-item { 
-  display: inline; margin: 
-  0 6px; 
+ul#minitabs li.menu-item {
+  display: inline;
+  margin: 0 6px;
 }
 ul#minitabs a {
   text-decoration: none;
   padding: 0 0 3px;
-  border-bottom: 4px solid #e8e8e8; 
-  color: #555565
+  border-bottom: 4px solid #e8e8e8;
+  color: #555565;
 }
 ul#minitabs a#current {
-  border-color: #F60;
-  color:#06F
+  border-color: #f60;
+  color: #06f;
 }
 ul#minitabs a:hover {
-  border-color: #F60;
+  border-color: #f60;
   color: #333;
-  cursor: pointer
+  cursor: pointer;
 }
 
 /* RIBBON */
@@ -131,7 +143,7 @@ ul#minitabs a:hover {
   right: 0px;
   bottom: 0;
   justify-content: space-between;
-  /*padding: 0px 12px 0px 12px;*/ 
+  /*padding: 0px 12px 0px 12px;*/
   display: flex;
   background-color: #f8f8f8;
   align-items: center;
@@ -140,7 +152,7 @@ ul#minitabs a:hover {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8; 
+  border-bottom: 1px solid #c8c8c8;
   flex-direction: row;
 }
 
@@ -151,7 +163,7 @@ ul#minitabs a:hover {
   right: 0px;
   bottom: 0;
   justify-content: left;
-  /*padding: 0px 12px 0px 12px;*/ 
+  /*padding: 0px 12px 0px 12px;*/
   display: flex;
   background-color: #f8f8f8;
   align-items: center;
@@ -160,7 +172,7 @@ ul#minitabs a:hover {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8; 
+  border-bottom: 1px solid #c8c8c8;
   flex-direction: row;
 }
 
@@ -171,7 +183,7 @@ ul#minitabs a:hover {
   right: 0px;
   bottom: 0;
   justify-content: right;
-  /*padding: 0px 12px 0px 12px;*/ 
+  /*padding: 0px 12px 0px 12px;*/
   display: flex;
   background-color: #f8f8f8;
   align-items: center;
@@ -180,7 +192,7 @@ ul#minitabs a:hover {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
-  border-bottom: 1px solid #c8c8c8; 
+  border-bottom: 1px solid #c8c8c8;
   flex-direction: row;
 }
 
@@ -195,7 +207,7 @@ ul#minitabs a:hover {
   /*transition: background-color 0.3s;*/
 }
 
-.icon:hover { 
+.icon:hover {
   background-color: #ccc;
 }
 
@@ -259,7 +271,9 @@ ul#minitabs a:hover {
   cursor: default;
 }
 
-.boxlabel.hidden { display: none; }
+.boxlabel.hidden {
+  display: none;
+}
 
 .box.selected[movable="false"] {
   border: calc(var(--selectPadding) * 1px) solid red;
@@ -269,7 +283,9 @@ ul#minitabs a:hover {
   border: calc(var(--selectPadding) * 1px) solid green;
 }
 
-.box.hidden { display: none; }
+.box.hidden {
+  display: none;
+}
 
 /* APP */
 
@@ -292,11 +308,11 @@ ul#minitabs a:hover {
 #canvas_2col {
   display: flex;
   position: absolute;
-  top: calc(var(--menu-height) + var(--ribbon-height)); 
+  top: calc(var(--menu-height) + var(--ribbon-height));
   left: 0;
   right: 0;
   bottom: 0;
-  overflow: hidden; 
+  overflow: hidden;
   background-color: #ffffff; /* Optional: Background color for visibility */
   padding: 0x; /* Padding to create the empty border effect */
   display: flex;
@@ -306,11 +322,11 @@ ul#minitabs a:hover {
 #outerdiv {
   display: flex;
   position: absolute;
-  top: calc(var(--menu-height) + var(--ribbon-height)); 
+  top: calc(var(--menu-height) + var(--ribbon-height));
   left: 0;
   right: 0;
   bottom: 0;
-  overflow: none; 
+  overflow: none;
   background-color: #ffffff; /* Optional: Background color for visibility */
   padding: 0; /* Padding to create the empty border effect */
   flex-direction: row; /* Ensure columns are side by side */
@@ -326,7 +342,7 @@ ul#minitabs a:hover {
 #canvas {
   display: flex;
   position: absolute;
-  top: 0; 
+  top: 0;
   left: var(--sideBarWidth);
   right: 0;
   bottom: 0;
@@ -348,18 +364,24 @@ ul#minitabs a:hover {
 }
 
 #left_col {
-  flex: 0.45;
+  flex: 0.25;
   overflow: auto;
 }
 
 #right_col {
-  flex: 0.55;
+  flex: 0.75;
   overflow: auto;
 }
 
-#left_col_inner {padding:10px; color:#000000}
+#left_col_inner {
+  padding: 10px;
+  color: #000000;
+}
 
-#right_col_inner {padding:10px; color:#000000;}
+#right_col_inner {
+  padding: 10px;
+  color: #000000;
+}
 
 /* TABLE */
 
@@ -396,53 +418,65 @@ table.html_edit_table td:nth-child(2) {
 #config {
   padding-left: 7px;
   padding-right: 7px;
-  min-width:100%;
-  min-height:0px;
+  min-width: 100%;
+  min-height: 0px;
 }
 
-#AJAX_sent {padding:0px; color:#000000;}
-#AJAX_received {padding:0px; color:#000000;}
-#AJAX_draw {padding:0px; color:#000000;}
+#AJAX_sent {
+  padding: 0px;
+  color: #000000;
+}
+#AJAX_received {
+  padding: 0px;
+  color: #000000;
+}
+#AJAX_draw {
+  padding: 0px;
+  color: #000000;
+}
 
 .onlypointer {
   cursor: pointer;
 }
 
-p {font-size:16px; line-height:16px}
+p {
+  font-size: 16px;
+  line-height: 16px;
+}
 
 div.kring {
-  background-color: #FFCC99;
+  background-color: #ffcc99;
 }
 
 div.verbruiker {
-  background-color: #FFFFCC;
+  background-color: #ffffcc;
 }
 
 table {
-    border-collapse: collapse;
+  border-collapse: collapse;
 }
 
 .highlight-warning {
-  background-color: #FFD1D1; /* Light red/pink background */
-  border: 1px solid #FF6347;
-  padding: 4px 5px 4px 5px;  
-  font-weight: normal;
-  font-size: smaller;
-  color: #B22222; /* Firebrick red for text */
-}
-
-.highlight-warning-big {
-  background-color: #FFD1D1; /* Light red/pink background */
-  border: 1px solid #FF6347; /* Tomato red border to mimic marker */
+  background-color: #ffd1d1; /* Light red/pink background */
+  border: 1px solid #ff6347;
   padding: 4px 5px 4px 5px;
   font-weight: normal;
   font-size: smaller;
-  color: #B22222; /* Firebrick red for text */
+  color: #b22222; /* Firebrick red for text */
+}
+
+.highlight-warning-big {
+  background-color: #ffd1d1; /* Light red/pink background */
+  border: 1px solid #ff6347; /* Tomato red border to mimic marker */
+  padding: 4px 5px 4px 5px;
+  font-weight: normal;
+  font-size: smaller;
+  color: #b22222; /* Firebrick red for text */
 }
 
 .highlight-ok-big {
-  background-color: #CCFFCC; /* Light green background */
-  border: 1px solid #33CC33; /* Medium green border to mimic marker */
+  background-color: #ccffcc; /* Light green background */
+  border: 1px solid #33cc33; /* Medium green border to mimic marker */
   padding: 4px 5px 4px 5px;
   font-weight: normal;
   font-size: smaller;
@@ -450,14 +484,14 @@ table {
 }
 
 .EDS-tekenfout {
-  background-color: #FFF9E5; /* Very light yellowish grey */
-  border: 1px solid #E6C97A; /* Somewhat darker yellowish grey */
-  padding: 4px 5px 4px 5px;  
+  background-color: #fff9e5; /* Very light yellowish grey */
+  border: 1px solid #e6c97a; /* Somewhat darker yellowish grey */
+  padding: 4px 5px 4px 5px;
   font-weight: normal;
   font-size: smaller;
   color: var(--EDStekenFoutKleur); /* Darker shade of amber */
-  margin-top: 5px; 
-  margin-bottom: 5px; 
+  margin-top: 5px;
+  margin-bottom: 5px;
   cursor: default;
 }
 
@@ -474,10 +508,10 @@ table {
   display: none;
   border: 1px solid #aaa;
   background-color: #f0f0f0;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 999999999; /* Try to always be on top */
   font-size: 12px;
-  line-height: 1.0;
+  line-height: 1;
 }
 
 .context-menu-item {
@@ -531,7 +565,7 @@ table {
 }
 
 .popup h3 {
-  color: #06F;
+  color: #06f;
 }
 
 .rounded-button {
@@ -541,7 +575,7 @@ table {
   margin-right: 7px;
   padding: 10px 20px;
   cursor: pointer;
-  background-color: #3399FF; /* Lighter blue hue */
+  background-color: #3399ff; /* Lighter blue hue */
   color: white;
   border: none;
   border-radius: 5px; /* Rounded corners */
@@ -551,6 +585,5 @@ table {
 }
 
 .rounded-button:hover {
-  background-color: #06F; /* Darker blue on hover */
+  background-color: #06f; /* Darker blue on hover */
 }
-

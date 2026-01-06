@@ -1,0 +1,339 @@
+/**
+ * Interactive SVG Styles
+ * Styles for clickable SVG elements and properties panel
+ */
+
+/* Highlighted SVG element when selected from list */
+g[data-element-id].svg-highlighted > line,
+g[data-element-id].svg-highlighted > polyline,
+g[data-element-id].svg-highlighted > circle,
+g[data-element-id].svg-highlighted > rect,
+g[data-element-id].svg-highlighted > path,
+g[data-element-id].svg-highlighted > polygon,
+g[data-element-id].svg-highlighted > text {
+  stroke: #667eea !important;
+  stroke-width: 3 !important;
+  fill: rgba(102, 126, 234, 0.2) !important;
+  filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6));
+  animation: pulse-highlight 1.5s ease-in-out infinite;
+}
+
+/* Pulsing animation for highlighted element */
+@keyframes pulse-highlight {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(102, 126, 234, 0.9));
+  }
+}
+
+/* Keep text readable */
+g[data-element-id].svg-highlighted > text {
+  fill: #333 !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+/* Properties Panel */
+.svg-properties-panel {
+  position: fixed;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 10000;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.svg-properties-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.svg-properties-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.svg-properties-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.svg-properties-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.svg-properties-content {
+  padding: 20px;
+}
+
+.svg-properties-info {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.svg-properties-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.svg-prop-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.svg-prop-btn:hover {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateX(4px);
+}
+
+.svg-prop-btn span {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+}
+
+.svg-prop-edit {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.svg-prop-edit:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.svg-prop-delete {
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+.svg-prop-delete:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+/* Quick action toolbar - simplified */
+.svg-quick-actions {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  animation: slideInRight 0.2s ease-out;
+}
+
+.svg-quick-actions-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.svg-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.svg-action-btn:hover {
+  background: white;
+  transform: translateX(2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.svg-action-btn span {
+  font-size: 14px;
+}
+
+.svg-action-delete {
+  color: #dc3545;
+}
+
+.svg-action-delete:hover {
+  background: #fff5f5;
+}
+
+/* Context menu */
+.svg-context-menu {
+  position: fixed;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  min-width: 200px;
+  z-index: 10000;
+  animation: fadeInScale 0.15s ease-out;
+}
+
+.svg-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.15s ease;
+}
+
+.svg-context-menu-item:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.svg-context-menu-item .menu-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.svg-context-menu-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+  margin: 4px 0;
+}
+
+/* SVG hover highlight */
+svg[data-element-id] {
+  transition: opacity 0.2s ease;
+}
+
+svg[data-element-id]:hover {
+  opacity: 0.9;
+}
+
+/* SVG group hover effect - change color to red */
+g[data-element-id] {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Only affect direct children of the hovered group, not nested groups */
+/* Don't apply hover if element is already highlighted */
+g[data-element-id]:not(.svg-highlighted):hover > line,
+g[data-element-id]:not(.svg-highlighted):hover > rect,
+g[data-element-id]:not(.svg-highlighted):hover > circle,
+g[data-element-id]:not(.svg-highlighted):hover > polygon,
+g[data-element-id]:not(.svg-highlighted):hover > path,
+g[data-element-id]:not(.svg-highlighted):hover > text,
+g[data-element-id]:not(.svg-highlighted):hover > use {
+  stroke: #dc3545 !important;
+  stroke-width: 2.5 !important;
+  transition: all 0.2s ease;
+}
+
+/* For elements that should have red fill */
+g[data-element-id]:not(.svg-highlighted):hover > circle,
+g[data-element-id]:not(.svg-highlighted):hover > rect[fill]:not([fill="none"]),
+g[data-element-id]:not(.svg-highlighted):hover
+  > polygon[fill]:not([fill="none"]) {
+  fill: rgba(220, 53, 69, 0.2) !important;
+}
+
+/* Keep text readable - don't fill text */
+g[data-element-id]:not(.svg-highlighted):hover > text {
+  fill: #dc3545 !important;
+  stroke: none !important;
+}
+
+/* Selected element - use blue/purple */
+g[data-element-id].svg-selected > line,
+g[data-element-id].svg-selected > rect,
+g[data-element-id].svg-selected > circle,
+g[data-element-id].svg-selected > polygon,
+g[data-element-id].svg-selected > path {
+  stroke: #667eea !important;
+}
+
+g[data-element-id].svg-selected > circle,
+g[data-element-id].svg-selected > rect[fill]:not([fill="none"]),
+g[data-element-id].svg-selected > polygon[fill]:not([fill="none"]) {
+  fill: #667eea !important;
+}
+
+g[data-element-id].svg-selected > text {
+  fill: #667eea !important;
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* EDS container cursor */
+#EDS {
+  user-select: none;
+}
+
+#EDS svg {
+  overflow: visible;
+}

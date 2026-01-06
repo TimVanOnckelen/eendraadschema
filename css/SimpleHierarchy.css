@@ -1,0 +1,505 @@
+/**
+ * Simple Hierarchy View
+ * Clean, simple list on the left with properties panel on the right
+ */
+
+/* Main layout - split screen */
+#left_col {
+  background: #f8f9fa;
+  padding: 0;
+}
+
+#left_col_inner {
+  padding: 0;
+}
+
+/* Simple list container */
+.simple-hierarchy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* List item */
+.simple-hierarchy-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+}
+
+.simple-hierarchy-item:hover {
+  background: #f0f0f0;
+  padding-left: 16px;
+}
+
+.simple-hierarchy-item.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 500;
+}
+
+/* Item icon/type indicator */
+.simple-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.simple-hierarchy-item.selected .simple-item-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Item content */
+.simple-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.simple-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-item-subtitle {
+  font-size: 11px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Indentation for hierarchy */
+.simple-hierarchy-item[data-level="1"] {
+  padding-left: 12px;
+}
+.simple-hierarchy-item[data-level="2"] {
+  padding-left: 24px;
+}
+.simple-hierarchy-item[data-level="3"] {
+  padding-left: 36px;
+}
+.simple-hierarchy-item[data-level="4"] {
+  padding-left: 48px;
+}
+.simple-hierarchy-item[data-level="5"] {
+  padding-left: 60px;
+}
+
+.simple-hierarchy-item[data-level="1"]:hover {
+  padding-left: 16px;
+}
+.simple-hierarchy-item[data-level="2"]:hover {
+  padding-left: 28px;
+}
+.simple-hierarchy-item[data-level="3"]:hover {
+  padding-left: 40px;
+}
+.simple-hierarchy-item[data-level="4"]:hover {
+  padding-left: 52px;
+}
+.simple-hierarchy-item[data-level="5"]:hover {
+  padding-left: 64px;
+}
+
+/* Right panel - Properties editor */
+.simple-properties-panel {
+  background: white;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+/* SVG container at the top of right column */
+.simple-svg-container {
+  background: white;
+  padding: 12px;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.simple-svg-container #EDS {
+  overflow: auto;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  max-height: 50vh;
+  cursor: default;
+}
+
+.simple-svg-container #EDS:active {
+  cursor: default;
+}
+
+/* Zoom controls for SVG */
+.svg-zoom-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  background: white;
+  padding: 4px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.svg-zoom-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #667eea;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.svg-zoom-btn:hover {
+  background: #5568d3;
+  transform: scale(1.05);
+}
+
+.svg-zoom-btn:active {
+  transform: scale(0.95);
+}
+
+.simple-properties-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #667eea, transparent);
+  margin: 0 0 16px 0;
+}
+
+.simple-properties-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.simple-properties-header h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #333;
+  font-weight: 600;
+}
+
+.simple-properties-header .element-type {
+  color: #667eea;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* Properties form */
+.simple-properties-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  line-height: 1.6;
+}
+
+/* Create property rows with background */
+.simple-properties-form > * {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.simple-properties-form > *:hover {
+  background: #f0f2f5;
+}
+
+/* Style labels */
+.simple-properties-form b {
+  display: inline-block;
+  min-width: 120px;
+  color: #555;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Style all inputs in the properties form */
+.simple-properties-form input[type="text"],
+.simple-properties-form input[type="number"],
+.simple-properties-form select {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  background: white;
+  margin: 0;
+}
+
+.simple-properties-form input[type="text"]:focus,
+.simple-properties-form input[type="number"]:focus,
+.simple-properties-form select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.simple-properties-form input[type="text"]:hover:not(:focus),
+.simple-properties-form input[type="number"]:hover:not(:focus),
+.simple-properties-form select:hover:not(:focus) {
+  border-color: #a0a0a0;
+}
+
+/* Select dropdown arrow */
+.simple-properties-form select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* Checkboxes */
+.simple-properties-form input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0 8px;
+  accent-color: #667eea;
+}
+
+/* Labels and text in the form */
+.simple-properties-form b {
+  display: inline-block;
+  min-width: 100px;
+  color: #555;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.simple-property-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.simple-property-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.simple-property-input {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.simple-property-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.simple-property-input:hover {
+  border-color: #667eea;
+}
+
+/* Select inputs */
+select.simple-property-input {
+  cursor: pointer;
+  background: white;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* Checkbox inputs */
+.simple-property-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.simple-property-checkbox-wrapper:hover {
+  border-color: #667eea;
+  background: #f8f9fa;
+}
+
+.simple-property-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+/* Action buttons */
+.simple-properties-actions {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid #e0e0e0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.simple-action-btn {
+  padding: 12px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #333;
+}
+
+.simple-action-btn:hover {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.simple-action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
+}
+
+.simple-action-btn.danger {
+  border-color: #ff4444;
+  color: #ff4444;
+  grid-column: 1 / -1;
+}
+
+.simple-action-btn.danger:hover {
+  background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+  border-color: #ff4444;
+  color: white;
+}
+
+/* Empty state */
+.simple-properties-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #999;
+}
+
+.simple-properties-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.simple-properties-empty-text {
+  font-size: 16px;
+}
+
+/* Search/filter box */
+.simple-hierarchy-search {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.simple-hierarchy-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.simple-hierarchy-search input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Add section */
+.simple-hierarchy-add-section {
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 60px;
+  z-index: 99;
+}
+
+.simple-add-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.simple-add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.simple-add-btn:active {
+  transform: translateY(0);
+}
