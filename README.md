@@ -7,7 +7,7 @@
 [![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
 
-![Eendraadschema Screenshot](screenshot1.png)
+![Eendraadschema Screenshot](img/screenshot1.png)
 
 ## 📖 About
 
