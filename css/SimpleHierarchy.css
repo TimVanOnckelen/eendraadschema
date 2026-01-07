@@ -302,26 +302,26 @@
 /* Zoom controls for SVG */
 .svg-zoom-controls {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   display: flex;
   gap: 4px;
   background: white;
   padding: 4px;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 
 .svg-zoom-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: var(--primary-color);
   color: white;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1034,28 +1034,28 @@ select.simple-property-input {
 
 .svg-fullscreen-controls {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   display: flex;
-  gap: 8px;
+  gap: 4px;
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
-  padding: 8px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .svg-fullscreen-close {
   background: #dc3545 !important;
   color: white !important;
   font-weight: bold;
-  font-size: 18px;
-  margin-left: 8px;
+  font-size: 16px;
+  margin-left: 4px;
 }
 
 .svg-fullscreen-close:hover {
   background: #c82333 !important;
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 #EDS-fullscreen {
