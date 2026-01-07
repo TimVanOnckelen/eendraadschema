@@ -20,9 +20,12 @@ const App: React.FC = () => {
     fileAPIobj, 
     simpleHierarchyView,
     currentView,
-    setCurrentView
+    setCurrentView,
+    structure
   } = useApp();
   const [reactInitialized, setReactInitialized] = useState(false);
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [recoveryData, setRecoveryData] = useState<{lastSavedStr: string | null, lastSavedInfo: any} | null>(null);
 
   // File operations
   const handleNewFile = () => {
@@ -87,8 +90,17 @@ const App: React.FC = () => {
     if (!reactInitialized) {
       (async () => {
         try {
-          await initializeReactApp();
+          const recoveryInfo = await initializeReactApp();
           setReactInitialized(true);
+          
+          // Check if there's a recovery available
+          if (recoveryInfo.recoveryAvailable && recoveryInfo.lastSavedInfo) {
+            setRecoveryData({
+              lastSavedStr: recoveryInfo.lastSavedStr,
+              lastSavedInfo: recoveryInfo.lastSavedInfo
+            });
+            setShowRecoveryDialog(true);
+          }
         } catch (error) {
           console.error("Failed to initialize React app:", error);
         }
@@ -111,7 +123,38 @@ const App: React.FC = () => {
     };
 
     console.log("React App initialized with all services");
-  }, [session, appDocStorage, undostruct, fileAPIobj, simpleHierarchyView, setCurrentView, reactInitialized]);
+  }, [session, appDocStorage, undostruct, fileAPIobj, simpleHierarchyView, setCurrentView, structure, reactInitialized]);
+
+  const handleRecoverAutosave = () => {
+    if (recoveryData && recoveryData.lastSavedStr && structure) {
+      try {
+        const EDStoStructure = (globalThis as any).EDStoStructure;
+        if (EDStoStructure) {
+          // Load the autosaved structure
+          EDStoStructure(recoveryData.lastSavedStr, true, false);
+          
+          // Close the dialog
+          setShowRecoveryDialog(false);
+          setRecoveryData(null);
+          
+          // Switch to editor view
+          setCurrentView('editor');
+          
+          console.log('Autosave recovered successfully');
+        } else {
+          console.error('EDStoStructure function not found');
+        }
+      } catch (error) {
+        console.error('Error recovering autosave:', error);
+        alert('Er is een fout opgetreden bij het herstellen van de autosave.');
+      }
+    }
+  };
+
+  const handleDiscardAutosave = () => {
+    setShowRecoveryDialog(false);
+    setRecoveryData(null);
+  };
 
   const handleExampleSelect = (exampleNumber: number) => {
     setCurrentView('editor');
@@ -129,6 +172,76 @@ const App: React.FC = () => {
   return (
     <>
       <TopMenu items={menuItems} />
+      
+      {/* Recovery Dialog */}
+      {showRecoveryDialog && recoveryData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', color: '#333' }}>
+              Automatisch opgeslagen bestand gevonden
+            </h2>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#666' }}>
+              Er is een automatisch opgeslagen versie gevonden van:
+            </p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '500', color: '#333' }}>
+              <strong>Bestand:</strong> {recoveryData.lastSavedInfo?.filename || 'Onbekend'}<br/>
+              <strong>Opgeslagen op:</strong> {recoveryData.lastSavedInfo?.currentTimeStamp || 'Onbekend'}
+            </p>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
+              Wilt u deze versie herstellen?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleDiscardAutosave}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '4px',
+                  backgroundColor: 'white',
+                  color: '#495057',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Nee, niet herstellen
+              </button>
+              <button
+                onClick={handleRecoverAutosave}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  backgroundColor: '#0d6efd',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Ja, herstellen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {currentView === 'start' ? (
         <StartScreen 
           onExampleSelect={handleExampleSelect}

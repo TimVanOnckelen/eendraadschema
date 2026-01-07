@@ -1887,239 +1887,147 @@ export class SituationPlanView {
   }
 
   /**
-   * Maakt de knoppen in de ribbon aan om onder andere pagina's te selecteren, elementen te laden of verwijderen en pagina's te zoomen.
-   * Deze functie wordt aangeroepen telkens er iets in de toestand verandert die mogelijk kan leiden tot aanpassingen in de ribbon.
-   *
-   * Deze functie hangt ook onclick events aan interne functies in deze class.
-   *
-   * TODO: Er zijn efficientiewinsten mogelijk door niet telkens de hele ribbon te hertekenen.
+   * Updates the ribbon UI. In React mode, this only attaches event handlers to existing buttons.
+   * The React component is responsible for rendering the UI.
    */
   updateRibbon() {
-    if (globalThis.structure.properties.currentView != "draw") return;
+    // React mode: just attach event handlers to existing buttons
+    this.attachRibbonEventHandlers();
+  }
 
-    let outputleft: string = "";
-    let outputright: string = "";
-
-    // -- Undo/redo buttons --
-
-    outputleft += `
-            <div class="icon" ${
-              globalThis.undostruct.undoStackSize() > 0
-                ? 'onclick="undoClicked()"'
-                : 'style="filter: opacity(45%)"'
-            }>
-                <img src="gif/undo.png" alt="Ongedaan maken" class="icon-image">
-                <span class="icon-text">Ongedaan maken</span>
-            </div>
-            <div class="icon"  ${
-              globalThis.undostruct.redoStackSize() > 0
-                ? 'onclick="redoClicked()"'
-                : 'style="filter: opacity(45%)"'
-            }>
-                <img src="gif/redo.png" alt="Opnieuw" class="icon-image">
-                <span class="icon-text">Opnieuw</span>
-            </div>`;
-
-    // -- Visuals om items te laden of verwijderen --
-
-    outputleft += `
-            <span style="display: inline-block; width: 30px;"></span>
-            <div class="icon" id="button_Add">
-                <span class="icon-image" style="font-size:24px">➕</span>
-                <span class="icon-text">Uit bestand</span>
-            </div>
-            <div class="icon" id="button_Add_electroItem">
-                <span class="icon-image" style="font-size:24px">➕</span>
-                <span class="icon-text">Uit schema</span>
-            </div>`;
-
-    outputleft += `
-            <div class="icon" id="button_Add_customItem">
-                <span class="icon-image" style="font-size:24px">➕</span>
-                <span class="icon-text">Los symbool</span>
-            </div>`;
-
-    outputleft += `
-            <div class="icon" id="button_Delete">
-                <span class="icon-image" style="font-size:24px">🗑</span>
-                <span class="icon-text">Verwijder</span>
-            </div>`;
-
-    // -- Visuals om items te bewerken --
-
-    outputleft += `
-            <span style="display: inline-block; width: 10px;"></span>
-            <div class="icon" id="button_edit">
-                <span class="icon-image" style="font-size:24px">&#x2699;</span>
-                <span class="icon-text">Bewerk</span>
-            </div>`;
-
-    // -- Visuals om naar achteren of voren te sturen --
-
-    outputleft += `
-            <span style="display: inline-block; width: 10px;"></span>
-            <div class="icon" id="sendBack">
-                <span class="icon-image" style="font-size:24px">⬇⬇</span>
-                <span class="icon-text">Naar achter</span>
-            </div>
-            <div class="icon" id="bringFront">
-                <span class="icon-image" style="font-size:24px">⬆⬆</span>
-                <span class="icon-text">Naar voor</span>
-            </div>`;
-
-    // -- Add an icon of a floppy (save symbol) like the icons above --
-
-    if (
-      globalThis.autoSaver &&
-      globalThis.autoSaver.hasChangesSinceLastManualSave()
-    ) {
-      outputleft += `
-                <span style="display: inline-block; width: 10px;"></span>
-                <div class="highlight-warning-big" style="width: 64px; display: inline-block; vertical-align: middle; text-align: center;" id="button_save" onclick="exportjson(false)" onmouseover="this.style.cursor='pointer'" onmouseout="this.style.cursor='default'">
-                    <span class="icon-image" style="font-size:24px">💾</span>
-                    <span class="icon-text" style="display: inline-block; width: 100%;">Opslaan</span>
-                </div>`;
-    } else {
-      outputleft += `
-                <span style="display: inline-block; width: 10px;"></span>
-                <div class="highlight-ok-big" id="button_save" style="width: 64px; display: inline-block; vertical-align: middle; text-align: center;" onmouseover="this.style.cursor='pointer'" onmouseout="this.style.cursor='default'" onclick="switchToView('Bestand')">
-                    <span class="icon-image" style="font-size:24px; filter: grayscale(100%); opacity: 0.5;">💾</span>
-                    <span class="icon-text" style="display: inline-block; width: 100%;">Bestand</span>
-                </div>`;
+  /**
+   * Attaches event handlers to ribbon buttons that already exist in the DOM (React mode)
+   */
+  private attachRibbonEventHandlers() {
+    // -- Actions om elementen toe te voegen of verwijderen --
+    const buttonAdd = document.getElementById("button_Add");
+    const fileInput = document.getElementById("fileInput");
+    if (buttonAdd && fileInput) {
+      this.attachAddElementFromFileButton(buttonAdd, fileInput);
     }
 
-    // -- Visuals om pagina te selecteren --
-
-    outputleft += `
-            <span style="display: inline-block; width: 50px;"></span>
-            <div>
-                <center>
-                    <span style="display: inline-block; white-space: nowrap;">Pagina
-                        <select id="id_sitplanpage">`;
-    for (let i = 1; i <= this.sitplan.numPages; i++) {
-      outputleft +=
-        '<option value="' +
-        i +
-        '"' +
-        (i == this.sitplan.activePage ? " selected" : "") +
-        ">" +
-        i +
-        "</option>";
+    const buttonAddElectroItem = document.getElementById(
+      "button_Add_electroItem"
+    );
+    if (buttonAddElectroItem) {
+      this.attachAddElectroItemButton(buttonAddElectroItem);
     }
 
-    outputleft += `
-                        </select>
-                    </span><br><span style="display: inline-block; white-space: nowrap;">
-                        <button id="btn_sitplan_addpage" ${
-                          this.sitplan.activePage != this.sitplan.numPages
-                            ? " disabled"
-                            : ""
-                        }>Nieuw</button>
-                        <button id="btn_sitplan_delpage" style="background-color:red;" ${
-                          this.sitplan.numPages <= 1 ? " disabled" : ""
-                        }>&#9851;</button>
-                    </span>
-                </center>
-            </div>`;
+    const buttonAddCustomItem = document.getElementById(
+      "button_Add_customItem"
+    );
+    if (buttonAddCustomItem) {
+      this.attachAddCustomItemButton(buttonAddCustomItem);
+    }
 
-    // -- Visuals om pagina te zoomen --
+    const buttonDelete = document.getElementById("button_Delete");
+    if (buttonDelete) {
+      this.attachDeleteButton(buttonDelete);
+    }
 
-    outputright += `
-            <span style="display: inline-block; width: 10px;"></span>
-            <div class="icon" id="button_zoomin">
-                <span class="icon-image" style="font-size: 24px;">🔍</span>
-                <span class="icon-text">In</span>
-            </div>
-            <div class="icon" id="button_zoomout">
-                <span class="icon-image" style="font-size: 24px;">🌍</span>
-                <span class="icon-text">Uit</span>
-            </div>
-            <div class="icon" id="button_zoomToFit">
-                <span class="icon-image" style="font-size: 24px;">🖥️</span>
-                <!--<img src="gif/scaleup.png" alt="Schermvullend" class="icon-image">-->
-                <span class="icon-text">Schermvullend</span>
-            </div>
-            <span style="display: inline-block; width: 10px;"></span>`;
+    // -- Actions om visuals te bewerken --
+    const buttonEdit = document.getElementById("button_edit");
+    if (buttonEdit) {
+      this.attachEditButton(buttonEdit);
+    }
 
-    // -- Put everything in the ribbon --
+    // -- Actions om naar achteren te sturen --
+    const sendBack = document.getElementById("sendBack");
+    if (sendBack) {
+      this.attachSendToBackButton(sendBack);
+    }
 
-    document.getElementById(
-      "ribbon"
-    ).innerHTML = `<div id="left-icons">${outputleft}</div><div id="right-icons">${outputright}</div>`;
+    const bringFront = document.getElementById("bringFront");
+    if (bringFront) {
+      this.attachBringToFrontButton(bringFront);
+    }
 
-    // -- Actions om pagina te selecteren --
+    // -- Actions om pagina te zoomen --
+    const buttonZoomIn = document.getElementById("button_zoomin");
+    if (buttonZoomIn) {
+      this.attachZoomButton(buttonZoomIn, 0.1);
+    }
 
-    document.getElementById("id_sitplanpage")!.onchange = (event: Event) => {
-      this.contextMenu.hide();
-      const target = event.target as HTMLSelectElement;
-      this.selectPage(Number(target.value));
-      globalThis.undostruct.store("changePage");
-    };
+    const buttonZoomOut = document.getElementById("button_zoomout");
+    if (buttonZoomOut) {
+      this.attachZoomButton(buttonZoomOut, -0.1);
+    }
 
-    document.getElementById("btn_sitplan_addpage")!.onclick = () => {
-      this.contextMenu.hide();
+    const buttonZoomToFit = document.getElementById("button_zoomToFit");
+    if (buttonZoomToFit) {
+      this.attachZoomToFitButton(buttonZoomToFit);
+    }
+  }
+
+  /**
+   * Public methods for React component integration
+   */
+
+  /**
+   * Get the current page number
+   */
+  public getCurrentPage(): number {
+    return this.sitplan.activePage;
+  }
+
+  /**
+   * Get the total number of pages
+   */
+  public getNumPages(): number {
+    return this.sitplan.getNumPages();
+  }
+
+  /**
+   * Add a new page (only if on last page)
+   */
+  public addPage(): void {
+    if (this.sitplan.activePage === this.sitplan.numPages) {
       this.sitplan.numPages++;
       this.selectPage(this.sitplan.numPages);
       globalThis.undostruct.store();
-    };
+    }
+  }
 
-    document.getElementById("btn_sitplan_delpage")!.onclick = () => {
-      this.contextMenu.hide();
-      const dialog = new Dialog(
-        "Pagina verwijderen",
-        `Pagina ${this.sitplan.activePage} volledig verwijderen?`,
-        [
-          {
-            text: "OK",
-            callback: (() => {
-              this.wipePage(this.sitplan.activePage);
-              //set page of all sitplan.elements with page>page one lower
-              this.sitplan.elements.forEach((element) => {
-                if (element.page > this.sitplan.activePage) {
-                  element.page--;
-                }
-              });
-              if (this.sitplan.numPages > 1) this.sitplan.numPages--;
-              this.selectPage(
-                Math.min(this.sitplan.activePage, this.sitplan.numPages)
-              );
-              globalThis.undostruct.store();
-            }).bind(this),
-          },
-          { text: "Annuleren", callback: () => {} },
-        ]
-      );
-      dialog.show();
-    };
+  /**
+   * Delete the current page
+   */
+  public deletePage(callback?: () => void): void {
+    if (this.sitplan.numPages <= 1) return;
 
-    // -- Actions om elementen toe te voegen of verwijderen --
-
-    this.attachAddElementFromFileButton(
-      document.getElementById("button_Add"),
-      document.getElementById("fileInput")
+    const dialog = new Dialog(
+      "Pagina verwijderen",
+      `Pagina ${this.sitplan.activePage} volledig verwijderen?`,
+      [
+        {
+          text: "OK",
+          callback: (() => {
+            this.wipePage(this.sitplan.activePage);
+            // Set page of all sitplan.elements with page > current page one lower
+            this.sitplan.elements.forEach((element) => {
+              if (element.page > this.sitplan.activePage) {
+                element.page--;
+              }
+            });
+            if (this.sitplan.numPages > 1) this.sitplan.numPages--;
+            this.selectPage(
+              Math.min(this.sitplan.activePage, this.sitplan.numPages)
+            );
+            globalThis.undostruct.store();
+            if (callback) callback();
+          }).bind(this),
+        },
+        { text: "Annuleren", callback: () => {} },
+      ]
     );
-    this.attachAddElectroItemButton(
-      document.getElementById("button_Add_electroItem")
-    );
-    this.attachAddCustomItemButton(
-      document.getElementById("button_Add_customItem")
-    );
-    this.attachDeleteButton(document.getElementById("button_Delete"));
+    dialog.show();
+  }
 
-    // -- Actions om visuals te bewerken --
-
-    this.attachEditButton(document.getElementById("button_edit"));
-
-    // -- Actions om naar achteren te sturen --
-
-    this.attachSendToBackButton(document.getElementById("sendBack"));
-    this.attachBringToFrontButton(document.getElementById("bringFront"));
-
-    // -- Actions om pagina te zoomen --
-
-    this.attachZoomButton(document.getElementById("button_zoomin"), 0.1);
-    this.attachZoomButton(document.getElementById("button_zoomout"), -0.1);
-    this.attachZoomToFitButton(document.getElementById("button_zoomToFit"));
+  /**
+   * Change to a specific page
+   */
+  public changePage(pageNum: number): void {
+    this.selectPage(pageNum);
+    globalThis.undostruct.store("changePage");
   }
 } // *** END CLASS ***
 

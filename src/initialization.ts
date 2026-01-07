@@ -84,6 +84,7 @@ function initializeFileInputs() {
  * Export legacy view functions to globalThis
  */
 function exportLegacyFunctions() {
+  globalThis.EDStoStructure = EDStoStructure;
   globalThis.showFilePage = showFilePage;
   globalThis.showSituationPlanPage = showSituationPlanPage;
   globalThis.printsvg = printsvg;

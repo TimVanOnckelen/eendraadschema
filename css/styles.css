@@ -402,7 +402,7 @@ ul#minitabs a:hover {
 #outerdiv {
   display: flex;
   position: absolute;
-  top: calc(var(--menu-height) + var(--ribbon-height));
+  top: calc(var(--ribbon-height));
   left: 0;
   right: 0;
   bottom: 0;

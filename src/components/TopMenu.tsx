@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp, AppView } from '../AppContext';
+import { AutoSaveIndicator } from './AutoSaveIndicator';
 
 export interface SubMenuItem {
   name: string;
@@ -50,8 +51,8 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
   };
 
   return (
-    <div id="topmenu" ref={menuRef}>
-      <ul id="minitabs">
+    <div id="topmenu" ref={menuRef} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
+      <ul id="minitabs" style={{ margin: 0 }}>
         {items.map((item, index) => (
           <li key={index} className="menu-item">
             <a
@@ -81,6 +82,7 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
           </li>
         ))}
       </ul>
+      <AutoSaveIndicator autoSaver={globalThis.autoSaver} />
     </div>
   );
 };
