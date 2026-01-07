@@ -4,12 +4,19 @@
     "module": "esnext",
     "target": "es2017",
     "lib": ["es2017", "dom"],
+    "jsx": "react-jsx",
     "moduleResolution": "node",
-    "noEmit": true
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
   "include": [
-    "src/global.d.ts",
-    "src/main.ts",
+    "src",
+    "src/global.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 const formatDate = () => {
   const now = new Date();
@@ -13,6 +14,7 @@ const formatDate = () => {
 };
 
 export default defineConfig({
+  plugins: [react()],
   base: "/eendraadschema/", // GitHub Pages needs the repo name as base path
   define: {
     BUILD_DATE: JSON.stringify(formatDate()), // Injects current date/time

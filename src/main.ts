@@ -919,15 +919,24 @@ globalThis.read_settings = () => {
   reset_all();
 };
 
+// Some general variables that are used throughout main.ts
+var CONF_aantal_fazen_droog = 2;
+var CONF_aantal_fazen_nat = 2;
+var CONF_hoofdzekering = 65;
+var CONF_differentieel_droog = 300;
+var CONF_differentieel_nat = 30;
+
 //--- MAIN PROGRAM ---
 
-// Define content of index.html container
+// Export initialization function for React
+export function initializeApp() {
+  // Define content of index.html container
 
-const container = document.getElementById("container");
+  const container = document.getElementById("container");
 
-if (container == null) throw new Error("HTML element container is null");
+  if (container == null) throw new Error("HTML element container is null");
 
-container.innerHTML = `
+  container.innerHTML = `
 <div id="topmenu"><ul id="minitabs"></ul></div>
 <div id="app">
 <svg id="svgdefs"></svg> <!-- Bevat SVG patronen die app-wide gebruikt worden -->
@@ -967,195 +976,188 @@ container.innerHTML = `
 </div>
 </div>`;
 
-// Configure the app-zone in the HTML
+  // Configure the app-zone in the HTML
 
-const svgdefs = document.getElementById("svgdefs");
-if (svgdefs == null) throw new Error("HTML element svgdefs is null");
+  const svgdefs = document.getElementById("svgdefs");
+  if (svgdefs == null) throw new Error("HTML element svgdefs is null");
 
-svgdefs.innerHTML =
-  '<pattern id="VerticalStripe" x="5" y="0" width="5" height="10" patternUnits="userSpaceOnUse" >' +
-  '<line x1="0" y1="0" x2="0" y2="10" stroke="black" />' +
-  "</pattern>";
+  svgdefs.innerHTML =
+    '<pattern id="VerticalStripe" x="5" y="0" width="5" height="10" patternUnits="userSpaceOnUse" >' +
+    '<line x1="0" y1="0" x2="0" y2="10" stroke="black" />' +
+    "</pattern>";
 
-// Add file input elements
+  // Add file input elements
 
-if (!document.getElementById("importfile")) {
-  document.body.innerHTML += `
+  if (!document.getElementById("importfile")) {
+    document.body.innerHTML += `
     <input id="importfile" type="file" accept=".eds" onchange="importjson(event)" style="display:none;">
     <input id="appendfile" type="file" accept=".eds" onchange="appendjson(event)" style="display:none;">
     <input type="file" id="fileInput" accept="image/*" style="display:none;">
   `;
+  }
+
+  // Build the menu
+
+  let menuItems: MenuItem[];
+
+  menuItems = [
+    { name: "Nieuw", callback: restart_all },
+    { name: "Bestand", callback: showFilePage },
+    { name: "Eéndraadschema", callback: globalThis.HLRedrawTree },
+    { name: "Situatieschema", callback: showSituationPlanPage },
+    { name: "Print", callback: printsvg },
+    { name: "Documentatie", callback: showDocumentationPage },
+    { name: "Info/Contact", callback: openContactForm },
+  ];
+
+  PROP_edit_menu(menuItems);
+
+  globalThis.topMenu = new TopMenu("minitabs", "menu-item", menuItems);
+
+  // Now add handlers for everything that changes in the left column
+  const left_col_inner = document.querySelector("#left_col_inner");
+  if (left_col_inner == null)
+    throw new Error("HTML element left_col_inner is null");
+  left_col_inner.addEventListener("change", function (event) {
+    function propUpdate(
+      my_id: number,
+      item: string,
+      type: string,
+      value: string | boolean
+    ): void {
+      let electroItem = globalThis.structure.getElectroItemById(my_id);
+
+      switch (type) {
+        case "select-one":
+          if (item == "type") {
+            // Type changed
+            globalThis.structure.adjustTypeById(my_id, value as string);
+            if (isFirefox()) {
+              globalThis.HLRedrawTreeHTML();
+            } else {
+              globalThis.structure.reNumber();
+              const parent = electroItem.getParent();
+              if (parent !== null)
+                globalThis.structure.updateHTMLinner(parent.id);
+              else globalThis.structure.updateHTMLinner(my_id);
+            }
+          } else {
+            electroItem.props[item] = value as string;
+            if (isFirefox()) {
+              globalThis.HLRedrawTreeHTML();
+            } else {
+              globalThis.structure.reNumber();
+              globalThis.structure.updateHTMLinner(my_id);
+            }
+          }
+          break;
+        case "text":
+          electroItem.props[item] = value as string;
+          globalThis.structure.reNumber();
+          if (item === "kortsluitvermogen")
+            if (isFirefox()) {
+              globalThis.HLRedrawTreeHTML();
+            } else {
+              globalThis.structure.updateHTMLinner(my_id);
+            }
+          break;
+        case "checkbox":
+          electroItem.props[item] = value as boolean;
+          if (!isFirefox()) {
+            globalThis.structure.reNumber();
+            globalThis.structure.updateHTMLinner(my_id);
+          } else globalThis.HLRedrawTreeHTML();
+          break;
+      }
+
+      if (electroItem.getType() == "Domotica gestuurde verbruiker")
+        globalThis.structure.voegAttributenToeAlsNodigEnReSort();
+
+      globalThis.undostruct.store();
+      globalThis.HLRedrawTreeSVG();
+    }
+
+    const element: HTMLInputElement = event.target as HTMLInputElement;
+
+    // Ensure the id starts with 'HL_edit_'
+    if (!element.id.startsWith("HL_edit_")) return;
+
+    const { type, id } = element;
+    const value = type === "checkbox" ? element.checked : element.value;
+
+    // Extract id and key from id
+    const match = id.match(/^HL_edit_(\d+)_(.+)$/);
+    const idNumber = match ? match[1] : null;
+    const key = match ? match[2] : null;
+    if (idNumber == null || key == null) return;
+    propUpdate(parseInt(idNumber), key, type, value);
+  });
+
+  EDStoStructure(globalThis.EXAMPLE_DEFAULT, false); //Just in case the user doesn't select a scheme and goes to drawing immediately, there should be something there
+
+  // Create the autoSaver
+  // - the constructor takes a function that points it to the latest globalThis.structure whenever it asks for it
+  // - We also add a callback function that is called after each save performed by the autoSaver.  This function will update the Save icon in the ribbon when needed
+
+  globalThis.autoSaver = new AutoSaver(5, () => {
+    return globalThis.structure;
+  }); // Als globale variabele moet dit een var zijn en geen let
+  globalThis.autoSaver.setCallbackAfterSave(
+    (() => {
+      // Update ribbons after each save (automatic or manual) by the autoSaver, but only if the lastSavedType changed
+      let lastSavedType = globalThis.autoSaver.getSavedType();
+      function updateRibbons() {
+        const currentSavedType = globalThis.autoSaver.getSavedType();
+        if (lastSavedType === currentSavedType) return; // Only update the ribbons if the type changed
+        lastSavedType = currentSavedType;
+        globalThis.structure.updateRibbon();
+        if (globalThis.structure.sitplanview)
+          globalThis.structure.sitplanview.updateRibbon();
+      }
+      return updateRibbons;
+    })()
+  );
+
+  // Finally check if there is anything in the autosave and load it
+
+  let recoveryAvailable = false;
+  let lastSavedStr: string | null = null;
+  let lastSavedInfo: any = null;
+
+  (async () => {
+    [lastSavedStr, lastSavedInfo] = await globalThis.autoSaver.loadLastSaved();
+    if (lastSavedStr != null /* && (lastSavedInfo.recovery == true) */)
+      recoveryAvailable = true;
+  })().then(() => {
+    if (!recoveryAvailable) {
+      EDStoStructure(globalThis.EXAMPLE_DEFAULT, false);
+      restart_all();
+      let myCookieBanner = new CookieBanner();
+      myCookieBanner.run();
+    } else {
+      const helperTip = new HelperTip(globalThis.appDocStorage);
+      helperTip.show(
+        "file.autoRecovered",
+        `<h3>Laatste schema geladen uit browsercache</h3>` +
+          `<p>Deze tool vond een schema in de browsercache. ` +
+          `Dit schema dateert van <b>${lastSavedInfo.currentTimeStamp}</b> ` +
+          `met als naam <b>${lastSavedInfo.filename}</b>. ` +
+          `U kan op dit gerecupereerde schema verder werken of een ander schema laden in het "Bestand"-menu.</p>` +
+          `<p><b>Opgelet! </b>De browsercache is een tijdelijke opslag, en wordt occasioneel gewist. ` +
+          `Het blijft belangrijk uw werk regelmatig op te slaan om gegevensverlies te voorkomen.</p>`,
+        false,
+        (() => {
+          let myCookieBanner = new CookieBanner();
+          myCookieBanner.run();
+        }).bind(this)
+      );
+      if (lastSavedStr == null) return;
+      EDStoStructure(lastSavedStr, true, true);
+      if (globalThis.structure.sitplan)
+        globalThis.structure.sitplan.activePage = 1;
+    }
+    globalThis.autoSaver.start();
+  });
 }
 
-// Some general variables that are only used in main.ts
-
-//declare var CONF_builddate: any; //needed to be able to read the variable from the builddate.js file (otherwise compiler will complain)
-
-var CONF_aantal_fazen_droog = 2;
-var CONF_aantal_fazen_nat = 2;
-var CONF_hoofdzekering = 65;
-var CONF_differentieel_droog = 300;
-var CONF_differentieel_nat = 30;
-
-// Build the menu
-
-let menuItems: MenuItem[];
-
-menuItems = [
-  { name: "Nieuw", callback: restart_all },
-  { name: "Bestand", callback: showFilePage },
-  { name: "Eéndraadschema", callback: globalThis.HLRedrawTree },
-  { name: "Situatieschema", callback: showSituationPlanPage },
-  { name: "Print", callback: printsvg },
-  { name: "Documentatie", callback: showDocumentationPage },
-  { name: "Info/Contact", callback: openContactForm },
-];
-
-PROP_edit_menu(menuItems);
-
-globalThis.topMenu = new TopMenu("minitabs", "menu-item", menuItems);
-
-// Now add handlers for everything that changes in the left column
-const left_col_inner = document.querySelector("#left_col_inner");
-if (left_col_inner == null)
-  throw new Error("HTML element left_col_inner is null");
-left_col_inner.addEventListener("change", function (event) {
-  function propUpdate(
-    my_id: number,
-    item: string,
-    type: string,
-    value: string | boolean
-  ): void {
-    let electroItem = globalThis.structure.getElectroItemById(my_id);
-
-    switch (type) {
-      case "select-one":
-        if (item == "type") {
-          // Type changed
-          globalThis.structure.adjustTypeById(my_id, value as string);
-          if (isFirefox()) {
-            globalThis.HLRedrawTreeHTML();
-          } else {
-            globalThis.structure.reNumber();
-            const parent = electroItem.getParent();
-            if (parent !== null)
-              globalThis.structure.updateHTMLinner(parent.id);
-            else globalThis.structure.updateHTMLinner(my_id);
-          }
-        } else {
-          electroItem.props[item] = value as string;
-          if (isFirefox()) {
-            globalThis.HLRedrawTreeHTML();
-          } else {
-            globalThis.structure.reNumber();
-            globalThis.structure.updateHTMLinner(my_id);
-          }
-        }
-        break;
-      case "text":
-        electroItem.props[item] = value as string;
-        globalThis.structure.reNumber();
-        if (item === "kortsluitvermogen")
-          if (isFirefox()) {
-            globalThis.HLRedrawTreeHTML();
-          } else {
-            globalThis.structure.updateHTMLinner(my_id);
-          }
-        break;
-      case "checkbox":
-        electroItem.props[item] = value as boolean;
-        if (!isFirefox()) {
-          globalThis.structure.reNumber();
-          globalThis.structure.updateHTMLinner(my_id);
-        } else globalThis.HLRedrawTreeHTML();
-        break;
-    }
-
-    if (electroItem.getType() == "Domotica gestuurde verbruiker")
-      globalThis.structure.voegAttributenToeAlsNodigEnReSort();
-
-    globalThis.undostruct.store();
-    globalThis.HLRedrawTreeSVG();
-  }
-
-  const element: HTMLInputElement = event.target as HTMLInputElement;
-
-  // Ensure the id starts with 'HL_edit_'
-  if (!element.id.startsWith("HL_edit_")) return;
-
-  const { type, id } = element;
-  const value = type === "checkbox" ? element.checked : element.value;
-
-  // Extract id and key from id
-  const match = id.match(/^HL_edit_(\d+)_(.+)$/);
-  const idNumber = match ? match[1] : null;
-  const key = match ? match[2] : null;
-  if (idNumber == null || key == null) return;
-  propUpdate(parseInt(idNumber), key, type, value);
-});
-
-EDStoStructure(globalThis.EXAMPLE_DEFAULT, false); //Just in case the user doesn't select a scheme and goes to drawing immediately, there should be something there
-
-// Create the autoSaver
-// - the constructor takes a function that points it to the latest globalThis.structure whenever it asks for it
-// - We also add a callback function that is called after each save performed by the autoSaver.  This function will update the Save icon in the ribbon when needed
-
-globalThis.autoSaver = new AutoSaver(5, () => {
-  return globalThis.structure;
-}); // Als globale variabele moet dit een var zijn en geen let
-globalThis.autoSaver.setCallbackAfterSave(
-  (() => {
-    // Update ribbons after each save (automatic or manual) by the autoSaver, but only if the lastSavedType changed
-    let lastSavedType = globalThis.autoSaver.getSavedType();
-    function updateRibbons() {
-      const currentSavedType = globalThis.autoSaver.getSavedType();
-      if (lastSavedType === currentSavedType) return; // Only update the ribbons if the type changed
-      lastSavedType = currentSavedType;
-      globalThis.structure.updateRibbon();
-      if (globalThis.structure.sitplanview)
-        globalThis.structure.sitplanview.updateRibbon();
-    }
-    return updateRibbons;
-  })()
-);
-
-// Finally check if there is anything in the autosave and load it
-
-let recoveryAvailable = false;
-let lastSavedStr: string | null = null;
-let lastSavedInfo: any = null;
-
-(async () => {
-  [lastSavedStr, lastSavedInfo] = await globalThis.autoSaver.loadLastSaved();
-  if (lastSavedStr != null /* && (lastSavedInfo.recovery == true) */)
-    recoveryAvailable = true;
-})().then(() => {
-  if (!recoveryAvailable) {
-    EDStoStructure(globalThis.EXAMPLE_DEFAULT, false);
-    restart_all();
-    let myCookieBanner = new CookieBanner();
-    myCookieBanner.run();
-  } else {
-    const helperTip = new HelperTip(globalThis.appDocStorage);
-    helperTip.show(
-      "file.autoRecovered",
-      `<h3>Laatste schema geladen uit browsercache</h3>` +
-        `<p>Deze tool vond een schema in de browsercache. ` +
-        `Dit schema dateert van <b>${lastSavedInfo.currentTimeStamp}</b> ` +
-        `met als naam <b>${lastSavedInfo.filename}</b>. ` +
-        `U kan op dit gerecupereerde schema verder werken of een ander schema laden in het "Bestand"-menu.</p>` +
-        `<p><b>Opgelet! </b>De browsercache is een tijdelijke opslag, en wordt occasioneel gewist. ` +
-        `Het blijft belangrijk uw werk regelmatig op te slaan om gegevensverlies te voorkomen.</p>`,
-      false,
-      (() => {
-        let myCookieBanner = new CookieBanner();
-        myCookieBanner.run();
-      }).bind(this)
-    );
-    if (lastSavedStr == null) return;
-    EDStoStructure(lastSavedStr, true, true);
-    if (globalThis.structure.sitplan)
-      globalThis.structure.sitplan.activePage = 1;
-  }
-  globalThis.autoSaver.start();
-});
+// Don't auto-initialize when imported - let React call initializeApp() instead
