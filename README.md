@@ -9,7 +9,11 @@
 
 ![Eendraadschema Screenshot](img/screenshot1.png)
 
-## 📖 About
+## � Live Demo
+
+Try the application online: **[https://eendraadschema.xeweb.be](https://eendraadschema.xeweb.be)**
+
+## �📖 About
 
 **Original Application:** Created by [Ivan Goethals](https://github.com/igoethal) (2019-2025)  
 **React 19 Refactor & UI Improvements:** [Tim Van Onckelen](https://github.com/TimVanOnckelen) (2026)
