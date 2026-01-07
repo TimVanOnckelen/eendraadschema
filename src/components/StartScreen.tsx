@@ -17,21 +17,26 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   const { setStructure } = useApp();
 
   const handleLoadExample = (nr: number) => {
-    switch (nr) {
-      case 0:
-        EDStoStructure(EXAMPLE0);
-        (globalThis as any).fileAPIobj.clear();
-        break;
-      case 1:
-        EDStoStructure(EXAMPLE1);
-        (globalThis as any).fileAPIobj.clear();
-        break;
+    try {
+      switch (nr) {
+        case 0:
+          EDStoStructure(EXAMPLE0);
+          (globalThis as any).fileAPIobj.clear();
+          break;
+        case 1:
+          EDStoStructure(EXAMPLE1);
+          (globalThis as any).fileAPIobj.clear();
+          break;
+      }
+      // Manually sync the structure to React state
+      if ((globalThis as any).structure) {
+        setStructure((globalThis as any).structure);
+      }
+      onExampleSelect(nr);
+    } catch (error) {
+      console.error(`Failed to load example ${nr}:`, error);
+      alert(`Failed to load example ${nr + 1}. The example data may be corrupted. Please try another example or create a new schema.`);
     }
-    // Manually sync the structure to React state
-    if ((globalThis as any).structure) {
-      setStructure((globalThis as any).structure);
-    }
-    onExampleSelect(nr);
   };
 
   const handleNewSchema = () => {
@@ -62,221 +67,312 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Welcome Section */}
-      <table 
-        style={{ 
-          border: '1px solid #ddd', 
-          borderCollapse: 'collapse', 
-          width: '100%',
-          marginBottom: '20px',
-          backgroundColor: 'white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}
-      >
-        <tbody>
-          <tr>
-            <td style={{ padding: '20px 10px' }}>
-              <p style={{ fontSize: '24px', margin: '10px 0' }}>
-                <b>Welkom op ééndraadschema</b>
-              </p>
-              <p style={{ fontSize: '18px', margin: '15px 0' }}>
-                Deze gratis tool laat toe zowel ééndraadschema's als situatieschema's te tekenen, 
-                inclusief complexere schema's met bijvoorbeeld domotica. De schema's kunnen als PDF 
-                bestand worden geëxporteerd en geprint. Voor de experts kunnen schema's eveneens 
-                worden omgezet in SVG vectorformaat om in andere programma's verder te bewerken.
-              </p>
-              <p style={{ fontSize: '18px', margin: '15px 0' }}>
-                Kies één van onderstaande voorbeelden om van te starten of start van een leeg schema (optie 3).
-              </p>
-              <p style={{ fontSize: '18px', margin: '15px 0', fontStyle: 'italic' }}>
-                <b>Tip: </b>Om de mogelijkheden van het programma te leren kennen is het vaak beter 
+    <div style={{ 
+      height: 'calc(100vh - var(--menu-height))', 
+      overflow: 'auto',
+      background: 'var(--background)',
+      padding: '40px 20px'
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Welcome Section */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '32px',
+          marginBottom: '32px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '32px'
+        }}>
+          {/* Left: Welcome Text */}
+          <div>
+            <h1 style={{ 
+              fontSize: '32px', 
+              margin: '0 0 20px 0',
+              background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: '700'
+            }}>
+              Welkom op ééndraadschema
+            </h1>
+            <p style={{ fontSize: '16px', margin: '0 0 16px 0', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
+              Deze gratis tool laat toe zowel ééndraadschema's als situatieschema's te tekenen, 
+              inclusief complexere schema's met bijvoorbeeld domotica. De schema's kunnen als PDF 
+              bestand worden geëxporteerd en geprint. Voor de experts kunnen schema's eveneens 
+              worden omgezet in SVG vectorformaat om in andere programma's verder te bewerken.
+            </p>
+            <p style={{ fontSize: '16px', margin: '0 0 16px 0', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
+              Kies één van onderstaande voorbeelden om van te starten of start van een leeg schema.
+            </p>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+              padding: '16px',
+              borderRadius: '8px',
+              borderLeft: '4px solid #f59e0b'
+            }}>
+              <p style={{ fontSize: '14px', margin: '0', lineHeight: '1.6', color: '#92400e' }}>
+                <strong>💡 Tip: </strong>Om de mogelijkheden van het programma te leren kennen is het vaak beter 
                 eerst een voorbeeldschema te bekijken alvorens van een leeg schema te vertrekken.
               </p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+          </div>
 
-      <div id="autoSaveRecover"></div>
+          {/* Right: Version Info */}
+          <div style={{ 
+            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+            padding: '24px',
+            borderRadius: '12px',
+            borderLeft: '4px solid var(--primary-color)'
+          }}>
+            <h2 style={{ margin: '0 0 16px 0', color: 'var(--primary-color)', fontSize: '24px', fontWeight: '600' }}>
+              ✨ Nieuwe Versie - Eenvoudiger in Gebruik
+            </h2>
+            <p style={{ margin: '0 0 12px 0', lineHeight: '1.6', fontSize: '14px', color: '#1e3a8a' }}>
+              Deze versie biedt dezelfde krachtige functionaliteit als de originele 
+              versie van <strong>Ivan Goethals</strong>, maar is <strong>eenvoudiger in gebruik</strong>:
+            </p>
+            <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8', color: '#1e40af' }}>
+              <li><strong>Duidelijker menu</strong> - alles makkelijk terug te vinden</li>
+              <li><strong>Inklapbare lijsten</strong> - beter overzicht bij grote schema's</li>
+              <li><strong>Betere zoekfunctie</strong> - vind elementen sneller</li>
+              <li><strong>Visuele hulp</strong> - zie direct wat je selecteert</li>
+              <li><strong>Helderder scherm</strong> - alles beter leesbaar</li>
+              <li><strong>Sneller werken</strong> - vooral bij grote installaties</li>
+            </ul>
+            <p style={{ margin: '0', lineHeight: '1.6', fontSize: '13px', color: '#1e40af' }}>
+              🏗️ <strong>Originele versie:</strong> <a href="https://eendraadschema.goethals-jacobs.be" target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>eendraadschema.goethals-jacobs.be</a>
+            </p>
+          </div>
+        </div>
 
-      {/* Options Grid */}
-      <table 
-        style={{ 
-          border: '1px solid #ddd', 
-          borderCollapse: 'collapse', 
-          width: '100%',
-          backgroundColor: 'white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}
-      >
-        <tbody>
-          {/* Headers */}
-          <tr>
-            <td 
-              style={{ 
-                width: '25%', 
-                textAlign: 'center', 
-                backgroundColor: '#e0e0e0',
-                padding: '10px',
-                fontWeight: 'bold'
-              }}
-            >
-              Voorbeeld 1
-            </td>
-            <td 
-              style={{ 
-                width: '25%', 
-                textAlign: 'center', 
-                backgroundColor: '#e0e0e0',
-                padding: '10px',
-                fontWeight: 'bold'
-              }}
-            >
-              Voorbeeld 2
-            </td>
-            <td 
-              style={{ 
-                width: '25%', 
-                textAlign: 'center', 
-                backgroundColor: '#e0e0e0',
-                padding: '10px',
-                fontWeight: 'bold'
-              }}
-            >
-              Leeg schema
-            </td>
-            <td 
-              style={{ 
-                width: '25%', 
-                textAlign: 'center', 
-                backgroundColor: '#e0e0e0',
-                padding: '10px',
-                fontWeight: 'bold'
-              }}
-            >
-              Openen
-            </td>
-          </tr>
+        <div id="autoSaveRecover"></div>
 
-          {/* Content */}
-          <tr>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <br />
-              <img src="examples/example000.svg" height="300px" alt="Example 1" style={{ maxWidth: '100%' }} />
-              <br /><br />
+        {/* Options Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '24px',
+          marginBottom: '40px'
+        }}>
+          {/* Option 1: Example 1 */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
+              📋 Voorbeeld 1
+            </h3>
+            <img src="examples/example000.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Example 1" />
+            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
               Eenvoudig schema, enkel contactdozen en lichtpunten.
-              <br /><br />
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <br />
-              <img src="examples/example001.svg" height="300px" alt="Example 2" style={{ maxWidth: '100%' }} />
-              <br /><br />
-              Iets complexer schema met teleruptoren, verbruikers achter contactdozen en gesplitste kringen.
-              <br /><br />
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <br />
-              <img src="examples/gear.svg" height="100px" alt="New Schema" style={{ maxWidth: '100%' }} />
-              <br /><br />
-              Start met een leeg schema en bouw uw eigen installatie op.
-              <br /><br />
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <br />
-              <img src="examples/import_icon.svg" height="100px" alt="Import" style={{ maxWidth: '100%' }} />
-              <br /><br />
-              Open een schema dat u eerder heeft opgeslagen op uw computer (EDS-bestand). 
-              Enkel bestanden aangemaakt na 12 juli 2019 worden herkend.
-              <br /><br />
-            </td>
-          </tr>
+            </p>
+            <button 
+              onClick={() => handleLoadExample(0)}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '0.9';
+              }}
+              onMouseOut={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              Start met dit voorbeeld
+            </button>
+          </div>
 
-          {/* Buttons */}
-          <tr>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <button 
-                onClick={() => handleLoadExample(0)}
-                style={{
-                  background: 'linear-gradient(135deg, #4a90e2, #357abd)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Verdergaan met deze optie
-              </button>
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <button 
-                onClick={() => handleLoadExample(1)}
-                style={{
-                  background: 'linear-gradient(135deg, #4a90e2, #357abd)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Verdergaan met deze optie
-              </button>
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <button 
-                onClick={handleNewSchema}
-                style={{
-                  background: 'linear-gradient(135deg, #4a90e2, #357abd)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Verdergaan met deze optie
-              </button>
-            </td>
-            <td style={{ textAlign: 'center', padding: '20px' }}>
-              <button 
-                onClick={handleLoadFile}
-                style={{
-                  background: 'linear-gradient(135deg, #4a90e2, #357abd)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Verdergaan met deze optie
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          {/* Option 2: Example 2 */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
+              📊 Voorbeeld 2
+            </h3>
+            <img src="examples/example001.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Example 2" />
+            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
+              Iets complexer schema met teleruptoren, verbruikers achter contactdozen en gesplitste kringen.
+            </p>
+            <button 
+              onClick={() => handleLoadExample(1)}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '0.9';
+              }}
+              onMouseOut={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              Start met dit voorbeeld
+            </button>
+          </div>
+
+          {/* Option 3: New Schema */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
+              ➕ Leeg schema
+            </h3>
+            <img src="examples/gear.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="New Schema" />
+            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
+              Start met een leeg schema en bouw uw eigen installatie op.
+            </p>
+            <button 
+              onClick={handleNewSchema}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '0.9';
+              }}
+              onMouseOut={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              Start nieuw schema
+            </button>
+          </div>
+
+          {/* Option 4: Open File */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
+              📂 Openen
+            </h3>
+            <img src="examples/import_icon.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Import" />
+            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
+              Open een schema dat u eerder heeft opgeslagen op uw computer (EDS-bestand).
+            </p>
+            <button 
+              onClick={handleLoadFile}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '0.9';
+              }}
+              onMouseOut={(e) => {
+                e.stopPropagation();
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              Bestand openen
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

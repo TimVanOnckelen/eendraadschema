@@ -24,15 +24,54 @@ const App: React.FC = () => {
   } = useApp();
   const [reactInitialized, setReactInitialized] = useState(false);
 
-  // Define menu items
+  // File operations
+  const handleNewFile = () => {
+    if (confirm('Weet u zeker dat u een nieuw schema wilt maken? Niet-opgeslagen wijzigingen gaan verloren.')) {
+      setCurrentView('start');
+    }
+  };
+
+  const handleOpenFile = async () => {
+    // Use the global loadClicked function which handles both modern and legacy file APIs
+    const loadClicked = (globalThis as any).loadClicked;
+    if (loadClicked) {
+      await loadClicked();
+      // Switch to editor view after loading
+      setCurrentView('editor');
+    }
+  };
+
+  const handleSave = () => {
+    const exportjson = (globalThis as any).exportjson;
+    if (exportjson) {
+      exportjson(false); // Save to current file
+    }
+  };
+
+  const handleSaveAs = () => {
+    const exportjson = (globalThis as any).exportjson;
+    if (exportjson) {
+      exportjson(true); // Save as new file
+    }
+  };
+
+  // Define menu items with submenu
   const menuItems: MenuItem[] = [
-    { name: "Nieuw", view: "start" },
-    { name: "Bestand", view: "file" },
-    { name: "Eéndraadschema", view: "editor" },
-    { name: "Situatieschema", view: "sitplan" },
-    { name: "Print", view: "print" },
-    { name: "Documentatie", view: "documentation" },
-    { name: "Info/Contact", view: "contact" },
+    { 
+      name: "Bestand", 
+      icon: "📁",
+      subMenu: [
+        { name: "Nieuw", icon: "➕", action: handleNewFile },
+        { name: "Openen...", icon: "📂", action: handleOpenFile },
+        { name: "Opslaan", icon: "💾", action: handleSave },
+        { name: "Opslaan als...", icon: "📥", action: handleSaveAs },
+      ]
+    },
+    { name: "Eéndraadschema", icon: "⚡", view: "editor" },
+    { name: "Situatieschema", icon: "🏠", view: "sitplan" },
+    { name: "Print", icon: "🖨️", view: "print" },
+    { name: "Documentatie", icon: "📚", view: "documentation" },
+    { name: "Info/Contact", icon: "ℹ️", view: "contact" },
   ];
 
   useEffect(() => {

@@ -18,17 +18,20 @@
 
   --EDStekenFoutKleur: #8c5a00; /* Very dark amber */
 
-  /* Modern color palette */
-  --primary-color: #4f46e5; /* Indigo */
-  --primary-dark: #4338ca;
-  --primary-light: #6366f1;
-  --secondary-color: #06b6d4; /* Cyan */
-  --accent-color: #8b5cf6; /* Purple */
-  --background: #f9fafb;
+  /* Professional color palette - More subdued and business-like */
+  --primary-color: #1e40af; /* Deep professional blue */
+  --primary-dark: #1e3a8a;
+  --primary-light: #3b82f6;
+  --secondary-color: #0891b2; /* Teal accent */
+  --accent-color: #0369a1; /* Darker cyan for contrast */
+  --background: #f8fafc;
   --surface: #ffffff;
-  --border: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --hover-bg: #f1f5f9;
+  --success-color: #059669;
+  --warning-color: #d97706;
 }
 
 /* DOCUMENT */
@@ -114,12 +117,12 @@ td[contenteditable="true"] {
   background: linear-gradient(
     135deg,
     var(--primary-color) 0%,
-    var(--accent-color) 100%
+    var(--primary-dark) 100%
   );
   align-items: center;
   padding: 0px 20px;
-  border-bottom: none;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   -webkit-user-select: none; /* Safari */
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE 10 and IE 11 */
@@ -148,6 +151,7 @@ ul#minitabs li {
 ul#minitabs li.menu-item {
   display: inline;
   margin: 0;
+  position: relative;
 }
 
 ul#minitabs a {
@@ -173,6 +177,52 @@ ul#minitabs a:hover {
   color: white;
   cursor: pointer;
   transform: translateY(-1px);
+}
+
+/* Submenu styling */
+.submenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  list-style: none;
+  margin: 8px 0 0 0;
+  padding: 4px 0;
+  min-width: 200px;
+  z-index: 1001;
+  animation: submenuFadeIn 0.15s ease;
+}
+
+@keyframes submenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.submenu li {
+  display: block;
+  margin: 0;
+}
+
+.submenu a {
+  color: var(--text-primary) !important;
+  padding: 10px 16px !important;
+  border-radius: 0 !important;
+  font-weight: 500 !important;
+  transition: background 0.15s ease !important;
+  display: flex !important;
+}
+
+.submenu a:hover {
+  background: var(--background) !important;
+  transform: none !important;
 }
 
 /* RIBBON */
@@ -426,7 +476,7 @@ ul#minitabs a:hover {
 }
 
 #left_col_3 {
-  flex: 1;
+  /* flex: 1; -- Removed to allow dynamic width via inline styles */
   overflow: hidden;
   background: var(--background);
   border-right: 1px solid var(--border);
@@ -435,7 +485,7 @@ ul#minitabs a:hover {
 }
 
 #middle_col_3 {
-  flex: 3;
+  flex: 1; /* Middle column takes remaining space */
   overflow: hidden;
   background: var(--surface);
   display: flex;
@@ -443,7 +493,7 @@ ul#minitabs a:hover {
 }
 
 #right_col_3 {
-  flex: 1;
+  /* flex: 1; -- Removed to allow dynamic width via inline styles */
   overflow: hidden;
   background: var(--surface);
   border-left: 1px solid var(--border);

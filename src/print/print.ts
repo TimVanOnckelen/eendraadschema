@@ -155,11 +155,8 @@ export function printsvg() {
   const configsection = document.getElementById("configsection");
   if (configsection != null)
     configsection.innerHTML =
-      '<div class="modern-settings-container" style="padding: 20px;">' +
-      '<div class="modern-settings-header" style="margin-bottom: 16px; padding-bottom: 12px;">' +
-      "<h1 style='font-size: 22px;'>🖨️ Afdrukken</h1>" +
-      "</div>" +
-      '<div style="max-width: 1200px; margin: 0 auto;">' +
+      '<div style="padding: 20px; width: 100%;">' +
+      '<h1 style="font-size: 22px; margin-bottom: 16px;">🖨️ Afdrukken</h1>' +
       '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
       '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📄 PDF Genereren</h2>' +
       '<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">' +
@@ -170,7 +167,6 @@ export function printsvg() {
       "</div>" +
       '<div id="progress_pdf" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);"></div>' +
       '<div id="select_page_range" style="margin-top: 12px;"></div>' +
-      "</div>" +
       "</div>" +
       "</div>";
 
@@ -193,14 +189,12 @@ export function printsvg() {
   );
 
   outstr =
-    '<div style="max-width: 1200px; margin: 0 auto;">' +
     '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
     '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">⚙️ Pagina Instellingen</h2>' +
     '<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">' +
     '<span id="check_autopage"></span>' +
     '<span id="id_verticals"></span>' +
     '<span id="id_suggest_xpos_button"></span>' +
-    "</div>" +
     "</div>" +
     "</div>";
 
@@ -224,7 +218,6 @@ export function printsvg() {
 
   if (!globalThis.structure.print_table.enableAutopage) {
     outstr =
-      '<div style="max-width: 1200px; margin: 0 auto;">' +
       '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
       '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📐 Pagina Verdeling</h2>' +
       '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">' +
@@ -233,7 +226,6 @@ export function printsvg() {
       '<p style="margin-bottom: 8px;">Klik op de groene pijl om het schema over meerdere pagina\'s te printen en kies voor elke pagina de start- en stop-positie in het schema (in pixels).</p>' +
       '<p style="margin-bottom: 8px;">Je kan eventueel ook de tekst (info) aanpassen die op elke pagina rechts onderaan komt te staan.</p>' +
       "<p>Onderaan kan je bekijken welk deel van het schema op welke pagina belandt.</p>" +
-      "</div>" +
       "</div>" +
       "</div>" +
       "</div>";
@@ -248,7 +240,7 @@ export function printsvg() {
   }
 
   strleft +=
-    '<div style="max-width: 1200px; margin: 0 auto;"><hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"></div>';
+    '<hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">';
 
   const numPages =
     globalThis.structure.print_table.pages.length +
@@ -260,7 +252,6 @@ export function printsvg() {
   }
 
   strleft +=
-    '<div style="max-width: 1200px; margin: 0 auto;">' +
     '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
     '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">👁️ Printvoorbeeld</h2>' +
     '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">' +
@@ -293,7 +284,7 @@ export function printsvg() {
 
   strleft +=
     '<div id="printarea" style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #f9fafb; overflow: auto; max-height: 500px;"></div>';
-  strleft += "</div></div>"; // Close card and container
+  strleft += "</div></div>"; // Close card and outer container
 
   if (configsection != null)
     configsection.insertAdjacentHTML("beforeend", strleft);

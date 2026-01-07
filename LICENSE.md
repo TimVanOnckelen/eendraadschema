@@ -1,27 +1,32 @@
 ## General Public License
 
-Copyright (C) 2019-2025  Ivan Goethals GPLv3
+Copyright (C) 2019-2025 Ivan Goethals GPLv3
 
-This program is free software: you can redistribute it and/or modify it 
-under the terms of the GNU General Public License as published by the 
+React 19 refactor and UI improvements (C) 2025-2026 Tim Van Onckelen
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
 any later version.
 
-This program is distributed in the hope that it will be useful, but 
+This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
 more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see http://www.gnu.org/licenses/.
+along with this program. If not, see http://www.gnu.org/licenses/.
 
-The source code of this community edition is hosted on Github at
+The source code of the original community edition is hosted on Github at
 https://github.com/igoethal/eendraadschema.
+
+The source code of this React refactored version is hosted on Github at
+https://github.com/TimVanOnckelen/eendraadschema.
 
 ## Exclusive license
 
-Notwithstanding the above, the original and sole author of this edition, 
-Ivan Goethals, reserves the exclusive right to create derivative works of 
+Notwithstanding the above, the original and sole author of this edition,
+Ivan Goethals, reserves the exclusive right to create derivative works of
 this software and distribute them under different licensing terms, including
 but not limited to proprietary licenses. This includes the ability to develop
 and offer a hosted edition with additional features not available in the
@@ -32,8 +37,8 @@ others based on this community edition.
 
 ### Pako.js
 
-This program uses the Pako.js entropy coding library. Pako is released under 
-an MIT license by Andrey Tupitsin and Vitaly Puzrin. For more information on 
+This program uses the Pako.js entropy coding library. Pako is released under
+an MIT license by Andrey Tupitsin and Vitaly Puzrin. For more information on
 Pako and the full license text, please visit https://github.com/nodeca/pako
 
 ### Zlib
@@ -68,4 +73,3 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
