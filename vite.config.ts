@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 const formatDate = () => {
   const now = new Date();
@@ -14,7 +15,37 @@ const formatDate = () => {
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: "resources",
+          dest: ".",
+        },
+        {
+          src: "examples",
+          dest: ".",
+        },
+        {
+          src: "gif",
+          dest: ".",
+        },
+        {
+          src: "Documentation",
+          dest: ".",
+        },
+        {
+          src: "prop",
+          dest: ".",
+        },
+        {
+          src: "css",
+          dest: ".",
+        },
+      ],
+    }),
+  ],
   base: "./", // Use relative paths for flexible deployment
   define: {
     BUILD_DATE: JSON.stringify(formatDate()), // Injects current date/time
