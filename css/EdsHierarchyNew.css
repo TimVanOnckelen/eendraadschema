@@ -1,0 +1,365 @@
+/* Modern Hierarchical List Styles - Redesigned for Better UX */
+
+/* Main container for hierarchical items */
+.html_edit_table {
+  width: 100%;
+  margin-bottom: 4px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.html_edit_table:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Table structure */
+.html_edit_table td {
+  padding: 0;
+  vertical-align: top;
+  border: none;
+}
+
+/* Compact header row with element info */
+.html_edit_item_header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.html_edit_item_header:hover {
+  background: #f8f9fa;
+}
+
+/* Collapse/Expand button - Modern design */
+.html_edit_table td:first-child {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  user-select: none;
+  background: #f8f9fa;
+  color: #667eea;
+  border-right: 1px solid #e9ecef;
+  padding: 10px 0;
+}
+
+.html_edit_table td:first-child:hover {
+  background: #e9ecef;
+  color: #5568d3;
+}
+
+/* Collapsed state */
+.html_edit_table td[bgcolor="#8AB2E4"] {
+  background: #f8f9fa !important;
+  color: #667eea !important;
+}
+
+/* Expanded state */
+.html_edit_table td[bgcolor="C0C0C0"] {
+  background: #f8f9fa !important;
+  color: #667eea !important;
+}
+
+/* Content area */
+.html_edit_table td:last-child {
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Hide action buttons by default, show on hover */
+.html_edit_item_actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.html_edit_table:hover .html_edit_item_actions,
+.html_edit_table:focus-within .html_edit_item_actions {
+  opacity: 1;
+}
+
+/* Element type badge */
+.html_edit_item_type {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* Element ID badge (in move mode) */
+.html_edit_item_id {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #e9ecef;
+  color: #6c757d;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* Element details (collapsed by default) */
+.html_edit_item_details {
+  padding: 12px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: none;
+}
+
+.html_edit_item_details.expanded {
+  display: block;
+}
+
+/* Compact property display */
+.html_edit_property {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 16px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.html_edit_property_label {
+  color: #6c757d;
+  margin-right: 6px;
+  font-weight: 500;
+}
+
+/* Input fields - cleaner, more compact */
+.html_edit_table input[type="text"],
+.html_edit_table input[type="number"] {
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  background: white;
+  min-width: 60px;
+}
+
+.html_edit_table input[type="text"]:focus,
+.html_edit_table input[type="number"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.html_edit_table input[type="text"]:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Select dropdowns - cleaner styling */
+.html_edit_table select {
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.html_edit_table select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.html_edit_table select:hover {
+  border-color: #adb5bd;
+}
+
+/* Checkbox styling */
+.html_edit_table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+  margin: 0 4px;
+}
+
+/* Tree structure with visual lines */
+.html_edit_table .html_edit_table {
+  margin-left: 32px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+/* Vertical line connecting children */
+.html_edit_table .html_edit_table::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #dee2e6;
+}
+
+/* Horizontal line to each child */
+.html_edit_table .html_edit_table::after {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 20px;
+  width: 16px;
+  height: 2px;
+  background: #dee2e6;
+}
+
+/* Last child - shorter vertical line */
+.html_edit_table:last-child::before {
+  bottom: auto;
+  height: 20px;
+}
+
+/* Warning/Error styling */
+.EDS-tekenfout {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+  border-left: 4px solid #ffc107;
+  padding: 12px 16px;
+  margin: 8px 0;
+  border-radius: 6px;
+  color: #856404;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.EDS-tekenfout b {
+  color: #ff6b00;
+  font-weight: 700;
+}
+
+/* Type selector - more prominent */
+.html_edit_table select[id^="HL_edit_"][id$="_type"] {
+  font-weight: 600;
+  min-width: 150px;
+  padding: 6px 12px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  font-size: 14px;
+}
+
+.html_edit_table select[id^="HL_edit_"][id$="_type"]:hover {
+  background: #f8f9fa;
+}
+
+.html_edit_table select[id^="HL_edit_"][id$="_type"]:focus {
+  background: white;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Compact mode - stack properties vertically on small screens */
+@media (max-width: 768px) {
+  .html_edit_table {
+    font-size: 12px;
+  }
+
+  .html_edit_table td:last-child {
+    padding: 8px;
+  }
+
+  .html_edit_property {
+    display: flex;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .html_edit_item_actions {
+    opacity: 1; /* Always show on mobile */
+  }
+}
+
+/* Animation for new items */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.html_edit_table {
+  animation: slideInLeft 0.2s ease-out;
+}
+
+/* Hover state for better visual feedback */
+.html_edit_table:hover {
+  border-left: 3px solid #667eea;
+}
+
+/* Summary line when collapsed - show key info */
+.html_edit_item_summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  color: #495057;
+  font-size: 13px;
+}
+
+.html_edit_item_summary .summary-badge {
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* Toggle details button */
+.toggle-details-btn {
+  background: none;
+  border: none;
+  color: #667eea;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.toggle-details-btn:hover {
+  background: #f8f9fa;
+  color: #5568d3;
+}
+
+/* Better visual separation between items at same level */
+.html_edit_table + .html_edit_table {
+  margin-top: 6px;
+}
+
+/* Indentation indicators */
+.html_edit_table[style*="margin-left"] {
+  background: linear-gradient(90deg, #f8f9fa 0px, #f8f9fa 2px, white 2px);
+}

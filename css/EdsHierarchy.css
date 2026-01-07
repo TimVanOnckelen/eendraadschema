@@ -1,141 +1,240 @@
+/* Modern Button Styles for Hierarchical List */
+
 .button-insertChild {
-    background-color: green;
-    width: 26px;
-    height: 26px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M4 11h12M4 11L4 4M16 11L11 6M16 11L11 16" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 20px 20px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  width: 32px;
+  height: 32px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M4 11h12M4 11L4 4M16 11L11 6M16 11L11 16" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.button-insertChild:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.button-insertChild:active {
+  transform: translateY(0);
 }
 
 .button-insertAfter {
-    background-color: green;
-    width: 26px;
-    height: 26px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 4v12M10 16l-5-5M10 16l5-5" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 20px 20px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  width: 32px;
+  height: 32px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 4v12M10 16l-5-5M10 16l5-5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.button-insertAfter:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.button-insertAfter:active {
+  transform: translateY(0);
 }
 
 .button-insertBefore {
-    background-color: green;
-    width: 26px;
-    height: 26px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 4v12M10 4l-5 5M10 4l5 5" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 20px 20px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  width: 32px;
+  height: 32px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 4v12M10 4l-5 5M10 4l5 5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.button-insertBefore:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.button-insertBefore:active {
+  transform: translateY(0);
 }
 
 .button-delete {
-    background-color: red;
-    width: 26px;
-    height: 26px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M4 4l12 12M16 4L4 16" stroke="black" stroke-width="2" stroke-linecap="round"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 20px 20px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  width: 32px;
+  height: 32px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M4 4l12 12M16 4L4 16" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.button-delete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.button-delete:active {
+  transform: translateY(0);
 }
 
 .button-delete-garbage-can {
-    background-color: red;
-    width: 26px;
-    height: 26px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 5 v12 h10 v-12 M4 5 h12 M8 4 h4" stroke="black" stroke-width="2" stroke-linecap="round" fill="none" /><path d="M8.5 8 v6 M11.5 8 v6" stroke="black" stroke-width="1" stroke-linecap="round" fill="none" /></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 20px 20px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  width: 32px;
+  height: 32px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 5 v12 h10 v-12 M4 5 h12 M8 4 h4" stroke="white" stroke-width="2" stroke-linecap="round" fill="none" /><path d="M8.5 8 v6 M11.5 8 v6" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none" /></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.button-delete-garbage-can:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.button-delete-garbage-can:active {
+  transform: translateY(0);
 }
 
 .button-green {
-    background-color: green;
-    height: 26px;
-    display: inline-block;
-    align-items: center;
-    justify-content: center;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
-    font-size: 20px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  height: 32px;
+  display: inline-block;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 2px 4px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.button-green:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.button-green:active {
+  transform: translateY(0);
 }
 
 .button-red {
-    background-color: red;
-    height: 26px;
-    min-width: 26px;
-    display: inline-block;
-    align-items: center;
-    justify-content: center;
-    vertical-align: middle;
-    padding: 0px;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
-    font-size: 16px;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  height: 32px;
+  min-width: 32px;
+  display: inline-block;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  padding: 0 12px;
+  margin: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.button-red:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.button-red:active {
+  transform: translateY(0);
 }
 
 .button-lightblue {
-    background-color: lightblue;
-    height: 26px;
-    min-width: 26px;
-    display: inline-block;
-    align-items: center;
-    justify-content: center;
-    vertical-align: middle;
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
-    font-size: 14px;
-    padding: 0px 5px 0px 5px;
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+  height: 32px;
+  min-width: 32px;
+  display: inline-block;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 2px 4px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);
+}
+
+.button-lightblue:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+.button-lightblue:active {
+  transform: translateY(0);
 }
 
 .type-orange {
-    background-color: orange;
-    height: 26px;
-    min-width: 26px;
-    display: inline-block;
-    align-items: flex-end; /* NEW */
-    justify-content: flex-end; /* NEW */
-    vertical-align: bottom; /* NEW */
-    margin-left: 0px;
-    margin-right: 4px;
-    margin-top: 1px;
-    margin-bottom: 1px;
-    font-size: 14px;
-    padding: 2px 5px 2px 5px;
+  background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+  height: 32px;
+  min-width: 32px;
+  display: inline-block;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 2px 4px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 2px 4px rgba(253, 126, 20, 0.2);
 }

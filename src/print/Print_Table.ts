@@ -1,5 +1,5 @@
 import { Page_Info } from "./Page_Info";
-import { MarkerList } from "./MarkerList";  
+import { MarkerList } from "./MarkerList";
 import { htmlspecialchars } from "../general";
 
 type PaperSize = "A4" | "A3";
@@ -10,230 +10,230 @@ type printPageMode = "all" | "custom";
 /**
  * Stores all information about pagination and how pages will be printed.
  * Can perform automatic pagination or ask the user to paginate.
- * 
+ *
  * We don't use private variables in this class as we want to serialize it (JSON)
  */
 
 export class Print_Table {
+  pages: Array<Page_Info>; // List of pages with for every page the displayed height (in pixels) and startx and stopx in the SVG
 
-    pages:Array<Page_Info> // List of pages with for every page the displayed height (in pixels) and startx and stopx in the SVG
+  height: number = 0; //How high is the SVG that will be printed in pixels
+  maxwidth: number = 0; //What is the width of the SVG that will be printed in pixels and therefore the maximum printing width
+  displaypage: number = 0;
 
-    height: number = 0;          //How high is the SVG that will be printed in pixels
-    maxwidth: number = 0;        //What is the width of the SVG that will be printed in pixels and therefore the maximum printing width
-    displaypage: number = 0;
+  modevertical: ModeVertical; //default "alles" means full vertical page is always printed, expert "kies" means starty and stopy can be selected
+  starty: number; //if "kies" was chosen this is the starty to crop from the SVG
+  stopy: number; //if "kies" was chosen this is the stopy to crop from the SVG
 
-    modevertical: ModeVertical;  //default "alles" means full vertical page is always printed, expert "kies" means starty and stopy can be selected
-    starty: number;              //if "kies" was chosen this is the starty to crop from the SVG
-    stopy: number;               //if "kies" was chosen this is the stopy to crop from the SVG
+  papersize: PaperSize; //Can be "A4" or "A3"
 
-    papersize: PaperSize;        //Can be "A4" or "A3"
+  pagemarkers: MarkerList; //List of pagemarkers that can be used for automatic pagination
+  enableAutopage: boolean = true; //Flag to indicate if automatic pagination is used or not
 
-    pagemarkers: MarkerList;             //List of pagemarkers that can be used for automatic pagination
-    enableAutopage: boolean = true;      //Flag to indicate if automatic pagination is used or not
+  printPageMode: printPageMode = "all"; // Current print page mode
+  printPageRange: string = ""; // Custom page range input by user, e.g. "1-2, 4"
 
-    printPageMode: printPageMode = "all"; // Current print page mode
-    printPageRange: string = ""; // Custom page range input by user, e.g. "1-2, 4"
+  /**
+   * Initialize list of pages (foresee at least 1 page) and pagemarkers
+   */
 
-    /**
-     * Initialize list of pages (foresee at least 1 page) and pagemarkers
-     */
+  constructor() {
+    this.pages = new Array<Page_Info>();
+    this.pages.push(new Page_Info());
 
-    constructor() {
-        this.pages = new Array<Page_Info>();
-        this.pages.push(new Page_Info()); 
+    this.pagemarkers = new MarkerList();
+  }
 
-        this.pagemarkers = new MarkerList;
+  /**
+   * Set papersize to either "A4" or "A3"
+   * @param papersize - A string, if it is neither "A4" or "A3", the papersize will default to "A4".
+   */
+
+  setPaperSize(papersize: string): void {
+    this.papersize = papersize === "A3" ? "A3" : "A4";
+  }
+
+  /**
+   * Get papersize.  If papersize was not yet defined, it is forced to "A4"
+   * @returns The papersize, either "A3" or "A4"
+   */
+
+  getPaperSize(): PaperSize {
+    if (!this.papersize) this.papersize = "A4";
+    return this.papersize;
+  }
+
+  /**
+   * Set displayheight of all pages to height
+   * @param height - Height in pixels
+   */
+
+  setHeight(height: number): void {
+    this.height = height;
+    this.pages.forEach((page) => {
+      page.height = height;
+    });
+  }
+
+  /**
+   * Get displayheight
+   * @returns Height in pixels
+   */
+
+  getHeight(): number {
+    return this.height;
+  }
+
+  /**
+   * Set modevertical to either "alles" (meaning we show the full height of the page) or "kies" meaning the user can choose
+   * @param more - Either "alles" or "kies"
+   */
+
+  setModeVertical(mode: string) {
+    this.modevertical = mode === "kies" ? "kies" : "alles";
+    this.forceCorrectFigures();
+  }
+
+  /**
+   * Get modevertical
+   * @returns either "alles" or "kies"
+   */
+
+  getModeVertical(): ModeVertical {
+    this.forceCorrectFigures();
+    return this.modevertical;
+  }
+
+  /**
+   * Checks that all start and stop position of pages are valid
+   * For instance, the startx position should never be higher than the stopx.
+   * In addition, the SVG always goes from left to right over the pages so the startx
+   * of a new page cannot be lower than the stopx of the page before.
+   */
+
+  forceCorrectFigures(): void {
+    if (!this.modevertical) {
+      this.modevertical = "alles";
     }
 
-    /**
-     * Set papersize to either "A4" or "A3"
-     * @param papersize - A string, if it is neither "A4" or "A3", the papersize will default to "A4".
-     */
-
-    setPaperSize(papersize : string): void {
-        this.papersize = (papersize === "A3" ? "A3" : "A4"); 
+    switch (this.modevertical) {
+      case "kies":
+        this.starty = Math.min(Math.max(0, this.starty), this.height);
+        this.stopy = Math.min(Math.max(this.starty, this.stopy), this.height);
+        break;
+      default:
+        this.starty = 0;
+        this.stopy = this.height;
     }
 
-    /**
-     * Get papersize.  If papersize was not yet defined, it is forced to "A4"
-     * @returns The papersize, either "A3" or "A4"
-     */
+    this.pages[this.pages.length - 1].stop = this.maxwidth;
 
-    getPaperSize() : PaperSize {
-        if (!this.papersize) this.papersize = "A4";
-        return(this.papersize);
-    }
-
-    /**
-     * Set displayheight of all pages to height
-     * @param height - Height in pixels
-     */
-
-    setHeight(height: number): void {
-        this.height = height;
-        this.pages.forEach(page => { page.height = height; });
-    }
-
-    /**
-     * Get displayheight
-     * @returns Height in pixels
-     */
-
-    getHeight(): number {
-        return(this.height);
-    }
-
-    /**
-     * Set modevertical to either "alles" (meaning we show the full height of the page) or "kies" meaning the user can choose
-     * @param more - Either "alles" or "kies"
-     */
-
-    setModeVertical(mode: string) {
-       this.modevertical = (mode === "kies" ? "kies" : "alles");
-       this.forceCorrectFigures();
-    }
-
-    /**
-     * Get modevertical
-     * @returns either "alles" or "kies"
-     */
-
-    getModeVertical(): ModeVertical {
-      this.forceCorrectFigures();
-      return(this.modevertical);
-    }
-
-    /**
-     * Checks that all start and stop position of pages are valid
-     * For instance, the startx position should never be higher than the stopx.
-     * In addition, the SVG always goes from left to right over the pages so the startx
-     * of a new page cannot be lower than the stopx of the page before.
-     */
-
-    forceCorrectFigures(): void {
-      if (!this.modevertical) {
-          this.modevertical = "alles";
+    this.pages.forEach((page, index) => {
+      if (page.stop < 0) page.stop = 0;
+      if (page.start < 0) page.start = 0;
+      if (index > 0) {
+        page.start = this.pages[index - 1].stop;
       }
-
-      switch (this.modevertical) {
-          case "kies":
-              this.starty = Math.min(Math.max(0,this.starty),this.height);
-              this.stopy = Math.min(Math.max(this.starty,this.stopy),this.height);
-              break;
-          default:  
-              this.starty = 0;
-              this.stopy = this.height;
+      if (page.stop > this.maxwidth) {
+        this.pages[this.pages.length - 1].stop = this.maxwidth;
       }
+      if (page.start > page.stop) {
+        page.start = page.stop;
+      }
+    });
+  }
 
-      this.pages[this.pages.length-1].stop = this.maxwidth;
+  /**
+   * Sets the maximum width of the SVG to be displayed.
+   * As a general rule this equals the width of the SVG itself in pixels
+   * @param maxwidth
+   */
 
-      this.pages.forEach((page, index) => {
-          if (page.stop < 0) page.stop = 0;
-          if (page.start < 0) page.start = 0;
-          if (index > 0) {
-              page.start = this.pages[index - 1].stop;
-          }
-          if (page.stop > this.maxwidth) {
-              this.pages[this.pages.length - 1].stop = this.maxwidth;
-          }
-          if (page.start > page.stop) {
-              page.start = page.stop;
-          }
-      });
+  setMaxWidth(maxwidth: number): void {
+    this.maxwidth = maxwidth;
+    this.forceCorrectFigures();
+  }
+
+  /**
+   * Gets the maximum width that can be displayed or printed
+   * @returns maxwidth, as a general rule this equals the width of the SVG itsef in pixels
+   */
+
+  getMaxWidth(): number {
+    return this.maxwidth;
+  }
+
+  /**
+   * Returns the starty position of the page that will be displayed or printed
+   * @returns starty
+   */
+
+  getstarty(): number {
+    this.forceCorrectFigures();
+    return this.starty;
+  }
+
+  /**
+   * Returns the stopy position of the page that will be displayed or printed
+   * @returns stopy
+   */
+
+  getstopy(): number {
+    this.forceCorrectFigures();
+    return this.stopy;
+  }
+
+  /**
+   * Sets the starty position of the page that will be displayed or printed
+   * @param starty
+   */
+
+  setstarty(starty: number) {
+    this.starty = starty;
+    this.forceCorrectFigures;
+  }
+
+  /**
+   * Sets the stopy position of the page that will be displayed or printed
+   * @param starty
+   */
+
+  setstopy(stopy: number) {
+    this.stopy = stopy;
+    this.forceCorrectFigures;
+  }
+
+  /**
+   * Sets the stopx position of one specific page to a desired value.
+   * The function calls forceCorrectFigures() afterwards to ensure the natural flow of pages (left to right)
+   * is respected.  Note that stopx in the underlying Page_Info object is called stop and we cannot change that
+   * anymore as the classes are used for serialization.
+   * @param page - page number for which we want to set the stopx (starts counting at zero)
+   * @param stop - stopx position to set
+   */
+
+  setStop(page: number, stop: number) {
+    if (page > 0) {
+      if (stop < this.pages[page - 1].stop) stop = this.pages[page - 1].stop;
     }
 
-    /**
-     * Sets the maximum width of the SVG to be displayed.
-     * As a general rule this equals the width of the SVG itself in pixels
-     * @param maxwidth
-     */
-
-    setMaxWidth(maxwidth: number): void {
-        this.maxwidth = maxwidth;
-        this.forceCorrectFigures();
+    if (page < this.pages.length - 1) {
+      if (stop > this.pages[page + 1].stop) stop = this.pages[page + 1].stop;
     }
 
-    /**
-     * Gets the maximum width that can be displayed or printed
-     * @returns maxwidth, as a general rule this equals the width of the SVG itsef in pixels
-     */
+    if (stop > this.maxwidth) stop = this.maxwidth;
 
-    getMaxWidth(): number {
-        return(this.maxwidth);
-    }
+    this.pages[page].stop = stop;
 
-    /**
-     * Returns the starty position of the page that will be displayed or printed
-     * @returns starty
-     */
+    this.forceCorrectFigures();
+  }
 
-    getstarty(): number {
-        this.forceCorrectFigures();
-        return(this.starty);
-    }
+  /**
+   * Automatically create pages based on pagemarkers
+   */
 
-    /**
-     * Returns the stopy position of the page that will be displayed or printed
-     * @returns stopy
-     */
-
-    getstopy(): number {
-        this.forceCorrectFigures();
-        return(this.stopy);
-    }
-
-    /**
-     * Sets the starty position of the page that will be displayed or printed
-     * @param starty 
-     */
-
-    setstarty(starty: number) {
-        this.starty = starty;
-        this.forceCorrectFigures;
-    }
-
-    /**
-     * Sets the stopy position of the page that will be displayed or printed
-     * @param starty 
-     */
-
-    setstopy(stopy: number) {
-        this.stopy = stopy;
-        this.forceCorrectFigures;
-    }
-
-    /**
-     * Sets the stopx position of one specific page to a desired value.
-     * The function calls forceCorrectFigures() afterwards to ensure the natural flow of pages (left to right)
-     * is respected.  Note that stopx in the underlying Page_Info object is called stop and we cannot change that
-     * anymore as the classes are used for serialization.
-     * @param page - page number for which we want to set the stopx (starts counting at zero)
-     * @param stop - stopx position to set
-     */
-
-    setStop(page: number, stop: number) {
-        if (page > 0) {
-            if (stop<this.pages[page-1].stop) stop = this.pages[page-1].stop;
-        }
-
-        if (page < this.pages.length-1) {
-            if (stop>this.pages[page+1].stop) stop = this.pages[page+1].stop;
-        }
-
-        if (stop>this.maxwidth) stop = this.maxwidth;
-
-        this.pages[page].stop = stop;
-        
-        this.forceCorrectFigures();
-    }
-
-    /**
-     * Automatically create pages based on pagemarkers
-     */
-
-    autopage(): void {
-
-        /*  Autopage uses some ratio's determined by the useful SVG drawing size on the PDF.  This depends on the margins configured in print.js
+  autopage(): void {
+    /*  Autopage uses some ratio's determined by the useful SVG drawing size on the PDF.  This depends on the margins configured in print.js
             At present all of this is still hard-coded.  Should become a function of print.js
           
             A4
@@ -249,469 +249,628 @@ export class Print_Table {
             Ratio: 1.6878  
         */
 
-        //First set all pages to maximum to avoid that we bump into boundaries
-        this.pages.forEach((page, index) => {
-            page.stop = this.maxwidth;
-        })
+    //First set all pages to maximum to avoid that we bump into boundaries
+    this.pages.forEach((page, index) => {
+      page.stop = this.maxwidth;
+    });
 
-        let height = this.getstopy() - this.getstarty();
-        let maxsvgwidth = height * (this.getPaperSize()=="A3" ? 1.6878 : 1.8467 );
-        let minsvgwidth = 3/4*maxsvgwidth;
+    let height = this.getstopy() - this.getstarty();
+    let maxsvgwidth = height * (this.getPaperSize() == "A3" ? 1.6878 : 1.8467);
+    let minsvgwidth = (3 / 4) * maxsvgwidth;
 
-        let page = 0;
-        let pos = 0;
-        let forceMarker: { depth: number, xpos: number } | null = null;
+    let page = 0;
+    let pos = 0;
+    let forceMarker: { depth: number; xpos: number } | null = null;
 
-        if (maxsvgwidth > 0) {
-            while ((forceMarker = this.pagemarkers.findForceNewPage(pos, pos+maxsvgwidth)) != null
-                    || (this.maxwidth - pos) > maxsvgwidth ) { // The undivided part still does not fit on a page
-                if (forceMarker) 
-                    pos = forceMarker.xpos; // If there is a forceNewPage marker, we take that position
-                else
-                    pos = this.pagemarkers.findMinDepth(pos+minsvgwidth,pos+maxsvgwidth).xpos;
-                while (this.pages.length < page+2) this.addPage();
-                this.setStop(page,pos);
-                page++;
-            }
-        }
-
-        // The last page stops at the maximum size of the SVG
-        this.setStop(page,this.maxwidth);
-
-        // Delete unneeded pages at the end
-        for (let i=this.pages.length-1;i>page;i--) {
-            this.deletePage(i);
-        }
+    if (maxsvgwidth > 0) {
+      while (
+        (forceMarker = this.pagemarkers.findForceNewPage(
+          pos,
+          pos + maxsvgwidth
+        )) != null ||
+        this.maxwidth - pos > maxsvgwidth
+      ) {
+        // The undivided part still does not fit on a page
+        if (forceMarker) pos = forceMarker.xpos;
+        // If there is a forceNewPage marker, we take that position
+        else
+          pos = this.pagemarkers.findMinDepth(
+            pos + minsvgwidth,
+            pos + maxsvgwidth
+          ).xpos;
+        while (this.pages.length < page + 2) this.addPage();
+        this.setStop(page, pos);
+        page++;
+      }
     }
 
-    /**
-     * Add a page
-     */
+    // The last page stops at the maximum size of the SVG
+    this.setStop(page, this.maxwidth);
 
-    addPage(): void {
-        var page_info: Page_Info;
-        page_info = new Page_Info();
-
-        page_info.height = this.height;
-        page_info.start = this.pages[this.pages.length-1].stop;
-        page_info.stop = this.maxwidth;
-        
-        this.pages.push(page_info); 
+    // Delete unneeded pages at the end
+    for (let i = this.pages.length - 1; i > page; i--) {
+      this.deletePage(i);
     }
+  }
 
-    /**
-     * Remove a page
-     * @param page - number of the page to be removed, starting at 0
-     */
+  /**
+   * Add a page
+   */
 
-    deletePage(page: number): void {
-        if (page==0) {
-            this.pages[1].start = 0;    
-        } else {
-            this.pages[page-1].stop = this.pages[page].stop;  
+  addPage(): void {
+    var page_info: Page_Info;
+    page_info = new Page_Info();
+
+    page_info.height = this.height;
+    page_info.start = this.pages[this.pages.length - 1].stop;
+    page_info.stop = this.maxwidth;
+
+    this.pages.push(page_info);
+  }
+
+  /**
+   * Remove a page
+   * @param page - number of the page to be removed, starting at 0
+   */
+
+  deletePage(page: number): void {
+    if (page == 0) {
+      this.pages[1].start = 0;
+    } else {
+      this.pages[page - 1].stop = this.pages[page].stop;
+    }
+    this.pages.splice(page, 1);
+  }
+
+  /**
+   * Display a Select box to choose papersize (A3 or A4)
+   * The table is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLselectPaperSize(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    var label: HTMLLabelElement = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "6px";
+    label.style.fontSize = "13px";
+    label.style.fontWeight = "500";
+    label.style.color = "var(--text-primary)";
+
+    var labelText = document.createElement("span");
+    labelText.textContent = "Papier:";
+    label.appendChild(labelText);
+
+    var select: HTMLSelectElement = document.createElement("select");
+    select.id = "select_papersize_input";
+    select.style.padding = "6px 10px";
+    select.style.border = "1px solid #d1d5db";
+    select.style.borderRadius = "6px";
+    select.style.fontSize = "13px";
+    select.style.background = "white";
+    select.style.cursor = "pointer";
+
+    var optionA4: HTMLOptionElement = document.createElement("option");
+    optionA4.value = "A4";
+    optionA4.textContent = "A4";
+
+    var optionA3: HTMLOptionElement = document.createElement("option");
+    optionA3.value = "A3";
+    optionA3.textContent = "A3";
+
+    if (this.papersize == "A3") optionA3.selected = true;
+    else optionA4.selected = true;
+
+    select.appendChild(optionA4);
+    select.appendChild(optionA3);
+
+    select.onchange = (event) => {
+      this.setPaperSize((event.target as HTMLSelectElement).value);
+      redrawCallBack();
+    };
+
+    label.appendChild(select);
+    div.appendChild(label);
+  }
+
+  /**
+   * Display a Select box to choose dpi (300 or 600)
+   * The table is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLselectdpi(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    var label: HTMLLabelElement = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "6px";
+    label.style.fontSize = "13px";
+    label.style.fontWeight = "500";
+    label.style.color = "var(--text-primary)";
+
+    var labelText = document.createElement("span");
+    labelText.textContent = "Kwaliteit:";
+    label.appendChild(labelText);
+
+    var select: HTMLSelectElement = document.createElement("select");
+    select.id = "select_dpi_input";
+    select.style.padding = "6px 10px";
+    select.style.border = "1px solid #d1d5db";
+    select.style.borderRadius = "6px";
+    select.style.fontSize = "13px";
+    select.style.background = "white";
+    select.style.cursor = "pointer";
+
+    var option300: HTMLOptionElement = document.createElement("option");
+    option300.value = "300";
+    option300.textContent = "300dpi";
+
+    var option600: HTMLOptionElement = document.createElement("option");
+    option600.value = "600";
+    option600.textContent = "600dpi";
+
+    if (typeof globalThis.structure.properties.dpi == "undefined")
+      globalThis.structure.properties.dpi = 300;
+    if (globalThis.structure.properties.dpi == 600) option600.selected = true;
+    else option300.selected = true;
+
+    select.appendChild(option300);
+    select.appendChild(option600);
+
+    select.onchange = (event) => {
+      globalThis.structure.properties.dpi = parseInt(
+        (event.target as HTMLSelectElement).value,
+        0
+      );
+    };
+
+    label.appendChild(select);
+    div.appendChild(label);
+  }
+
+  /**
+   * Display a select box for page range selection (all/custom), input for custom range, and error span.
+   * Handles validation and calls redrawCallBack when needed.
+   * @param div - Existing HTMLElement where the controls will be inserted
+   * @param redrawCallBack - Callback function to redraw print preview
+   */
+  insertHTMLselectPageRange(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    // Create container with all elements using innerHTML
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.gap = "10px";
+    container.style.flexWrap = "wrap";
+    container.style.marginTop = "12px";
+    container.innerHTML =
+      '<label for="print_page_mode" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-primary);">' +
+      "<span>Pagina's:</span>" +
+      '<select id="print_page_mode" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">' +
+      '<option value="all">Alles</option>' +
+      '<option value="custom">Aangepast</option>' +
+      "</select>" +
+      "</label>" +
+      '<input type="text" id="print_page_range" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 130px;" placeholder="bijv. 1-2, 4">' +
+      '<span id="print_range_error" style="color: #dc2626; font-size: 12px; display: none;"></span>';
+
+    // Get references to elements
+    const select =
+      container.querySelector<HTMLSelectElement>("#print_page_mode")!;
+    const input =
+      container.querySelector<HTMLInputElement>("#print_page_range")!;
+    const errorSpan =
+      container.querySelector<HTMLSpanElement>("#print_range_error")!;
+
+    // Set initial values from state
+    const mode = this.printPageMode ?? "all";
+    const range = this.printPageRange ?? "";
+    select.value = mode;
+    input.value = range;
+    input.style.display = mode === "custom" ? "" : "none";
+
+    // Helper to validate and show error for page range
+    const validatePageRange = () => {
+      // Get maxPage from globalThis.structure.print_table and sitplan
+      const maxPage =
+        globalThis.structure.print_table.pages.length +
+        (globalThis.structure.sitplan
+          ? globalThis.structure.sitplan.getNumPages()
+          : 0);
+      const [isValid, errorMsg] = Print_Table.isValidPageRange(
+        input.value,
+        maxPage
+      );
+      if (!isValid) {
+        errorSpan.style.display = "";
+        errorSpan.textContent = errorMsg;
+      } else {
+        errorSpan.style.display = "none";
+        errorSpan.textContent = "";
+      }
+    };
+
+    // Event listeners
+    select.addEventListener("change", () => {
+      this.printPageMode = select.value as printPageMode;
+      if (select.value === "custom") {
+        input.style.display = "";
+      } else {
+        input.style.display = "none";
+        input.value = "";
+        errorSpan.style.display = "none";
+        this.printPageRange = "";
+      }
+      validatePageRange();
+    });
+
+    input.addEventListener("input", () => {
+      this.printPageRange = input.value;
+      validatePageRange();
+    });
+
+    // Validate on initial draw
+    validatePageRange();
+
+    div.appendChild(container);
+  }
+
+  /**
+   * Static helper for validating custom page ranges (same logic as before)
+   */
+  static isValidPageRange(input: string, maxPage: number): [boolean, string] {
+    if (input.trim() === "") return [true, ""];
+    // Only allow digits, spaces, commas, and dashes
+    if (!/^[\d\s,\-]*$/.test(input)) {
+      return [
+        false,
+        "Ongeldige invoer: alleen cijfers, spaties, komma's en streepjes toegestaan.",
+      ];
+    }
+    const ranges = input.split(",").map((r) => r.trim());
+    let lastPage = 0;
+    for (const range of ranges) {
+      if (range === "") continue;
+      if (range.includes("-")) {
+        const [startStr, endStr] = range.split("-").map((s) => s.trim());
+        // Check if both are integer numbers
+        if (!/^\d+$/.test(startStr) || !/^\d+$/.test(endStr)) {
+          return [
+            false,
+            `Ongeldige invoer: niet-geheel getal in bereik (${range})`,
+          ];
         }
-        this.pages.splice(page,1);    
-    }
-
-    /**
-     * Display a Select box to choose papersize (A3 or A4)
-     * The table is displayed in the HTMLElement div that is given as a parameter to the function.
-     * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
-     * from within this function
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */    
-
-    insertHTMLselectPaperSize(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        var select: HTMLSelectElement = document.createElement('select');
-        select.id = 'select_papersize_input';
-              
-        var optionA4: HTMLOptionElement = document.createElement('option');
-        optionA4.value = 'A4';
-        optionA4.textContent = 'A4';
-
-        var optionA3: HTMLOptionElement = document.createElement('option');
-        optionA3.value = 'A3';
-        optionA3.textContent = 'A3';
-
-        if (this.papersize == "A3") optionA3.selected = true; else optionA4.selected = true;
-
-        select.appendChild(optionA4);
-        select.appendChild(optionA3);
-        
-        select.onchange = (event) => {
-            this.setPaperSize((event.target as HTMLSelectElement).value);
-            redrawCallBack();
+        const start = Number(startStr);
+        const end = Number(endStr);
+        if (!Number.isInteger(start) || !Number.isInteger(end)) {
+          return [
+            false,
+            `Ongeldige invoer: niet-geheel getal in bereik (${range})`,
+          ];
         }
-
-        div.appendChild(select);
-    }
-
-    /**
-     * Display a Select box to choose dpi (300 or 600)
-     * The table is displayed in the HTMLElement div that is given as a parameter to the function.
-     * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
-     * from within this function
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */    
-
-    insertHTMLselectdpi(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        var select: HTMLSelectElement = document.createElement('select');
-        select.id = "select_dpi_input";
-              
-        var option300: HTMLOptionElement = document.createElement('option');
-        option300.value = '300';
-        option300.textContent = '300dpi (standaard)';
-
-        var option600: HTMLOptionElement = document.createElement('option');
-        option600.value = '600';
-        option600.textContent = '600dpi (beter maar trager)';
-
-        if (typeof(globalThis.structure.properties.dpi) == 'undefined') globalThis.structure.properties.dpi = 300;
-        if (globalThis.structure.properties.dpi == 600) option600.selected = true; else option300.selected = true;
-
-        select.appendChild(option300);
-        select.appendChild(option600);
-        
-        select.onchange = (event) => {
-            globalThis.structure.properties.dpi = parseInt((event.target as HTMLSelectElement).value,0);
+        if (start < 1 || end > maxPage) {
+          return [
+            false,
+            `Ongeldige invoer: pagina buiten bereik (${range}), toegestaan: 1-${maxPage}`,
+          ];
         }
+        if (start > end) {
+          return [
+            false,
+            `Ongeldige invoer: startpagina groter dan eindpagina (${range})`,
+          ];
+        }
+        if (start <= lastPage) {
+          return [
+            false,
+            `Ongeldige invoer: overlappende of niet-oplopende pagina's (${range})`,
+          ];
+        }
+        lastPage = end;
+      } else {
+        // Check if integer
+        if (!/^\d+$/.test(range)) {
+          return [false, `Ongeldige invoer: niet-geheel getal (${range})`];
+        }
+        const pageNum = Number(range);
+        if (!Number.isInteger(pageNum)) {
+          return [false, `Ongeldige invoer: niet-geheel getal (${range})`];
+        }
+        if (pageNum < 1 || pageNum > maxPage) {
+          return [
+            false,
+            `Ongeldige invoer: pagina buiten bereik (${range}), toegestaan: 1-${maxPage}`,
+          ];
+        }
+        if (pageNum <= lastPage) {
+          return [
+            false,
+            `Ongeldige invoer: overlappende of niet-oplopende pagina's (${range})`,
+          ];
+        }
+        lastPage = pageNum;
+      }
+    }
+    return [true, ""];
+  }
 
-        div.appendChild(select);
+  /**
+   * Returns true if the current page range is valid and can be printed.
+   */
+  canPrint(): boolean {
+    const maxPage =
+      globalThis.structure.print_table.pages.length +
+      (globalThis.structure.sitplan
+        ? globalThis.structure.sitplan.getNumPages()
+        : 0);
+    const [isValid, _] = Print_Table.isValidPageRange(
+      this.printPageRange ?? "",
+      maxPage
+    );
+    return isValid;
+  }
+
+  /**
+   * Display a Check box to decide if one wants to use autopage or not.
+   * If autopage is enabled, we also recalculate the page boundaries
+   * The checkbox is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLcheckAutopage(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    var checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "autopage";
+    checkbox.name = "autopage";
+
+    var label = document.createElement("label");
+    label.htmlFor = "autopage";
+    label.textContent = "Eéndraadschema handmatig over pagina's verdelen";
+
+    if (this.enableAutopage) {
+      this.setModeVertical("alles");
+      this.autopage();
+    } else {
+      checkbox.checked = true;
     }
 
-    /**
-     * Display a select box for page range selection (all/custom), input for custom range, and error span.
-     * Handles validation and calls redrawCallBack when needed.
-     * @param div - Existing HTMLElement where the controls will be inserted
-     * @param redrawCallBack - Callback function to redraw print preview
-     */
-    insertHTMLselectPageRange(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        // Create container with all elements using innerHTML
-        const container = document.createElement('div');
-        container.style.margin = '1em 0';
-        container.innerHTML =
-            '<label for="print_page_mode"><b>Pagina\'s:</b></label>' +
-            '<select id="print_page_mode" style="margin-left:0.5em;">' +
-            '<option value="all">Alles</option>' +
-            '<option value="custom">Aangepast</option>' +
-            '</select>' +
-            '<input type="text" id="print_page_range" style="margin-left:0.5em;width:120px;" placeholder="bijv. 1-2, 4">' +
-            '<span id="print_range_error" style="color:red;display:none;margin-left:0.5em;">Ongeldige invoer!</span>';
+    div.append(checkbox);
+    div.append(label);
 
-        // Get references to elements
-        const select = container.querySelector<HTMLSelectElement>('#print_page_mode')!;
-        const input = container.querySelector<HTMLInputElement>('#print_page_range')!;
-        const errorSpan = container.querySelector<HTMLSpanElement>('#print_range_error')!;
-
-        // Set initial values from state
-        const mode = this.printPageMode ?? "all";
-        const range = this.printPageRange ?? "";
-        select.value = mode;
-        input.value = range;
-        input.style.display = (mode === "custom") ? '' : 'none';
-
-        // Helper to validate and show error for page range
-        const validatePageRange = () => {
-            // Get maxPage from globalThis.structure.print_table and sitplan
-            const maxPage = globalThis.structure.print_table.pages.length +
-                (globalThis.structure.sitplan ? globalThis.structure.sitplan.getNumPages() : 0);
-            const [isValid, errorMsg] = Print_Table.isValidPageRange(input.value, maxPage);
-            if (!isValid) {
-                errorSpan.style.display = '';
-                errorSpan.textContent = errorMsg;
-            } else {
-                errorSpan.style.display = 'none';
-                errorSpan.textContent = '';
-            }
-        };
-
-        // Event listeners
-        select.addEventListener('change', () => {
-            this.printPageMode = select.value as printPageMode;
-            if (select.value === 'custom') {
-                input.style.display = '';
-            } else {
-                input.style.display = 'none';
-                input.value = '';
-                errorSpan.style.display = 'none';
-                this.printPageRange = "";
-            }
-            validatePageRange();
+    checkbox.onchange = (event) => {
+      this.enableAutopage = !(event.target as HTMLInputElement).checked;
+      if (!this.enableAutopage) {
+        this.pages.forEach((page) => {
+          page.info = globalThis.structure.properties.info;
         });
+      }
+      redrawCallBack();
+    };
+  }
 
-        input.addEventListener('input', () => {
-            this.printPageRange = input.value;
-            validatePageRange();
-        });
+  /**
+   * Display a select box to choose the vertical mode.
+   * If vertical mode is "kies", we also display input boxes to choose the starty and stopy positions.
+   * The checkbox is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
 
-        // Validate on initial draw
-        validatePageRange();
+  insertHTMLchooseVerticals(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    let outstr: string = "";
 
-        div.appendChild(container);
+    switch (this.modevertical) {
+      case "kies":
+        outstr +=
+          'Hoogte <select id="select_modeVertical"><option value="alles">Alles (standaard)</option><option value="kies" selected="Selected">Kies (expert)</option></select>';
+        outstr += "&nbsp;&nbsp;StartY ";
+        outstr +=
+          '<input size="4" id="input_starty" type="number" min="0" step="1" max="' +
+          this.getHeight() +
+          '" value="' +
+          this.getstarty() +
+          '">';
+        outstr += "&nbsp;&nbsp;StopY ";
+        outstr +=
+          '<input size="4" id="input_stopy" type="number" min="0" step="1" max="' +
+          this.getHeight() +
+          '" value="' +
+          this.getstopy() +
+          '">';
+        break;
+      case "alles":
+      default:
+        outstr +=
+          'Hoogte <select id="select_modeVertical"><option value="alles">Alles (standaard)</option><option value="kies">Kies (expert)</option></select>';
     }
 
-    /**
-     * Static helper for validating custom page ranges (same logic as before)
-     */
-    static isValidPageRange(input: string, maxPage: number): [boolean, string] {
-        if (input.trim() === "") return [true, ""];
-        // Only allow digits, spaces, commas, and dashes
-        if (!/^[\d\s,\-]*$/.test(input)) {
-            return [false, "Ongeldige invoer: alleen cijfers, spaties, komma's en streepjes toegestaan."];
-        }
-        const ranges = input.split(',').map(r => r.trim());
-        let lastPage = 0;
-        for (const range of ranges) {
-            if (range === "") continue;
-            if (range.includes('-')) {
-                const [startStr, endStr] = range.split('-').map(s => s.trim());
-                // Check if both are integer numbers
-                if (!/^\d+$/.test(startStr) || !/^\d+$/.test(endStr)) {
-                    return [false, `Ongeldige invoer: niet-geheel getal in bereik (${range})`];
-                }
-                const start = Number(startStr);
-                const end = Number(endStr);
-                if (!Number.isInteger(start) || !Number.isInteger(end)) {
-                    return [false, `Ongeldige invoer: niet-geheel getal in bereik (${range})`];
-                }
-                if (start < 1 || end > maxPage) {
-                    return [false, `Ongeldige invoer: pagina buiten bereik (${range}), toegestaan: 1-${maxPage}`];
-                }
-                if (start > end) {
-                    return [false, `Ongeldige invoer: startpagina groter dan eindpagina (${range})`];
-                }
-                if (start <= lastPage) {
-                    return [false, `Ongeldige invoer: overlappende of niet-oplopende pagina's (${range})`];
-                }
-                lastPage = end;
-            } else {
-                // Check if integer
-                if (!/^\d+$/.test(range)) {
-                    return [false, `Ongeldige invoer: niet-geheel getal (${range})`];
-                }
-                const pageNum = Number(range);
-                if (!Number.isInteger(pageNum)) {
-                    return [false, `Ongeldige invoer: niet-geheel getal (${range})`];
-                }
-                if (pageNum < 1 || pageNum > maxPage) {
-                    return [false, `Ongeldige invoer: pagina buiten bereik (${range}), toegestaan: 1-${maxPage}`];
-                }
-                if (pageNum <= lastPage) {
-                    return [false, `Ongeldige invoer: overlappende of niet-oplopende pagina's (${range})`];
-                }
-                lastPage = pageNum;
-            }
-        }
-        return [true, ""];
+    div.insertAdjacentHTML("beforeend", outstr);
+
+    document.getElementById("select_modeVertical").onchange = (event) => {
+      this.setModeVertical((event.target as HTMLInputElement).value);
+      redrawCallBack();
+    };
+
+    if (this.modevertical == "kies") {
+      document.getElementById("input_starty").onchange = (event) => {
+        let starty = parseInt((event.target as HTMLInputElement).value);
+        if (isNaN(starty)) starty = 0;
+        this.setstarty(starty);
+        this.forceCorrectFigures();
+        redrawCallBack();
+      };
+      document.getElementById("input_stopy").onchange = (event) => {
+        let stopy = parseInt((event.target as HTMLInputElement).value);
+        if (isNaN(stopy)) stopy = this.getHeight();
+        this.setstopy(stopy);
+        this.forceCorrectFigures();
+        redrawCallBack();
+      };
+    }
+  }
+
+  /**
+   * Display a button to force auto-pagination even when in manual mode
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLsuggestXposButton(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    var button = document.createElement("button");
+    button.innerText = "Suggereer X-posities";
+
+    div.append(button);
+
+    button.onclick = () => {
+      this.autopage();
+      redrawCallBack();
+    };
+  }
+
+  /**
+   * Display a table where the user can choose start and stop positions for the x-coordinates in the SVG of each individual page
+   * The table is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the table will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLposxTable(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    if (globalThis.structure.print_table.enableAutopage) this.autopage();
+
+    let outstr: string = "";
+    let pagenum: number;
+
+    outstr += '<table border="1" cellpadding="3">';
+    outstr +=
+      '<tr><th align="center">Pagina</th><th align="center">Startx</th><th align="center">Stopx</th><th align="left">Info</th><th align="left">Acties</th></tr>';
+
+    for (pagenum = 0; pagenum < this.pages.length; pagenum++) {
+      outstr +=
+        "<tr><td align=center>" +
+        (pagenum + 1) +
+        "</td><td align=center>" +
+        this.pages[pagenum].start +
+        "</td><td align=center>";
+
+      if (pagenum != this.pages.length - 1) {
+        outstr +=
+          '<input size="5" id="input_stop_' +
+          pagenum +
+          '" type="number" min="' +
+          this.pages[pagenum].start +
+          '" step="1" max="' +
+          this.maxwidth +
+          '" value="' +
+          this.pages[pagenum].stop +
+          '">';
+      } else {
+        outstr += this.pages[pagenum].stop.toString();
+      }
+
+      outstr +=
+        '</td><td><div style="width:200px; border-style:solid; border-width:thin; cursor:text; padding: 2px; border-color:darkgray; font-size: small;" align=left contenteditable="true" id="input_info_' +
+        pagenum +
+        '">';
+      outstr += this.pages[pagenum].info;
+      outstr += "</div></td><td align=left>";
+
+      if (pagenum == this.pages.length - 1) {
+        outstr +=
+          '<button style="background-color:green;" id="Btn_Addpage">&#9660;</button>';
+      }
+
+      if (this.pages.length > 1) {
+        outstr +=
+          '<button style="background-color:red;" id="Btn_Deletepage_' +
+          pagenum +
+          '">&#9851;</button>';
+      }
+
+      outstr += "</td></tr>";
     }
 
-    /**
-     * Returns true if the current page range is valid and can be printed.
-     */
-    canPrint(): boolean {
-        const maxPage = globalThis.structure.print_table.pages.length +
-            (globalThis.structure.sitplan ? globalThis.structure.sitplan.getNumPages() : 0);
-        const [isValid, _] = Print_Table.isValidPageRange(this.printPageRange ?? "", maxPage);
-        return isValid;
-    }
+    outstr += "</table>";
 
-    /**
-     * Display a Check box to decide if one wants to use autopage or not.
-     * If autopage is enabled, we also recalculate the page boundaries
-     * The checkbox is displayed in the HTMLElement div that is given as a parameter to the function.
-     * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
-     * from within this function
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */    
+    div.insertAdjacentHTML("beforeend", outstr);
 
-    insertHTMLcheckAutopage(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        var checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = 'autopage';
-        checkbox.name = 'autopage';
+    document.getElementById("Btn_Addpage").onclick = () => {
+      this.addPage();
+      redrawCallBack();
+    };
 
-        var label = document.createElement('label');
-        label.htmlFor = 'autopage';
-        label.textContent = "Eéndraadschema handmatig over pagina's verdelen";
-
-        if (this.enableAutopage) {
-            this.setModeVertical("alles");
-            this.autopage();
-        } else {
-            checkbox.checked = true; 
-        }
-
-        div.append(checkbox);
-        div.append(label);
-
-        checkbox.onchange = (event) => {
-            this.enableAutopage = !(event.target as HTMLInputElement).checked;
-            if (!this.enableAutopage) {
-                this.pages.forEach(page => {
-                    page.info = globalThis.structure.properties.info;
-                });
-            }
+    document
+      .querySelectorAll('button[id^="Btn_Deletepage_"]')
+      .forEach((button) => {
+        const match = button.id.match(/Btn_Deletepage_(\d+)/);
+        if (match) {
+          const page = parseInt(match[1]);
+          (button as HTMLInputElement).onclick = () => {
+            this.deletePage(page);
             redrawCallBack();
+          };
         }
-    }
-    
-    /**
-     * Display a select box to choose the vertical mode.
-     * If vertical mode is "kies", we also display input boxes to choose the starty and stopy positions.
-     * The checkbox is displayed in the HTMLElement div that is given as a parameter to the function.
-     * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
-     * from within this function
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */    
+      });
 
-    insertHTMLchooseVerticals(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        let outstr: string = "";
-
-        switch (this.modevertical) {
-            case "kies":
-                outstr += 'Hoogte <select id="select_modeVertical"><option value="alles">Alles (standaard)</option><option value="kies" selected="Selected">Kies (expert)</option></select>';
-                outstr += '&nbsp;&nbsp;StartY ';
-                outstr += '<input size="4" id="input_starty" type="number" min="0" step="1" max="' + this.getHeight() + '" value="' + this.getstarty() + '">';
-                outstr += '&nbsp;&nbsp;StopY '
-                outstr += '<input size="4" id="input_stopy" type="number" min="0" step="1" max="' + this.getHeight() + '" value="' + this.getstopy() + '">';
-                break;
-            case "alles":  
-            default:
-                outstr += 'Hoogte <select id="select_modeVertical"><option value="alles">Alles (standaard)</option><option value="kies">Kies (expert)</option></select>';  
+    document.querySelectorAll('input[id^="input_stop_"]').forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const match = (event.target as HTMLInputElement).id.match(
+          /input_stop_(\d+)/
+        );
+        if (match) {
+          const page = parseInt(match[1]);
+          const stop = parseInt(
+            (event.target as HTMLInputElement).value as string
+          );
+          this.setStop(page, stop);
+          redrawCallBack();
         }
+      });
+    });
 
-        div.insertAdjacentHTML('beforeend', outstr);
-        
-        document.getElementById('select_modeVertical').onchange = (event) => {
-            this.setModeVertical((event.target as HTMLInputElement).value);
-            redrawCallBack();
+    document.querySelectorAll('div[id^="input_info_"]').forEach((input) => {
+      input.addEventListener("blur", (event) => {
+        const match = (event.target as HTMLTableCellElement).id.match(
+          /input_info_(\d+)/
+        );
+        if (match) {
+          const page = parseInt(match[1]);
+          const info = (event.target as HTMLTableCellElement).innerHTML;
+          this.pages[page].info = info;
         }
-
-        if (this.modevertical == "kies") {
-            document.getElementById('input_starty').onchange = (event) => {
-                let starty = parseInt((event.target as HTMLInputElement).value);
-                if (isNaN(starty)) starty = 0;
-                this.setstarty(starty);
-                this.forceCorrectFigures();
-                redrawCallBack();
-            }
-            document.getElementById('input_stopy').onchange = (event) => {
-                let stopy = parseInt((event.target as HTMLInputElement).value);
-                if (isNaN(stopy)) stopy = this.getHeight();;
-                this.setstopy(stopy);
-                this.forceCorrectFigures();
-                redrawCallBack();
-            }
-        }
-    }
-
-    /**
-     * Display a button to force auto-pagination even when in manual mode
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */
-
-    insertHTMLsuggestXposButton(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        var button = document.createElement('button');
-        button.innerText = 'Suggereer X-posities';
-
-        div.append(button);
-
-        button.onclick = () => {
-            this.autopage();
-            redrawCallBack();
-        }
-    }
-
-    /**
-     * Display a table where the user can choose start and stop positions for the x-coordinates in the SVG of each individual page
-     * The table is displayed in the HTMLElement div that is given as a parameter to the function.
-     * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
-     * from within this function
-     * @param div - Existing HTMLElement where the table will be inserted
-     * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
-     */
-
-    insertHTMLposxTable(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-        if (globalThis.structure.print_table.enableAutopage) this.autopage();
-
-        let outstr: string = "";
-        let pagenum: number;
-
-        outstr += '<table border="1" cellpadding="3">';
-        outstr += '<tr><th align="center">Pagina</th><th align="center">Startx</th><th align="center">Stopx</th><th align="left">Info</th><th align="left">Acties</th></tr>';
-
-        for (pagenum=0; pagenum<this.pages.length; pagenum++) {
-            outstr += '<tr><td align=center>' + (pagenum+1) + '</td><td align=center>' + this.pages[pagenum].start + '</td><td align=center>';
-
-            if (pagenum != this.pages.length-1) {
-                outstr += '<input size="5" id="input_stop_' + pagenum + '" type="number" min="' + this.pages[pagenum].start 
-                      +  '" step="1" max="' + this.maxwidth + '" value="' + this.pages[pagenum].stop + '">';
-            } else {
-                outstr += this.pages[pagenum].stop.toString();
-            }  
-
-            outstr += '</td><td><div style="width:200px; border-style:solid; border-width:thin; cursor:text; padding: 2px; border-color:darkgray; font-size: small;" align=left contenteditable="true" id="input_info_' + pagenum + '">';
-            outstr += this.pages[pagenum].info;
-            outstr += '</div></td><td align=left>';
-
-            if (pagenum == this.pages.length-1) {
-                outstr += '<button style="background-color:green;" id="Btn_Addpage">&#9660;</button>';
-            }
-
-            if (this.pages.length>1) {
-                outstr += '<button style="background-color:red;" id="Btn_Deletepage_' + pagenum + '">&#9851;</button>';
-            }  
-
-            outstr += '</td></tr>';
-        }
-
-        outstr += "</table>";
-
-        div.insertAdjacentHTML('beforeend', outstr);
-
-        document.getElementById('Btn_Addpage').onclick = () => {
-            this.addPage();
-            redrawCallBack();
-        };
-
-        document.querySelectorAll('button[id^="Btn_Deletepage_"]').forEach(button => {
-            const match = button.id.match(/Btn_Deletepage_(\d+)/);
-            if (match) {
-                const page = parseInt(match[1]);
-                (button as HTMLInputElement).onclick = () => {
-                    this.deletePage(page);
-                    redrawCallBack();
-                }
-            }
-        });
-
-        document.querySelectorAll('input[id^="input_stop_"]').forEach(input => {
-            input.addEventListener('change', (event) => {
-                const match = (event.target as HTMLInputElement).id.match(/input_stop_(\d+)/);
-                if (match) {
-                    const page = parseInt(match[1]);
-                    const stop = parseInt((event.target as HTMLInputElement).value as string);
-                    this.setStop(page, stop);
-                    redrawCallBack();
-                }
-            });
-        });
-
-        document.querySelectorAll('div[id^="input_info_"]').forEach(input => {
-            input.addEventListener('blur', (event) => {
-                const match = (event.target as HTMLTableCellElement).id.match(/input_info_(\d+)/);
-                if (match) {
-                    const page = parseInt(match[1]);
-                    const info = (event.target as HTMLTableCellElement).innerHTML;
-                    this.pages[page].info = info;
-                }
-            });
-        });
-
-    }
+      });
+    });
+  }
 }
