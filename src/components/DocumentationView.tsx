@@ -2,20 +2,38 @@
  * DocumentationView - React component for documentation page
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export const DocumentationView: React.FC = () => {
+  const initialized = useRef(false);
+
   useEffect(() => {
-    // Initialize the documentation page
-    if (globalThis.showDocumentationPage) {
+    // Create configsection if it doesn't exist
+    if (!document.getElementById('configsection')) {
+      const configsection = document.createElement('div');
+      configsection.id = 'configsection';
+      configsection.className = 'configsection';
+      document.body.appendChild(configsection);
+    }
+
+    // Initialize the documentation page only once
+    if (globalThis.showDocumentationPage && !initialized.current) {
+      initialized.current = true;
+      const configsection = document.getElementById('configsection');
+      if (configsection) {
+        configsection.style.display = 'block';
+      }
       globalThis.showDocumentationPage();
     }
+
+    // Cleanup: hide when unmounting
+    return () => {
+      const configsection = document.getElementById('configsection');
+      if (configsection) {
+        configsection.style.display = 'none';
+      }
+    };
   }, []);
 
-  return (
-    <div id="documentation-container" style={{ width: '100%', height: '100%' }}>
-      {/* The legacy showDocumentationPage() will render into #configsection */}
-      {/* This is a transitional component that wraps the legacy functionality */}
-    </div>
-  );
+  return null; // The legacy code renders into #configsection directly
 };

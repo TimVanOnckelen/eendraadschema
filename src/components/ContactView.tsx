@@ -2,20 +2,38 @@
  * ContactView - React component for contact/info page
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export const ContactView: React.FC = () => {
+  const initialized = useRef(false);
+
   useEffect(() => {
-    // Initialize the contact page
-    if (globalThis.openContactForm) {
+    // Create configsection if it doesn't exist
+    if (!document.getElementById('configsection')) {
+      const configsection = document.createElement('div');
+      configsection.id = 'configsection';
+      configsection.className = 'configsection';
+      document.body.appendChild(configsection);
+    }
+
+    // Initialize the contact page only once
+    if (globalThis.openContactForm && !initialized.current) {
+      initialized.current = true;
+      const configsection = document.getElementById('configsection');
+      if (configsection) {
+        configsection.style.display = 'block';
+      }
       globalThis.openContactForm();
     }
+
+    // Cleanup: hide when unmounting
+    return () => {
+      const configsection = document.getElementById('configsection');
+      if (configsection) {
+        configsection.style.display = 'none';
+      }
+    };
   }, []);
 
-  return (
-    <div id="contact-container" style={{ width: '100%', height: '100%' }}>
-      {/* The legacy openContactForm() will render into #configsection */}
-      {/* This is a transitional component that wraps the legacy functionality */}
-    </div>
-  );
+  return null; // The legacy code renders into #configsection directly
 };

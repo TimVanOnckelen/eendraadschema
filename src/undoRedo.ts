@@ -164,13 +164,7 @@ export class undoRedo {
 
     this.replaceStringStoreBySVGs();
 
-    if (
-      globalThis.structure.properties.currentView == "draw" &&
-      globalThis.structure.sitplanview != null
-    )
-      globalThis.structure.sitplanview.updateRibbon();
-    else if (globalThis.structure.properties.currentView == "2col")
-      globalThis.structure.updateRibbon();
+    // React components will update automatically
   }
 
   updateSelectedBoxes() {
@@ -255,7 +249,7 @@ export class undoRedo {
     this.historyEds.clear();
     this.historyOptions.clear();
     this.largeStrings.clear();
-    globalThis.structure.updateRibbon();
+    // React components will update automatically
   }
 
   undoStackSize(): number {

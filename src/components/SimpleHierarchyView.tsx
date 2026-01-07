@@ -8,14 +8,35 @@ import { useApp } from '../AppContext';
  * Right side: Properties editor for selected element
  */
 const SimpleHierarchyView: React.FC = () => {
-  const { structure } = useApp();
+  const { structure, setStructure } = useApp();
   const [selectedElementId, setSelectedElementId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [svgZoom, setSvgZoom] = useState(1);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
 
   // Re-render when structure changes
   const [, forceUpdate] = useState({});
-  const refresh = useCallback(() => forceUpdate({}), []);
+  const refresh = useCallback(() => {
+    // Sync globalThis.structure to React state to trigger re-render
+    if ((globalThis as any).structure) {
+      setStructure((globalThis as any).structure);
+    }
+    forceUpdate({});
+  }, [setStructure]);
+
+  // Expose refresh function globally so HL* functions can call it
+  useEffect(() => {
+    // Register refresh callback with the legacy SimpleHierarchyView class
+    if ((window as any).simpleHierarchyView) {
+      (window as any).simpleHierarchyView.setRefreshCallback(refresh);
+    }
+    return () => {
+      if ((window as any).simpleHierarchyView) {
+        (window as any).simpleHierarchyView.setRefreshCallback(null);
+      }
+    };
+  }, [refresh]);
 
   // Get element list
   const getElementList = useCallback(() => {
@@ -199,9 +220,36 @@ const SimpleHierarchyView: React.FC = () => {
   };
 
   const handleOpenSettings = () => {
-    if (typeof (globalThis as any).openSettings === 'function') {
-      (globalThis as any).openSettings();
+    setShowSettingsDialog(true);
+  };
+
+  const handleCloseSettings = () => {
+    setShowSettingsDialog(false);
+  };
+
+  const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    if (structure && structure.properties) {
+      structure.properties.filename = formData.get('filename') as string || 'eendraadschema.eds';
+      
+      // Convert plain text to HTML (replace newlines with <br>)
+      const ownerText = formData.get('owner') as string || '';
+      structure.properties.owner = ownerText.replace(/\n/g, '<br>');
+      
+      const installerText = formData.get('installer') as string || '';
+      structure.properties.installer = installerText.replace(/\n/g, '<br>');
+      
+      structure.properties.info = formData.get('info') as string || '';
+      
+      // Save to undo stack
+      if ((globalThis as any).undostruct) {
+        (globalThis as any).undostruct.store();
+      }
     }
+    
+    setShowSettingsDialog(false);
   };
 
   // Zoom handlers
@@ -215,17 +263,175 @@ const SimpleHierarchyView: React.FC = () => {
     
     const svgData = structure.toSVG(0, 'horizontal').data;
     const flattenSVGfromString = (globalThis as any).flattenSVGfromString || ((str: string) => str);
-    return flattenSVGfromString(svgData, 10);
+    let svg = flattenSVGfromString(svgData, 10);
+    
+    // Add data-element-id attributes to make SVG interactive
+    // The SVG uses id attributes like "svg_p1_0" where the last number is the element ID
+    // Also add to <g> tags that wrap elements
+    svg = svg.replace(/(<g[^>]*id="svg_p\d+_(\d+)"[^>]*)>/g, (match, openTag, elementId) => {
+      return `${openTag} data-element-id="${elementId}" class="svg-element">`;
+    });
+    
+    // Also add to standalone elements with svg_p IDs
+    svg = svg.replace(/(<(?:rect|circle|path|line|polyline|polygon|text|ellipse)[^>]*id="svg_p\d+_(\d+)"[^>]*)>/g, (match, openTag, elementId) => {
+      if (!openTag.includes('data-element-id')) {
+        return `${openTag} data-element-id="${elementId}" class="svg-element">`;
+      }
+      return match;
+    });
+    
+    return svg;
   };
 
-  // Re-attach interactive SVG handlers after SVG renders
+  // Attach SVG click handlers (React-native implementation)
   useEffect(() => {
-    if ((window as any).interactiveSVG) {
-      setTimeout(() => {
-        (window as any).interactiveSVG.attachHandlers();
-      }, 100);
-    }
-  }, [structure, selectedElementId]);
+    // Small delay to ensure SVG is fully rendered
+    const timer = setTimeout(() => {
+      const edsDiv = document.getElementById('EDS');
+      if (!edsDiv) {
+        console.log('EDS div not found');
+        return;
+      }
+
+      const svg = edsDiv.querySelector('svg');
+      if (!svg) {
+        console.log('SVG not found');
+        return;
+      }
+
+      // Find all elements with data-element-id attribute
+      const elements = svg.querySelectorAll('[data-element-id]');
+      console.log(`Found ${elements.length} clickable SVG elements`);
+      
+      // Filter to only get the "deepest" elements (not parent containers)
+      const leafElements = Array.from(elements).filter((element) => {
+        // Check if this element contains other elements with data-element-id
+        const childrenWithId = element.querySelectorAll('[data-element-id]');
+        // Only include if it has no children with data-element-id (it's a leaf)
+        return childrenWithId.length === 0;
+      });
+      console.log(`Found ${leafElements.length} leaf elements for hover`);
+      
+      const handleClick = (e: Event, elementId: number) => {
+        e.stopPropagation();
+        e.preventDefault();
+        console.log(`SVG element clicked: ${elementId}`);
+        setSelectedElementId(elementId);
+        
+        // Scroll to element in list
+        setTimeout(() => {
+          const listElement = document.querySelector(`.simple-hierarchy-item[data-id="${elementId}"]`);
+          if (listElement) {
+            listElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 50);
+      };
+
+      const handleMouseEnter = (e: Event, element: Element) => {
+        if (!highlightEnabled) return; // Skip if highlighting is disabled
+        e.stopPropagation(); // Prevent parent elements from getting hover effect
+        const svgElement = element as SVGElement;
+        
+        // Store original fill/stroke for restoration
+        (element as any).__originalFill = svgElement.getAttribute('fill') || svgElement.style.fill;
+        (element as any).__originalStroke = svgElement.getAttribute('stroke') || svgElement.style.stroke;
+        
+        // Apply red color
+        svgElement.style.fill = 'red';
+        svgElement.style.stroke = 'red';
+      };
+
+      const handleMouseLeave = (e: Event, element: Element) => {
+        if (!highlightEnabled) return; // Skip if highlighting is disabled
+        e.stopPropagation();
+        const svgElement = element as SVGElement;
+        
+        // Restore original colors
+        const originalFill = (element as any).__originalFill;
+        const originalStroke = (element as any).__originalStroke;
+        
+        if (originalFill) {
+          svgElement.style.fill = originalFill;
+        } else {
+          svgElement.style.fill = '';
+        }
+        
+        if (originalStroke) {
+          svgElement.style.stroke = originalStroke;
+        } else {
+          svgElement.style.stroke = '';
+        }
+      };
+
+      // Attach click and hover handlers
+      elements.forEach((element) => {
+        const elementId = parseInt((element as SVGElement).getAttribute('data-element-id') || '0');
+        if (elementId === 0) return;
+
+        // All elements are clickable
+        (element as SVGElement).style.cursor = 'pointer';
+        
+        const clickHandler = (e: Event) => handleClick(e, elementId);
+        element.addEventListener('click', clickHandler);
+        (element as any).__clickHandler = clickHandler;
+      });
+
+      // Only leaf elements get hover effects
+      leafElements.forEach((element) => {
+        (element as SVGElement).style.transition = 'opacity 0.2s, filter 0.2s';
+        
+        const mouseEnterHandler = (e: Event) => handleMouseEnter(e, element);
+        const mouseLeaveHandler = (e: Event) => handleMouseLeave(e, element);
+        
+        element.addEventListener('mouseenter', mouseEnterHandler);
+        element.addEventListener('mouseleave', mouseLeaveHandler);
+        
+        // Store handlers for cleanup
+        (element as any).__mouseEnterHandler = mouseEnterHandler;
+        (element as any).__mouseLeaveHandler = mouseLeaveHandler;
+      });
+
+      // Highlight the currently selected element in purple
+      if (selectedElementId && highlightEnabled) {
+        const selectedElements = svg.querySelectorAll(`[data-element-id="${selectedElementId}"]`);
+        selectedElements.forEach((element) => {
+          const svgElement = element as SVGElement;
+          
+          // Create a semi-transparent purple overlay using a rectangle
+          const bbox = (element as any).getBBox?.();
+          if (bbox) {
+            // Remove any existing highlight
+            const existingHighlight = svg.querySelector(`#highlight-${selectedElementId}`);
+            if (existingHighlight) {
+              existingHighlight.remove();
+            }
+            
+            // Create highlight rectangle
+            const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            highlight.setAttribute('id', `highlight-${selectedElementId}`);
+            highlight.setAttribute('x', String(bbox.x - 2));
+            highlight.setAttribute('y', String(bbox.y - 2));
+            highlight.setAttribute('width', String(bbox.width + 4));
+            highlight.setAttribute('height', String(bbox.height + 4));
+            highlight.setAttribute('fill', '#667eea');
+            highlight.setAttribute('fill-opacity', '0.2');
+            highlight.setAttribute('stroke', '#667eea');
+            highlight.setAttribute('stroke-width', '2');
+            highlight.setAttribute('rx', '4');
+            highlight.style.pointerEvents = 'none';
+            
+            // Insert before the element to not block it
+            element.parentNode?.insertBefore(highlight, element);
+          }
+        });
+      }
+    }, 100);
+
+    // Cleanup
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [structure, selectedElementId, highlightEnabled]); // Re-attach when structure, selection, or highlight setting changes
 
   // Get selected element
   const selectedElement = selectedElementId && structure 
@@ -298,16 +504,11 @@ const SimpleHierarchyView: React.FC = () => {
         </pattern>
       </svg>
 
-      {/* Ribbon (toolbar) */}
-      <div id="ribbon" style={{ display: 'flex' }}>
-        <div id="left-icons" className="left-icons"></div>
-        <div id="right-icons" className="right-icons"></div>
-      </div>
 
-      {/* 3-column layout */}
+      {/* 3-column layout: 1/3/1 ratio (20% - 60% - 20%) */}
       <div id="canvas_3col" style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
         {/* Left column: Element list */}
-        <div id="left_col_3" style={{ width: '300px', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
+        <div id="left_col_3" style={{ flex: '1', minWidth: '250px', maxWidth: '400px', overflowY: 'auto', borderRight: '1px solid #ddd' }}>
           <div id="left_col_3_inner">
             <div className="simple-hierarchy-header">
               <h3 style={{ margin: 0 }}>📋 Elementen</h3>
@@ -380,8 +581,8 @@ const SimpleHierarchyView: React.FC = () => {
           </div>
         </div>
 
-        {/* Middle column: SVG diagram */}
-        <div id="middle_col_3" style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+        {/* Middle column: SVG diagram - 3x the size of left/right */}
+        <div id="middle_col_3" style={{ flex: 3, overflowY: 'auto', padding: '12px' }}>
           <div id="middle_col_3_inner">
             <div className="simple-svg-container">
               <h3 style={{ margin: '0 0 12px 0', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
@@ -392,6 +593,17 @@ const SimpleHierarchyView: React.FC = () => {
                 <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
                 <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit">−</button>
                 <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom">⊙</button>
+                <button 
+                  className="svg-zoom-btn" 
+                  onClick={() => setHighlightEnabled(!highlightEnabled)}
+                  title={highlightEnabled ? "Highlighting uitschakelen" : "Highlighting inschakelen"}
+                  style={{ 
+                    background: highlightEnabled ? '#667eea' : '#e0e0e0',
+                    color: highlightEnabled ? 'white' : '#666'
+                  }}
+                >
+                  {highlightEnabled ? '🎨' : '⬜'}
+                </button>
               </div>
               
               <div 
@@ -404,7 +616,7 @@ const SimpleHierarchyView: React.FC = () => {
         </div>
 
         {/* Right column: Properties panel */}
-        <div id="right_col_3" style={{ width: '350px', overflowY: 'auto', borderLeft: '1px solid #ddd' }}>
+        <div id="right_col_3" style={{ flex: '1', minWidth: '250px', maxWidth: '400px', overflowY: 'auto', borderLeft: '1px solid #ddd' }}>
           <div id="right_col_3_inner">
             {!selectedElement ? (
               <div className="simple-properties-empty">
@@ -455,6 +667,140 @@ const SimpleHierarchyView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Settings Dialog */}
+      {showSettingsDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '24px',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h2 style={{ margin: '0 0 20px 0', color: '#667eea' }}>⚙️ Algemene Instellingen</h2>
+            
+            <form onSubmit={handleSaveSettings}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                  Bestandsnaam:
+                </label>
+                <input
+                  type="text"
+                  name="filename"
+                  defaultValue={structure?.properties?.filename || 'eendraadschema.eds'}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                  Eigenaar/Klant:
+                </label>
+                <textarea
+                  name="owner"
+                  rows={5}
+                  defaultValue={structure?.properties?.owner?.replace(/<br>/g, '\n') || ''}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontFamily: 'inherit'
+                  }}
+                  placeholder="Naam&#10;Straat & nr&#10;Postcode & gemeente&#10;Tel: ...&#10;e-mail: ..."
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                  Installateur:
+                </label>
+                <textarea
+                  name="installer"
+                  rows={5}
+                  defaultValue={structure?.properties?.installer?.replace(/<br>/g, '\n') || ''}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontFamily: 'inherit'
+                  }}
+                  placeholder="Naam&#10;Straat & nr&#10;Postcode & gemeente&#10;Tel: ...&#10;e-mail: ..."
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                  Installatie informatie:
+                </label>
+                <input
+                  type="text"
+                  name="info"
+                  defaultValue={structure?.properties?.info || '1 x 230V + N ~50 Hz'}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={handleCloseSettings}
+                  style={{
+                    padding: '10px 20px',
+                    border: '2px solid #ddd',
+                    borderRadius: '8px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}
+                >
+                  Annuleren
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}
+                >
+                  Opslaan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

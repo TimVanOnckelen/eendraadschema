@@ -622,7 +622,7 @@ export function EDStoStructure(
     globalThis.autoSaver.saveManually();
   if (askUserToSave) {
     globalThis.autoSaver.forceHasChangesSinceLastManualSave();
-    globalThis.structure.updateRibbon();
+    // React components will update automatically
   }
 }
 
@@ -758,6 +758,15 @@ export function download_by_blob(text, filename, mimeType): void {
 */
 
 export function showFilePage() {
+  // In React mode, the FilePage component handles all rendering
+  // This function is only needed for legacy non-React mode
+  const configSection = document.getElementById("configsection");
+  if (!configSection) {
+    // React mode - do nothing, the component handles it
+    return;
+  }
+
+  // Legacy mode - continue with DOM manipulation
   // Bepaal of compressie uitgeschakeld moet worden (standaard: false)
   let disableEDSCompression = false;
   if (

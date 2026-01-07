@@ -14,10 +14,7 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
   const { currentView, setCurrentView } = useApp();
 
   const handleMenuClick = (item: MenuItem) => {
-    console.log('TopMenu clicked:', item.name, 'view:', item.view);
-    console.log('Current view before:', currentView);
     setCurrentView(item.view);
-    console.log('setCurrentView called with:', item.view);
   };
 
   return (

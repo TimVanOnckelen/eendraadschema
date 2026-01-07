@@ -17,7 +17,6 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   const { setStructure } = useApp();
 
   const handleLoadExample = (nr: number) => {
-    console.log('handleLoadExample called with:', nr);
     switch (nr) {
       case 0:
         EDStoStructure(EXAMPLE0);
@@ -32,12 +31,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({
     if ((globalThis as any).structure) {
       setStructure((globalThis as any).structure);
     }
-    console.log('Calling onExampleSelect');
     onExampleSelect(nr);
   };
 
   const handleNewSchema = () => {
-    console.log('handleNewSchema called');
     // Call read_settings to create a new empty structure
     if ((globalThis as any).read_settings) {
       (globalThis as any).read_settings();
@@ -47,12 +44,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({
       setStructure((globalThis as any).structure);
     }
     // Navigate to editor
-    console.log('Calling onExampleSelect(2) to go to editor');
     onExampleSelect(2); // Use onExampleSelect to go to editor
   };
 
   const handleLoadFile = async () => {
-    console.log('handleLoadFile called');
     // Trigger the file input click
     if ((globalThis as any).loadClicked) {
       await (globalThis as any).loadClicked();
@@ -62,7 +57,6 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           setStructure((globalThis as any).structure);
         }
       }, 100);
-      console.log('Calling onLoadFile');
       onLoadFile();
     }
   };

@@ -3,7 +3,6 @@ import { Session } from './Session';
 import { MultiLevelStorage } from './storage/MultiLevelStorage';
 import { undoRedo } from './undoRedo';
 import { importExportUsingFileAPI } from './importExport/importExport';
-import { InteractiveSVG } from './InteractiveSVG';
 import { SimpleHierarchyView } from './SimpleHierarchyView';
 import { Hierarchical_List } from './Hierarchical_List';
 
@@ -14,7 +13,6 @@ interface AppContextType {
   appDocStorage: MultiLevelStorage<any>;
   undostruct: undoRedo;
   fileAPIobj: importExportUsingFileAPI;
-  interactiveSVG: InteractiveSVG;
   simpleHierarchyView: SimpleHierarchyView;
   structure: Hierarchical_List | null;
   setStructure: (structure: Hierarchical_List) => void;
@@ -25,18 +23,18 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  console.log('=== AppProvider initializing ===');
-  
   const [session] = useState(() => new Session());
   const [appDocStorage] = useState(() => new MultiLevelStorage<any>("appDocStorage", {}));
   const [undostruct] = useState(() => new undoRedo(100));
   const [fileAPIobj] = useState(() => new importExportUsingFileAPI());
-  const [interactiveSVG] = useState(() => new InteractiveSVG());
   const [simpleHierarchyView] = useState(() => new SimpleHierarchyView());
   const [structure, setStructure] = useState<Hierarchical_List | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('start');
 
-  console.log('AppProvider state initialized, currentView:', currentView);
+  // Expose simpleHierarchyView to global for legacy code
+  React.useEffect(() => {
+    (window as any).simpleHierarchyView = simpleHierarchyView;
+  }, [simpleHierarchyView]);
 
   // Sync structure with globalThis.structure
   React.useEffect(() => {
@@ -67,7 +65,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     appDocStorage,
     undostruct,
     fileAPIobj,
-    interactiveSVG,
     simpleHierarchyView,
     structure,
     setStructure,

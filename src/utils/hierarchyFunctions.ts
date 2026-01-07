@@ -22,15 +22,8 @@ export function HLCollapseExpand(my_id: number, state?: boolean) {
   }
   globalThis.undostruct.store();
 
-  // Use SimpleHierarchyView if available, otherwise fall back to old method
-  if ((window as any).simpleHierarchyView) {
-    HLRedrawTree();
-  } else if (!isFirefox()) {
-    globalThis.structure.updateHTMLinner(my_id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -39,18 +32,12 @@ export function HLCollapseExpand(my_id: number, state?: boolean) {
 export function HLDelete(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.deleteById(my_id);
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -68,7 +55,6 @@ export function HLAdd() {
 export function HLInsertBefore(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.insertItemBeforeId(
     new Electro_Item(globalThis.structure),
@@ -76,13 +62,8 @@ export function HLInsertBefore(my_id: number) {
   );
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -91,7 +72,6 @@ export function HLInsertBefore(my_id: number) {
 export function HLInsertAfter(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.insertItemAfterId(
     new Electro_Item(globalThis.structure),
@@ -99,13 +79,8 @@ export function HLInsertAfter(my_id: number) {
   );
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -114,18 +89,12 @@ export function HLInsertAfter(my_id: number) {
 export function HLMoveDown(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.moveDown(my_id);
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -134,18 +103,12 @@ export function HLMoveDown(my_id: number) {
 export function HLMoveUp(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.moveUp(my_id);
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -154,18 +117,12 @@ export function HLMoveUp(my_id: number) {
 export function HLClone(my_id: number) {
   const electroItem = globalThis.structure.getElectroItemById(my_id);
   if (electroItem === null) return;
-  const parent = electroItem.getParent();
 
   globalThis.structure.clone(my_id);
   globalThis.undostruct.store();
 
-  if (parent !== null && !isFirefox()) {
-    globalThis.structure.reNumber();
-    globalThis.structure.updateHTMLinner(parent.id);
-    HLRedrawTreeSVG();
-  } else {
-    HLRedrawTree();
-  }
+  // In React mode, always use HLRedrawTree to trigger React refresh
+  HLRedrawTree();
 }
 
 /**
@@ -187,24 +144,12 @@ export function HLRedrawTreeSVG() {
   const svgData = globalThis.structure.toSVG(0, "horizontal").data;
   const flattenedSVG = flattenSVGfromString(svgData, 10);
 
-  let str: string =
-    "<b>Tekening: </b>Ga naar het print-menu om de tekening af te printen of te exporteren als SVG vector graphics.<br><br>" +
-    '<div id="EDS">' +
-    flattenedSVG +
-    "</div>" +
-    "<h2>Legende:</h2>" +
-    '<button class="button-insertBefore"></button> Item hierboven invoegen (zelfde niveau)<br>' +
-    '<button class="button-insertAfter"></button> Item hieronder invoegen (zelfde niveau)<br>' +
-    '<button class="button-insertChild"></button> Afhankelijk item hieronder toevoegen (niveau dieper)<br>' +
-    '<button class="button-delete-garbage-can"></button> Item verwijderen<br>';
+  let str: string = '<div id="EDS">' + flattenedSVG + "</div>";
 
   const right_col_inner = document.getElementById("right_col_inner");
   if (right_col_inner != null) {
     right_col_inner.innerHTML = str;
-    // Initialize interactive SVG handlers after SVG is rendered
-    if ((window as any).interactiveSVG) {
-      (window as any).interactiveSVG.attachHandlers();
-    }
+    // React components handle their own event handlers
   }
 }
 
@@ -213,9 +158,12 @@ export function HLRedrawTreeSVG() {
  */
 export function HLRedrawTree() {
   console.log("HLRedrawTree called");
-  // Use simple hierarchy view instead
-  if ((window as any).simpleHierarchyView) {
-    console.log("Using SimpleHierarchyView");
+  // Use React SimpleHierarchyView refresh if available
+  if ((window as any).refreshSimpleHierarchyView) {
+    console.log("Using React SimpleHierarchyView refresh");
+    (window as any).refreshSimpleHierarchyView();
+  } else if ((window as any).simpleHierarchyView) {
+    console.log("Using legacy SimpleHierarchyView");
     (window as any).simpleHierarchyView.render();
   } else {
     console.log("SimpleHierarchyView not found, using fallback");

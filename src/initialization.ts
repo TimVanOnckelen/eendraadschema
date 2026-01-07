@@ -26,6 +26,13 @@ import "./utils/structureUtils";
 declare const BUILD_DATE: string;
 console.log("Build date:", BUILD_DATE);
 
+// Export toggleAppView immediately at module load time
+// This ensures it's available before any React component tries to use it
+globalThis.toggleAppView = (type: "2col" | "3col" | "config" | "draw") => {
+  console.log("toggleAppView called with:", type, "(ignored in React mode)");
+  // The React view system handles layout, so we don't need to do anything here
+};
+
 /**
  * Initialize global configuration
  */
@@ -129,20 +136,7 @@ export async function initializeReactApp() {
     return globalThis.structure;
   });
 
-  globalThis.autoSaver.setCallbackAfterSave(
-    (() => {
-      let lastSavedType = globalThis.autoSaver.getSavedType();
-      function updateRibbons() {
-        const currentSavedType = globalThis.autoSaver.getSavedType();
-        if (lastSavedType === currentSavedType) return;
-        lastSavedType = currentSavedType;
-        globalThis.structure.updateRibbon();
-        if (globalThis.structure.sitplanview)
-          globalThis.structure.sitplanview.updateRibbon();
-      }
-      return updateRibbons;
-    })()
-  );
+  // React components handle their own state - no need for updateRibbon callbacks
 
   // Start the autoSaver
   globalThis.autoSaver.start();
