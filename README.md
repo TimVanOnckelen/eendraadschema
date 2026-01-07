@@ -1,5 +1,5 @@
 ---
-Eendraadschema Community edition
+Eendraadschema
 ---
 
 ## About
@@ -56,7 +56,85 @@ I therefore have no plans in that direction.
 
 ### Can I contribute?
 
+Yes! Contributions are welcome and appreciated.
+
+**For this React version:**
+
+- Feel free to submit pull requests with bug fixes, improvements, or new features
+- Please open an issue first for major changes to discuss the approach
+- Check the [LEGACY_CODE_AUDIT.md](./LEGACY_CODE_AUDIT.md) to understand the current migration status
+- Follow the existing code style and conventions
+
+**For the original version:**
+
+- See Ivan Goethals' repository: https://github.com/igoethal/eendraadschema
+
 **Note from Tim Van Onckelen:** This React version is a fork and refactor of Ivan's original
 vanilla TypeScript implementation. The migration to React 19 was completed in 2026,
 providing a more modern architecture with improved UI/UX while preserving all of Ivan's
 original logic and functionality. All core electrical schema logic remains Ivan's work.
+
+## React Version Features
+
+This refactored version includes the following improvements and updates:
+
+### User Interface
+
+- Migrated all views to React 19 components
+- Modern ribbon-based interface with compact button layouts
+- Improved visual consistency across the application
+- Responsive design with flexbox layouts
+
+### Schema Editor
+
+- Full React implementation of the schema editor
+- Maintained all original electrical schema functionality
+- Improved rendering performance
+
+### Situation Plan (Situatieschema)
+
+- Complete React migration with modern UI
+- Sidebar with searchable SVG symbol library
+- Filter symbols by category
+- Drag-and-drop placement of electrical symbols
+- Element selection and positioning tools
+- Page management (add, delete, navigate between pages)
+- Zoom controls (25%, 50%, 75%, 100%, 150%, 200%)
+
+### File Management
+
+- Automatic save functionality every 5 seconds
+- IndexedDB-based local storage
+- Recovery dialog on application load if unsaved changes detected
+- Visual save status indicator
+- Import/export of .eds files
+- PDF export functionality
+
+### Documentation
+
+- Integrated documentation viewer
+- Access to PDF manuals (note: manuals are from the original version)
+
+### Technical Stack
+
+- React 19 with TypeScript
+- Vite build system
+- Modern CSS with component-based styling
+- IndexedDB for local storage
+- Maintained compatibility with original .eds file format
+
+## Migration Status
+
+This application is in an active migration phase from vanilla TypeScript to React 19.
+Approximately 30% of the UI layer has been migrated to React components, with the remaining
+code consisting of core business logic and complex rendering systems.
+
+For a detailed breakdown of what has been migrated and what remains legacy code, see:
+**[LEGACY_CODE_AUDIT.md](./LEGACY_CODE_AUDIT.md)**
+
+The audit document provides:
+
+- Complete inventory of React vs legacy code
+- Detailed analysis of hybrid components
+- Migration priorities and recommendations
+- Technical debt assessment
