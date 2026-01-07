@@ -1,5 +1,3 @@
-import { TopMenu } from "./TopMenu";
-import type { MenuItem } from "./TopMenu";
 import { Electro_Item } from "./List_Item/Electro_Item";
 import { Hierarchical_List } from "./Hierarchical_List";
 import { showFilePage } from "./importExport/importExport";
@@ -20,36 +18,17 @@ import {
 import { browser_ie_detected } from "./general";
 import { showDocumentationPage } from "./documentation/documentation";
 import { HelperTip } from "./documentation/HelperTip";
-import { Session } from "./Session";
-import { MultiLevelStorage } from "./storage/MultiLevelStorage";
-import { undoRedo } from "./undoRedo";
-import { importExportUsingFileAPI } from "./importExport/importExport";
 import { changelog } from "./changelog";
-import "./HierarchyUIHelper";
-import { InteractiveSVG } from "./InteractiveSVG";
-import { SimpleHierarchyView } from "./SimpleHierarchyView";
-
 import "../css/all.css";
 
 declare const BUILD_DATE: string;
 console.log(BUILD_DATE);
 
-// Initialize interactive SVG functionality
-(window as any).interactiveSVG = new InteractiveSVG();
-// Initialize simple hierarchy view
-(window as any).SimpleHierarchyView = SimpleHierarchyView;
-(window as any).simpleHierarchyView = new SimpleHierarchyView();
-console.log("SimpleHierarchyView initialized");
+// NOTE: Global initialization (session, appDocStorage, undostruct, fileAPIobj, etc.)
+// is now handled by AppContext in the React app.
+// These globals will be set by App.tsx when it initializes.
 
-// Global mutable variables
-
-globalThis.session = new Session();
-globalThis.appDocStorage = new MultiLevelStorage<any>("appDocStorage", {});
-globalThis.undostruct = new undoRedo(100);
-globalThis.fileAPIobj = new importExportUsingFileAPI();
-
-// Global constants
-
+// Global constants for SitPlan view
 globalThis.SITPLANVIEW_SELECT_PADDING = parseInt(
   trimString(
     getComputedStyle(document.documentElement).getPropertyValue(
@@ -536,7 +515,7 @@ function reset_all() {
   if (globalThis.structure != null) globalThis.structure.dispose();
   globalThis.structure = new Hierarchical_List();
   buildNewStructure(globalThis.structure);
-  globalThis.topMenu.selectMenuItemByName("Eéndraadschema");
+  // View will be handled by React - no need to select menu item
   globalThis.undostruct.clear();
   globalThis.undostruct.store();
 }
@@ -905,16 +884,13 @@ globalThis.redoClicked = () => {
 };
 
 globalThis.read_settings = () => {
-  CONF_aantal_fazen_droog = parseInt(
-    (document.getElementById("aantal_fazen_droog") as HTMLInputElement).value
-  );
+  // Use default values since the settings form is not rendered in React migration
+  // These match the default values defined at the top of the file
+  CONF_aantal_fazen_droog = 2;
   CONF_aantal_fazen_nat = CONF_aantal_fazen_droog;
-  CONF_hoofdzekering = parseInt(
-    (document.getElementById("hoofdzekering") as HTMLInputElement).value
-  );
-  CONF_differentieel_droog = parseInt(
-    (document.getElementById("differentieel_droog") as HTMLInputElement).value
-  );
+  CONF_hoofdzekering = 65;
+  CONF_differentieel_droog = 300;
+
   globalThis.fileAPIobj.clear();
   reset_all();
 };
@@ -928,6 +904,37 @@ var CONF_differentieel_nat = 30;
 
 //--- MAIN PROGRAM ---
 
+// Export minimal initialization for React components
+export function initializeReactApp() {
+  // Add file input elements if they don't exist
+  if (!document.getElementById("importfile")) {
+    document.body.innerHTML += `
+    <input id="importfile" type="file" accept=".eds" onchange="importjson(event)" style="display:none;">
+    <input id="appendfile" type="file" accept=".eds" onchange="appendjson(event)" style="display:none;">
+    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+  `;
+  }
+
+  // Export legacy functions to globalThis for backward compatibility
+  globalThis.showFilePage = showFilePage;
+  globalThis.HLRedrawTree = globalThis.HLRedrawTree;
+  globalThis.showSituationPlanPage = showSituationPlanPage;
+  globalThis.printsvg = printsvg;
+  globalThis.showDocumentationPage = showDocumentationPage;
+  globalThis.openContactForm = openContactForm;
+
+  // Create a global function to switch views (replaces topMenu.selectMenuItemByName)
+  (globalThis as any).switchToView = (viewName: string) => {
+    // This will be overridden by React's setCurrentView
+    console.warn("switchToView called before React override:", viewName);
+  };
+
+  // Load default example if no structure exists yet
+  if (!globalThis.structure) {
+    EDStoStructure(globalThis.EXAMPLE_DEFAULT, false);
+  }
+}
+
 // Export initialization function for React
 export function initializeApp() {
   // Define content of index.html container
@@ -937,7 +944,6 @@ export function initializeApp() {
   if (container == null) throw new Error("HTML element container is null");
 
   container.innerHTML = `
-<div id="topmenu"><ul id="minitabs"></ul></div>
 <div id="app">
 <svg id="svgdefs"></svg> <!-- Bevat SVG patronen die app-wide gebruikt worden -->
 <div id="configsection" class="configsection">
@@ -996,23 +1002,19 @@ export function initializeApp() {
   `;
   }
 
-  // Build the menu
+  // Export legacy functions to globalThis for backward compatibility
+  globalThis.showFilePage = showFilePage;
+  globalThis.HLRedrawTree = globalThis.HLRedrawTree;
+  globalThis.showSituationPlanPage = showSituationPlanPage;
+  globalThis.printsvg = printsvg;
+  globalThis.showDocumentationPage = showDocumentationPage;
+  globalThis.openContactForm = openContactForm;
 
-  let menuItems: MenuItem[];
-
-  menuItems = [
-    { name: "Nieuw", callback: restart_all },
-    { name: "Bestand", callback: showFilePage },
-    { name: "Eéndraadschema", callback: globalThis.HLRedrawTree },
-    { name: "Situatieschema", callback: showSituationPlanPage },
-    { name: "Print", callback: printsvg },
-    { name: "Documentatie", callback: showDocumentationPage },
-    { name: "Info/Contact", callback: openContactForm },
-  ];
-
-  PROP_edit_menu(menuItems);
-
-  globalThis.topMenu = new TopMenu("minitabs", "menu-item", menuItems);
+  // Create a global function to switch views (replaces topMenu.selectMenuItemByName)
+  (globalThis as any).switchToView = (viewName: string) => {
+    // This will be overridden by React's setCurrentView
+    console.warn("switchToView called before React override:", viewName);
+  };
 
   // Now add handlers for everything that changes in the left column
   const left_col_inner = document.querySelector("#left_col_inner");

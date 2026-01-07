@@ -492,7 +492,11 @@ function json_to_structure(
 
 export function loadFromText(text: string, version: number, redraw = true) {
   globalThis.structure = json_to_structure(text, globalThis.structure, version);
-  if (redraw == true) globalThis.topMenu.selectMenuItemByName("Eéndraadschema"); // Ga naar het bewerken scherm, dat zal automatisch voor hertekenen zorgen.
+  // View switching is now handled by React - no need to call topMenu
+  if (redraw == true) {
+    // Trigger a redraw if needed
+    globalThis.HLRedrawTree?.();
+  }
 }
 
 /**
@@ -711,7 +715,9 @@ function importToAppend(mystring: string, redraw = true) {
   structureToAppend = null;
 
   //redraw if needed
-  if (redraw) globalThis.topMenu.selectMenuItemByName("Eéndraadschema");
+  if (redraw) {
+    globalThis.HLRedrawTree?.();
+  }
 
   // Store only after having redrawn, anders worden we naar de print-pagina gestuurd bij undo
   globalThis.undostruct.store();

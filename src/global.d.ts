@@ -2,7 +2,6 @@ import { Session } from "./Session";
 import { MultiLevelStorage } from "./storage/MultiLevelStorage";
 import { importExportUsingFileAPI } from "./importExport/importExport";
 import { Hierarchical_List } from "./Hierarchical_List";
-import { TopMenu } from "./TopMenu";
 import { AutoSaver } from "./importExport/AutoSaver";
 
 declare global {
@@ -11,7 +10,6 @@ declare global {
     appDocStorage: MultiLevelStorage<any>;
     undostruct: any;
     structure: Hierarchical_List;
-    topMenu: TopMenu;
     autoSaver: AutoSaver;
     CONFIGPAGE_LEFT: string;
     CONFIGPAGE_RIGHT: string;
@@ -57,6 +55,13 @@ declare global {
     loadFileFromText: () => void;
     forceUndoStore: () => void;
     toggleDetails: (elementId: number) => void;
+    // Legacy navigation functions (now handled by React)
+    showFilePage: () => void;
+    showSituationPlanPage: () => void;
+    printsvg: () => void;
+    showDocumentationPage: () => void;
+    openContactForm: () => void;
+    loadClicked: () => void;
   }
 }
 

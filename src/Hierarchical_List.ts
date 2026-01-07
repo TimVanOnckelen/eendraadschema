@@ -933,7 +933,7 @@ export class Hierarchical_List {
                         </div>`;
     } else {
       output += '<span style="display: inline-block; width: 30px;"></span>';
-      output += `<div style="margin-top: 5px;margin-bottom: 5px;display: flex; align-items: center; justify-content: center;" class="highlight-ok-big" onclick="topMenu.selectMenuItemByName('Bestand')"
+      output += `<div style="margin-top: 5px;margin-bottom: 5px;display: flex; align-items: center; justify-content: center;" class="highlight-ok-big" onclick="switchToView('Bestand')"
                            onmouseover="this.style.cursor='pointer'" 
                            onmouseout="this.style.cursor='default'">
                            <div style="display: inline-block; vertical-align: middle;"><span class="icon-image" style="font-size:24px; filter: grayscale(100%); opacity: 0.5;">💾</span></div>
