@@ -15,7 +15,7 @@ const formatDate = () => {
 
 export default defineConfig({
   plugins: [react()],
-  base: "/eendraadschema/", // GitHub Pages needs the repo name as base path
+  base: "./", // Use relative paths for flexible deployment
   define: {
     BUILD_DATE: JSON.stringify(formatDate()), // Injects current date/time
   },
