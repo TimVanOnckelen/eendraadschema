@@ -10,6 +10,7 @@ type PrintTable = {
   pages: { start: number; stop: number; info: string }[];
   starty: number;
   stopy: number;
+  scale?: number;
 };
 
 type Properties = {
@@ -107,10 +108,11 @@ export function printPDF(
     const max_height_in_pixels = (max_height_in_mm / 25.4) * dpi;
     const max_width_in_pixels = (max_width_in_mm / 25.4) * dpi;
 
-    const scale = Math.min(
-      max_height_in_pixels / sizey,
-      max_width_in_pixels / sizex
-    );
+    const userScale = print_table.scale || 1;
+
+    const scale =
+      Math.min(max_height_in_pixels / sizey, max_width_in_pixels / sizex) *
+      userScale;
 
     const scaledsvg =
       `<svg width="${sizex * scale}" height="${

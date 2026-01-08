@@ -30,7 +30,7 @@ export function getPrintSVGWithoutAddress(
   outSVG: SVGelement,
   page: number = globalThis.structure.print_table.displaypage
 ) {
-  var scale = 1;
+  var scale = globalThis.structure.print_table.scale || 1;
 
   var startx = globalThis.structure.print_table.pages[page].start;
   var width = globalThis.structure.print_table.pages[page].stop - startx;
@@ -163,6 +163,7 @@ export function printsvg() {
       '<button id="button_pdfdownload" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">🖨️ Genereer PDF</button>' +
       '<span id="select_papersize"></span>' +
       '<span id="select_dpi"></span>' +
+      '<span id="select_scale"></span>' +
       '<input id="dopdfname" size="20" value="eendraadschema_print.pdf" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;">' +
       "</div>" +
       '<div id="progress_pdf" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);"></div>' +
@@ -179,6 +180,10 @@ export function printsvg() {
   );
   globalThis.structure.print_table.insertHTMLselectdpi(
     document.getElementById("select_dpi") as HTMLElement,
+    printsvg
+  );
+  globalThis.structure.print_table.insertHTMLselectScale(
+    document.getElementById("select_scale") as HTMLElement,
     printsvg
   );
 

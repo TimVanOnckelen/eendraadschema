@@ -6,7 +6,7 @@ import { importExportUsingFileAPI } from './importExport/importExport';
 import { SimpleHierarchyView } from './SimpleHierarchyView';
 import { Hierarchical_List } from './Hierarchical_List';
 
-export type AppView = 'start' | 'file' | 'editor' | 'sitplan' | 'print' | 'documentation' | 'contact';
+export type AppView = 'start' | 'file' | 'editor' | 'sitplan' | 'print' | 'documentation' | 'contact' | 'library';
 
 interface AppContextType {
   session: Session;

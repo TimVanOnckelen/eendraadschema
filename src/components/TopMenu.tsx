@@ -17,9 +17,10 @@ export interface MenuItem {
 
 interface TopMenuProps {
   items: MenuItem[];
+  currentFilename?: string;
 }
 
-export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
+export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
   const { currentView, setCurrentView } = useApp();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -45,7 +46,11 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
     }
   };
 
-  const handleSubMenuClick = (action: () => void) => {
+  const handleSubMenuClick = (action: () => void, name: string) => {
+    // Don't do anything for dividers or headers
+    if (name.includes('─────────') || name.includes('Recente bestanden:')) {
+      return;
+    }
     action();
     setOpenSubmenu(null);
   };
@@ -69,8 +74,13 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
                 {item.subMenu.map((subItem, subIndex) => (
                   <li key={subIndex}>
                     <a
-                      onClick={() => handleSubMenuClick(subItem.action)}
-                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      onClick={() => handleSubMenuClick(subItem.action, subItem.name)}
+                      style={{ 
+                        cursor: subItem.name.includes('─────────') || subItem.name.includes('Recente bestanden:') ? 'default' : 'pointer',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px' 
+                      }}
                     >
                       {subItem.icon && <span>{subItem.icon}</span>}
                       {subItem.name}
@@ -82,7 +92,21 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items }) => {
           </li>
         ))}
       </ul>
-      <AutoSaveIndicator autoSaver={globalThis.autoSaver} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{
+          padding: '4px 10px',
+          backgroundColor: 'white',
+          border: '1px solid #dee2e6',
+          borderRadius: '4px',
+          fontSize: '13px',
+          color: '#495057',
+          fontWeight: 500,
+          userSelect: 'none'
+        }}>
+          📄 {currentFilename || 'Zonder titel'}
+        </div>
+        <AutoSaveIndicator autoSaver={globalThis.autoSaver} />
+      </div>
     </div>
   );
 };

@@ -27,6 +27,8 @@ export class Print_Table {
 
   papersize: PaperSize; //Can be "A4" or "A3"
 
+  scale: number = 1; //Scale factor for SVG rendering (default 1 = 100%)
+
   pagemarkers: MarkerList; //List of pagemarkers that can be used for automatic pagination
   enableAutopage: boolean = true; //Flag to indicate if automatic pagination is used or not
 
@@ -258,6 +260,12 @@ export class Print_Table {
     let maxsvgwidth = height * (this.getPaperSize() == "A3" ? 1.6878 : 1.8467);
     let minsvgwidth = (3 / 4) * maxsvgwidth;
 
+    // Apply scale: if scale is 0.5, we can fit 2x more on a page (divide by scale)
+    // if scale is 2, we can fit 0.5x on a page (divide by scale)
+    const scale = this.scale || 1;
+    maxsvgwidth = maxsvgwidth / scale;
+    minsvgwidth = minsvgwidth / scale;
+
     let page = 0;
     let pos = 0;
     let forceMarker: { depth: number; xpos: number } | null = null;
@@ -434,6 +442,68 @@ export class Print_Table {
         (event.target as HTMLSelectElement).value,
         0
       );
+    };
+
+    label.appendChild(select);
+    div.appendChild(label);
+  }
+
+  /**
+   * Display a Select box to choose scale (50% to 200%)
+   * The table is displayed in the HTMLElement div that is given as a parameter to the function.
+   * If any manipulation is done by the user that would require redrawing the print preview, the redrawCallBack function is executed
+   * from within this function
+   * @param div - Existing HTMLElement where the selector will be inserted
+   * @param redrawCallBack - Callback function that ensures everything that needs to be redrawn is redrawn
+   */
+
+  insertHTMLselectScale(
+    div: HTMLElement,
+    redrawCallBack: RedrawCallBackFunction
+  ): void {
+    var label: HTMLLabelElement = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "6px";
+    label.style.fontSize = "13px";
+    label.style.fontWeight = "500";
+    label.style.color = "var(--text-primary)";
+
+    var labelText = document.createElement("span");
+    labelText.textContent = "Schaal:";
+    label.appendChild(labelText);
+
+    var select: HTMLSelectElement = document.createElement("select");
+    select.id = "select_scale_input";
+    select.style.padding = "6px 10px";
+    select.style.border = "1px solid #d1d5db";
+    select.style.borderRadius = "6px";
+    select.style.fontSize = "13px";
+    select.style.background = "white";
+    select.style.cursor = "pointer";
+
+    const scaleOptions = [
+      { value: 0.5, label: "50% (meer op 1 pagina)" },
+      { value: 0.75, label: "75%" },
+      { value: 1.0, label: "100% (normaal)" },
+      { value: 1.25, label: "125%" },
+      { value: 1.5, label: "150%" },
+      { value: 2.0, label: "200% (minder op 1 pagina)" },
+    ];
+
+    scaleOptions.forEach((scaleOpt) => {
+      var option: HTMLOptionElement = document.createElement("option");
+      option.value = scaleOpt.value.toString();
+      option.textContent = scaleOpt.label;
+      if (Math.abs((this.scale || 1) - scaleOpt.value) < 0.01) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    select.onchange = (event) => {
+      this.scale = parseFloat((event.target as HTMLSelectElement).value);
+      redrawCallBack();
     };
 
     label.appendChild(select);
