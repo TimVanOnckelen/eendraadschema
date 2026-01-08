@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Situatieschema - Handleiding</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #0d6efd;
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+    
+    h2 {
+      color: #34495e;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      font-size: 24px;
+      border-left: 4px solid #0d6efd;
+      padding-left: 15px;
+    }
+    
+    h3 {
+      color: #5a6c7d;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    p {
+      margin-bottom: 15px;
+      text-align: justify;
+    }
+    
+    ul, ol {
+      margin-left: 30px;
+      margin-bottom: 20px;
+    }
+    
+    li {
+      margin-bottom: 10px;
+    }
+    
+    .feature-box {
+      background: #f8f9fa;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .tip-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .warning-box {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .keyboard-key {
+      display: inline-block;
+      background: #e9ecef;
+      border: 1px solid #adb5bd;
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 0 #adb5bd;
+      margin: 0 2px;
+    }
+    
+    .button {
+      display: inline-block;
+      background: #0d6efd;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-weight: 500;
+      margin: 0 2px;
+    }
+    
+    .icon {
+      font-size: 18px;
+      margin-right: 5px;
+    }
+    
+    .toc {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    .toc h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+    
+    .toc ul {
+      list-style: none;
+      margin-left: 0;
+    }
+    
+    .toc li {
+      margin-bottom: 8px;
+    }
+    
+    .toc a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+    
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    
+    .toolbar-item {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 4px 8px;
+      display: inline-block;
+      margin: 2px;
+      font-size: 14px;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .container {
+        box-shadow: none;
+        padding: 20px;
+      }
+      
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏠 Situatieschema - Handleiding</h1>
+    
+    <div class="toc">
+      <h2>Inhoudstafel</h2>
+      <ul>
+        <li><a href="#introductie">1. Introductie</a></li>
+        <li><a href="#interface">2. Interface overzicht</a></li>
+        <li><a href="#plattegrond">3. Plattegrond toevoegen</a></li>
+        <li><a href="#muren">4. Muren tekenen</a></li>
+        <li><a href="#symbolen">5. Elektrische symbolen plaatsen</a></li>
+        <li><a href="#bewerken">6. Elementen bewerken</a></li>
+        <li><a href="#layers">7. Layer manager</a></li>
+        <li><a href="#paginas">8. Meerdere pagina's</a></li>
+        <li><a href="#opslaan">9. Opslaan en exporteren</a></li>
+        <li><a href="#shortcuts">10. Sneltoetsen</a></li>
+      </ul>
+    </div>
+
+    <h2 id="introductie">1. Introductie</h2>
+    <p>
+      Het situatieschema (of plattegrond) is een visuele weergave van de elektrische installatie 
+      op een plattegrond van het gebouw. Deze handleiding beschrijft hoe u een situatieschema 
+      kunt maken met de nieuwe React-versie van de applicatie.
+    </p>
+    
+    <div class="feature-box">
+      <strong>✨ Nieuwe functies:</strong>
+      <ul style="margin-bottom: 0;">
+        <li>Interactief muren tekenen (binnen- en buitenmuren)</li>
+        <li>Inline bewerking met handvatten voor resize en rotatie</li>
+        <li>Properties sidebar voor real-time aanpassingen</li>
+        <li>Layer manager voor organisatie en volgorde</li>
+        <li>Drag-and-drop voor symbolen</li>
+        <li>Automatische snapping en uitlijning</li>
+      </ul>
+    </div>
+
+    <h2 id="interface">2. Interface overzicht</h2>
+    
+    <h3>2.1 Toolbar (bovenkant)</h3>
+    <p>De toolbar bevat alle belangrijke functies:</p>
+    <ul>
+      <li><span class="toolbar-item">↩️ Ongedaan maken</span> - Laatste actie ongedaan maken (<span class="keyboard-key">Ctrl+Z</span>)</li>
+      <li><span class="toolbar-item">↪️ Opnieuw</span> - Ongedaan gemaakte actie herstellen (<span class="keyboard-key">Ctrl+Y</span>)</li>
+      <li><span class="toolbar-item">📁 Uit bestand</span> - Afbeelding toevoegen van uw computer</li>
+      <li><span class="toolbar-item">⚡ Uit schema</span> - Elektrische symbolen uit uw schema</li>
+      <li><span class="toolbar-item">🧱 Binnenmuur</span> - Binnenmuur tekenmodus</li>
+      <li><span class="toolbar-item">🧱 Buitenmuur</span> - Buitenmuur tekenmodus (met textuur)</li>
+      <li><span class="toolbar-item">🗑️</span> - Geselecteerd element verwijderen (<span class="keyboard-key">Del</span>)</li>
+      <li><span class="toolbar-item">📤 Naar achter</span> / <span class="toolbar-item">📥 Naar voor</span> - Z-volgorde aanpassen</li>
+      <li><span class="toolbar-item">🔍 Zoom</span> - In-/uitzoomen en zoom reset</li>
+      <li><span class="toolbar-item">📄 Pagina</span> - Vorige/volgende pagina, toevoegen/verwijderen</li>
+      <li><span class="toolbar-item">🗂️ Lagen</span> - Layer manager tonen/verbergen</li>
+    </ul>
+
+    <h3>2.2 Sidebar (links)</h3>
+    <p>
+      De sidebar heeft twee functies:
+    </p>
+    <ul>
+      <li><strong>Symbolen lijst</strong> - Sleep symbolen naar het canvas om ze toe te voegen</li>
+      <li><strong>Properties paneel</strong> - Verschijnt automatisch bij selectie van een element</li>
+    </ul>
+
+    <h3>2.3 Canvas (midden)</h3>
+    <p>
+      Het werkgebied waar u tekent. Het witte gebied is de afdrukbare pagina. 
+      U kunt pannen door het canvas te slepen en zoomen met de toolbar of <span class="keyboard-key">Ctrl+Scroll</span>.
+    </p>
+
+    <h2 id="plattegrond">3. Plattegrond toevoegen</h2>
+    
+    <h3>3.1 Afbeelding importeren</h3>
+    <ol>
+      <li>Klik op de knop <span class="button">📁 Uit bestand</span> in de toolbar</li>
+      <li>Selecteer een afbeeldingsbestand (PNG, JPG, SVG)</li>
+      <li>De afbeelding verschijnt op het canvas</li>
+      <li>Sleep de afbeelding naar de gewenste positie</li>
+      <li>Selecteer de afbeelding om de properties te zien in de sidebar</li>
+      <li>Pas schaal en rotatie aan indien nodig</li>
+    </ol>
+
+    <div class="tip-box">
+      <strong>💡 Tip:</strong> Gebruik de <span class="button">📤 Naar achter</span> knop om de plattegrond 
+      achter de andere elementen te plaatsen. Dit maakt het makkelijker om erop te tekenen.
+    </div>
+
+    <h3>3.2 Afbeelding schalen</h3>
+    <p>
+      Selecteer de afbeelding en gebruik de properties sidebar om:
+    </p>
+    <ul>
+      <li><strong>Schaal</strong> - Percentage van originele grootte (10% - 400%)</li>
+      <li><strong>Rotatie</strong> - Draai de afbeelding (0° - 359°)</li>
+    </ul>
+
+    <h2 id="muren">4. Muren tekenen</h2>
+    
+    <h3>4.1 Binnenmuren</h3>
+    <ol>
+      <li>Klik op <span class="button">🧱 Binnenmuur</span> in de toolbar</li>
+      <li>Klik op het canvas voor het startpunt</li>
+      <li>Beweeg de muis naar het eindpunt</li>
+      <li>Klik opnieuw om de muur te plaatsen</li>
+      <li>Herhaal voor meer muren of druk <span class="keyboard-key">Esc</span> om te stoppen</li>
+    </ol>
+
+    <h3>4.2 Buitenmuren</h3>
+    <ol>
+      <li>Klik op <span class="button">🧱 Buitenmuur</span> in de toolbar</li>
+      <li>Teken op dezelfde manier als binnenmuren</li>
+      <li>Buitenmuren hebben een diagonale textuur voor visuele herkenning</li>
+    </ol>
+
+    <div class="feature-box">
+      <strong>✨ Snapping:</strong> Muren snappen automatisch naar:
+      <ul style="margin-bottom: 0;">
+        <li>Horizontale en verticale lijnen (rechthoeken)</li>
+        <li>45° diagonalen</li>
+        <li>Eindpunten van andere muren (verbindingen)</li>
+      </ul>
+    </div>
+
+    <h3>4.3 Muren bewerken</h3>
+    <p>
+      Wanneer u een muur selecteert, verschijnen er verschillende handvatten:
+    </p>
+    <ul>
+      <li><strong>8 vierkante handvatten</strong> - Aan de hoeken en zijkanten voor resize</li>
+      <li><strong>Groen rond handvat</strong> - Boven de muur voor rotatie</li>
+    </ul>
+
+    <div class="tip-box">
+      <strong>💡 Sneltoetsen voor muren:</strong>
+      <ul style="margin-bottom: 0;">
+        <li><span class="keyboard-key">↑</span><span class="keyboard-key">↓</span><span class="keyboard-key">←</span><span class="keyboard-key">→</span> - Verplaats 1px</li>
+        <li><span class="keyboard-key">Shift</span> + pijltjes - Verplaats 10px</li>
+        <li><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">↑</span><span class="keyboard-key">↓</span> - Roteer 15°</li>
+        <li><span class="keyboard-key">Ctrl+D</span> - Dupliceer geselecteerde muur</li>
+        <li><span class="keyboard-key">Del</span> - Verwijder muur</li>
+      </ul>
+    </div>
+
+    <h3>4.4 Muur properties</h3>
+    <p>
+      Selecteer een muur om de properties sidebar te openen met:
+    </p>
+    <ul>
+      <li><strong>Type</strong> - Binnen- of buitenmuur</li>
+      <li><strong>Breedte</strong> - Dikte van de muur in pixels</li>
+      <li><strong>Lengte</strong> - Lengte van de muur in pixels (read-only)</li>
+      <li><strong>Kleur</strong> - RGB of hex kleur voor de muur</li>
+      <li><strong>Rotatie</strong> - Hoek van de muur (0° - 359°)</li>
+    </ul>
+    <p>
+      Alle wijzigingen worden <strong>real-time</strong> toegepast - geen "Toepassen" knop nodig!
+    </p>
+
+    <h2 id="symbolen">5. Elektrische symbolen plaatsen</h2>
+
+    <h3>5.1 Symbolen toevoegen</h3>
+    <p>Er zijn twee manieren om symbolen toe te voegen:</p>
+
+    <h4>Methode 1: Drag-and-drop (aanbevolen)</h4>
+    <ol>
+      <li>Bekijk de symbolen lijst in de sidebar links</li>
+      <li>Sleep een symbool naar het canvas</li>
+      <li>Laat los op de gewenste positie</li>
+    </ol>
+
+    <h4>Methode 2: Via schema</h4>
+    <ol>
+      <li>Klik op <span class="button">⚡ Uit schema</span></li>
+      <li>Selecteer symbolen uit uw eéndraadschema</li>
+      <li>Klik "OK" om ze toe te voegen</li>
+      <li>Sleep ze naar de juiste posities</li>
+    </ol>
+
+    <div class="tip-box">
+      <strong>💡 Zoekfunctie:</strong> Gebruik het zoekveld in de sidebar om snel symbolen te vinden. 
+      Typ bijvoorbeeld "licht" om alle lichtpunten te zien.
+    </div>
+
+    <h3>5.2 Symbolen bewerken</h3>
+    <p>
+      Selecteer een symbool om de properties sidebar te openen. U kunt aanpassen:
+    </p>
+    <ul>
+      <li><strong>Label type</strong> - Automatisch (uit schema) of handmatig</li>
+      <li><strong>Label tekst</strong> - De weergegeven tekst naast het symbool</li>
+      <li><strong>Label positie</strong> - Links, rechts, boven of onder</li>
+      <li><strong>Tekengrootte</strong> - Grootte van de labeltekst (6-72px)</li>
+      <li><strong>Schaal</strong> - Grootte van het symbool (10% - 400%)</li>
+      <li><strong>Rotatie</strong> - Draai het symbool (0° - 359°) met slider of invoerveld</li>
+    </ul>
+
+    <h3>5.3 Meerdere symbolen</h3>
+    <p>
+      U kunt meerdere symbolen tegelijk selecteren en bewerken:
+    </p>
+    <ol>
+      <li>Houd <span class="keyboard-key">Ctrl</span> ingedrukt</li>
+      <li>Klik op elk symbool dat u wilt selecteren</li>
+      <li>Of: Sleep een selectiekader om meerdere elementen te selecteren</li>
+      <li>Verplaats, dupliceer of verwijder ze samen</li>
+    </ol>
+
+    <h2 id="bewerken">6. Elementen bewerken</h2>
+
+    <h3>6.1 Selecteren</h3>
+    <ul>
+      <li><strong>Enkel element</strong> - Klik op het element</li>
+      <li><strong>Meerdere elementen</strong> - <span class="keyboard-key">Ctrl</span> + klik</li>
+      <li><strong>Selectiekader</strong> - Sleep over meerdere elementen</li>
+      <li><strong>Alles deselecteren</strong> - Klik op een leeg gebied of druk <span class="keyboard-key">Esc</span></li>
+    </ul>
+
+    <h3>6.2 Verplaatsen</h3>
+    <ul>
+      <li><strong>Met muis</strong> - Sleep het element naar de nieuwe positie</li>
+      <li><strong>Met toetsenbord</strong> - Gebruik pijltjestoetsen voor precisie</li>
+      <li><strong>10px stappen</strong> - <span class="keyboard-key">Shift</span> + pijltjes</li>
+    </ul>
+
+    <h3>6.3 Dupliceren</h3>
+    <ol>
+      <li>Selecteer een of meerdere elementen</li>
+      <li>Druk <span class="keyboard-key">Ctrl+D</span></li>
+      <li>Of: rechtsklik en kies "Dupliceren" uit het contextmenu</li>
+      <li>De kopie verschijnt met een kleine offset</li>
+    </ol>
+
+    <h3>6.4 Verwijderen</h3>
+    <ul>
+      <li>Selecteer elementen en druk <span class="keyboard-key">Del</span></li>
+      <li>Of: Klik op <span class="button">🗑️</span> in de toolbar</li>
+    </ul>
+
+    <h3>6.5 Z-volgorde (voor/achter)</h3>
+    <p>
+      Regel welke elementen voor of achter andere elementen verschijnen:
+    </p>
+    <ul>
+      <li><span class="button">📤 Naar achter</span> - Verplaats naar de achtergrond</li>
+      <li><span class="button">📥 Naar voor</span> - Breng naar de voorgrond</li>
+    </ul>
+
+    <h2 id="layers">7. Layer manager</h2>
+
+    <h3>7.1 Layer manager openen</h3>
+    <ol>
+      <li>Klik op <span class="button">🗂️ Lagen</span> in de toolbar</li>
+      <li>Een draagbaar paneel verschijnt met alle elementen</li>
+      <li>Sleep het paneel naar een handige positie</li>
+    </ol>
+
+    <h3>7.2 Layer manager functies</h3>
+    <p>
+      Het layer paneel toont alle elementen gesorteerd op z-index (voorkant bovenaan):
+    </p>
+    <ul>
+      <li><strong>Iconen</strong> - 🧱 = muur, ⚡ = symbool, 🖼️ = afbeelding</li>
+      <li><strong>Namen</strong> - Type en adres/locatie van het element</li>
+      <li><strong>Z-index</strong> - Huidige laagnummer</li>
+      <li><strong>👁️ knop</strong> - Toon/verberg element</li>
+      <li><strong>Selectie</strong> - Klik om element te selecteren</li>
+      <li><strong>Multi-selectie</strong> - <span class="keyboard-key">Shift</span> + klik voor meerdere</li>
+    </ul>
+
+    <h3>7.3 Lagen herordenen</h3>
+    <p>
+      U kunt de z-volgorde aanpassen met drag-and-drop:
+    </p>
+    <ol>
+      <li>Klik en houd een layer vast in het layer paneel</li>
+      <li>Sleep naar boven (naar voor) of beneden (naar achter)</li>
+      <li>Laat los om de nieuwe positie te bevestigen</li>
+      <li>Alle z-indices worden automatisch herberekend</li>
+    </ol>
+
+    <div class="feature-box">
+      <strong>✨ Visuele feedback:</strong> Tijdens het slepen wordt de target positie 
+      gemarkeerd met een blauwe lijn en de gesleepte layer wordt grijs.
+    </div>
+
+    <h2 id="paginas">8. Meerdere pagina's</h2>
+
+    <h3>8.1 Pagina's beheren</h3>
+    <p>
+      Voor grote projecten kunt u meerdere pagina's gebruiken:
+    </p>
+    <ul>
+      <li><span class="toolbar-item">◀️</span> / <span class="toolbar-item">▶️</span> - Navigeer tussen pagina's</li>
+      <li><span class="toolbar-item">➕</span> - Nieuwe pagina toevoegen</li>
+      <li><span class="toolbar-item">➖</span> - Huidige pagina verwijderen</li>
+      <li>Of gebruik <span class="keyboard-key">PageUp</span> / <span class="keyboard-key">PageDown</span></li>
+    </ul>
+
+    <div class="tip-box">
+      <strong>💡 Gebruik cases voor meerdere pagina's:</strong>
+      <ul style="margin-bottom: 0;">
+        <li>Verschillende verdiepingen van een gebouw</li>
+        <li>Voor- en achterkant van een installatie</li>
+        <li>Verschillende zones of ruimtes</li>
+      </ul>
+    </div>
+
+    <h2 id="opslaan">9. Opslaan en exporteren</h2>
+
+    <h3>9.1 Automatisch opslaan</h3>
+    <p>
+      De applicatie slaat uw werk automatisch op in de browser. U ziet een indicatie 
+      rechtsboven die de status toont.
+    </p>
+
+    <div class="warning-box">
+      <strong>⚠️ Belangrijk:</strong> Browser storage kan gewist worden bij het wissen van browsercache. 
+      Exporteer regelmatig uw werk naar een bestand voor permanente backup!
+    </div>
+
+    <h3>9.2 Exporteren naar PDF</h3>
+    <ol>
+      <li>Klik op het hoofdmenu (☰) linksboven</li>
+      <li>Kies "Print / PDF"</li>
+      <li>Selecteer welke onderdelen u wilt exporteren</li>
+      <li>Klik "PDF genereren"</li>
+      <li>De PDF wordt automatisch gedownload</li>
+    </ol>
+
+    <h3>9.3 Exporteren naar afbeelding</h3>
+    <p>
+      U kunt het canvas ook als afbeelding opslaan:
+    </p>
+    <ol>
+      <li>Zoom zodat alles zichtbaar is</li>
+      <li>Gebruik de screenshot functie van uw browser of systeem</li>
+      <li>Of: gebruik de browser print functie en sla op als PDF</li>
+    </ol>
+
+    <h2 id="shortcuts">10. Sneltoetsen</h2>
+
+    <h3>10.1 Algemeen</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <tr style="background: #f8f9fa;">
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Sneltoets</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Actie</th>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Ctrl+Z</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Ongedaan maken</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Ctrl+Y</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Opnieuw</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Ctrl+D</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Dupliceer geselecteerde elementen</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Del</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Verwijder geselecteerde elementen</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Esc</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Deselecteer alles / stop tekenmodus</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Ctrl+Scroll</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Zoom in/uit</td>
+      </tr>
+    </table>
+
+    <h3>10.2 Verplaatsen</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <tr style="background: #f8f9fa;">
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Sneltoets</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Actie</th>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">↑</span><span class="keyboard-key">↓</span><span class="keyboard-key">←</span><span class="keyboard-key">→</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Verplaats 1 pixel</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Shift</span> + pijltjes</td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Verplaats 10 pixels</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">↑</span><span class="keyboard-key">↓</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Roteer 15°</td>
+      </tr>
+    </table>
+
+    <h3>10.3 Pagina's</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <tr style="background: #f8f9fa;">
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Sneltoets</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Actie</th>
+      </tr>
+      <tr>
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">PageUp</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Vorige pagina</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px; border: 1px solid #dee2e6;"><span class="keyboard-key">PageDown</span></td>
+        <td style="padding: 8px; border: 1px solid #dee2e6;">Volgende pagina</td>
+      </tr>
+    </table>
+
+    <hr style="margin: 40px 0; border: none; border-top: 2px solid #dee2e6;">
+
+    <div style="text-align: center; color: #6c757d; font-size: 14px; padding: 20px 0;">
+      <p><strong>Eéndraadschema</strong> - Gratis tool voor elektrische schema's</p>
+      <p style="margin-top: 10px;">
+        Voor vragen of ondersteuning, gebruik het contactformulier in de applicatie.
+      </p>
+      <p style="margin-top: 10px; font-size: 12px;">
+        Versie: React 2025 | Laatste update: Januari 2026
+      </p>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+      <button onclick="window.print()" style="
+        background: #0d6efd;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      ">
+        🖨️ Print deze handleiding
+      </button>
+      <button onclick="window.close()" style="
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-left: 10px;
+      ">
+        Sluiten
+      </button>
+    </div>
+  </div>
+</body>
+</html>
