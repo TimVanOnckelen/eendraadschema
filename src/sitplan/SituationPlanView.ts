@@ -15,6 +15,7 @@ import { SituationPlanView_ElementPropertiesPopup } from "./SituationPlanView_El
 import { SituationPlanView_MultiElementPropertiesPopup } from "./SituationPlanView_MultiElementPropertiesPopup";
 import { AskLegacySchakelaar } from "../importExport/AskLegacySchakelaar";
 import { WallType } from "./WallElement";
+import { FreeformShapeType } from "./FreeformShapeElement";
 import { LayerManager } from "./LayerManager";
 
 enum MovableType {
@@ -75,6 +76,16 @@ export class SituationPlanView {
   private wallMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private wallMouseUpHandler: ((e: MouseEvent) => void) | null = null;
 
+  // Freeform shape drawing mode
+  private freeformShapeDrawingMode: FreeformShapeType | null = null;
+  private freeformShapeDrawingStart: { x: number; y: number } | null = null;
+  private freeformShapePreviewElement: HTMLDivElement | null = null;
+  private freeformShapeMouseDownHandler: ((e: MouseEvent) => void) | null =
+    null;
+  private freeformShapeMouseMoveHandler: ((e: MouseEvent) => void) | null =
+    null;
+  private freeformShapeMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+
   constructor(canvas: HTMLElement, paper: HTMLElement, sitplan: SituationPlan) {
     this.canvas = canvas;
     this.paper = paper;
@@ -92,13 +103,13 @@ export class SituationPlanView {
 
     // Verwijder alle selecties wanneer we ergens anders klikken dan op een box
     this.event_manager.addEventListener(canvas, "mousedown", () => {
-      if (!this.isWallDrawingMode()) {
+      if (!this.isWallDrawingMode() && !this.isFreeformShapeDrawingMode()) {
         this.contextMenu.hide();
         this.clearSelection();
       }
     });
     this.event_manager.addEventListener(canvas, "touchstart", () => {
-      if (!this.isWallDrawingMode()) {
+      if (!this.isWallDrawingMode() && !this.isFreeformShapeDrawingMode()) {
         this.contextMenu.hide();
         this.clearSelection();
       }
@@ -472,8 +483,8 @@ export class SituationPlanView {
       this.contextMenu.addLine();
     }
 
-    // Don't show edit for walls (for now - they can just be deleted and redrawn)
-    if (!sitPlanElement.isWall()) {
+    // Don't show edit for walls and freeform shapes (for now - they can just be deleted and redrawn)
+    if (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape()) {
       this.contextMenu.addMenuItem(
         "Bewerk",
         this.editSelectedBox.bind(this),
@@ -572,11 +583,17 @@ export class SituationPlanView {
     let box = document.createElement("div");
 
     // Add wall class if this is a wall element
+    // Add freeform shape class if this is a freeform shape element
     let className = "box";
     if (element.isWall()) {
       const wallElement = element.getWallElement();
       if (wallElement) {
         className += ` ${wallElement.getCSSClass()}`;
+      }
+    } else if (element.isFreeformShape()) {
+      const freeformShapeElement = element.getFreeformShapeElement();
+      if (freeformShapeElement) {
+        className += ` ${freeformShapeElement.getCSSClass()}`;
       }
     }
 
@@ -589,9 +606,9 @@ export class SituationPlanView {
     element.boxref = box;
 
     // Boxlabel aanmaken op de DOM voor de tekst bij het symbool
-    // Walls don't need labels
+    // Walls and freeform shapes don't need labels
     let boxlabel = null;
-    if (!element.isWall()) {
+    if (!element.isWall() && !element.isFreeformShape()) {
       boxlabel = document.createElement("div");
       Object.assign(boxlabel, {
         id: element.id + "_label",
@@ -772,6 +789,26 @@ export class SituationPlanView {
 
     if (!sitPlanElement) return;
 
+    // Update wall element position if this is a wall
+    if (sitPlanElement.isWall()) {
+      const wallElement = sitPlanElement.getWallElement();
+      if (wallElement) {
+        wallElement.x = sitPlanElement.posx - wallElement.width / 2;
+        wallElement.y = sitPlanElement.posy - wallElement.height / 2;
+      }
+    }
+
+    // Update freeform shape element position if this is a freeform shape
+    if (sitPlanElement.isFreeformShape()) {
+      const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
+      if (freeformShapeElement) {
+        freeformShapeElement.x =
+          sitPlanElement.posx - freeformShapeElement.width / 2;
+        freeformShapeElement.y =
+          sitPlanElement.posy - freeformShapeElement.height / 2;
+      }
+    }
+
     const div = sitPlanElement.boxref as HTMLElement | null;
     if (!div) return;
 
@@ -927,12 +964,15 @@ export class SituationPlanView {
     this.selected.select(box);
     globalThis.undostruct.updateSelectedBoxes();
 
-    // Add resize handles for walls
+    // Add resize handles for walls and freeform shapes
     const sitPlanElement = (box as any).sitPlanElementRef;
-    if (sitPlanElement && sitPlanElement.isWall()) {
+    if (
+      sitPlanElement &&
+      (sitPlanElement.isWall() || sitPlanElement.isFreeformShape())
+    ) {
       this.addWallResizeHandles(box, sitPlanElement);
 
-      // Show wall properties in sidebar
+      // Show wall/freeform shape properties in sidebar
       if (this.sideBar) {
         this.sideBar.selectedWallElement = sitPlanElement;
         this.sideBar.selectedElement = null; // Clear element selection
@@ -1064,6 +1104,36 @@ export class SituationPlanView {
         if (newWallElement) {
           newWallElement.x = newElement.posx - newWallElement.width / 2;
           newWallElement.y = newElement.posy - newWallElement.height / 2;
+        }
+      } else if (sitPlanElement.isFreeformShape()) {
+        // Duplicate freeform shape
+        const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
+        if (!freeformShapeElement) continue;
+
+        // Create freeform shape with original position
+        newElement = this.sitplan.addFreeformShapeElement(
+          freeformShapeElement.type,
+          sitPlanElement.page,
+          freeformShapeElement.x,
+          freeformShapeElement.y,
+          freeformShapeElement.width,
+          freeformShapeElement.height
+        );
+
+        // Copy rotation
+        newElement.rotate = sitPlanElement.rotate || 0;
+
+        // Apply offset to center position (posx/posy)
+        newElement.posx = sitPlanElement.posx + offset;
+        newElement.posy = sitPlanElement.posy + offset;
+
+        // Update freeform shape element coordinates to match new center
+        const newFreeformShapeElement = newElement.getFreeformShapeElement();
+        if (newFreeformShapeElement) {
+          newFreeformShapeElement.x =
+            newElement.posx - newFreeformShapeElement.width / 2;
+          newFreeformShapeElement.y =
+            newElement.posy - newFreeformShapeElement.height / 2;
         }
       } else {
         // Duplicate regular element - create new instance and copy properties
@@ -1465,9 +1535,9 @@ export class SituationPlanView {
       let pic = (selected as any).sitPlanElementRef;
       if (pic == null) continue;
       if (pic.movable == false) continue;
-      // Walls can now rotate too!
+      // Walls and freeform shapes can now rotate too!
       pic.rotate = (pic.rotate + degrees) % 360;
-      if (rotateLabelToo && !pic.isWall())
+      if (rotateLabelToo && !pic.isWall() && !pic.isFreeformShape())
         rotateLabel.bind(this)(pic, Math.round(degrees / 90));
       this.updateBoxContent(pic);
       this.updateSymbolAndLabelPosition(pic);
@@ -2400,6 +2470,191 @@ export class SituationPlanView {
   };
 
   /**
+   * Enable freeform shape drawing mode
+   * @param shapeType Type of freeform shape to draw ('white' or 'black')
+   */
+  public enableFreeformShapeDrawingMode(shapeType: FreeformShapeType): void {
+    this.freeformShapeDrawingMode = shapeType;
+    this.canvas.style.cursor = "crosshair";
+    this.clearSelection();
+
+    // Store bound handler references so we can remove them later
+    this.freeformShapeMouseDownHandler =
+      this.startFreeformShapeDrawing.bind(this);
+
+    // Add mousedown listener to paper for freeform shape drawing
+    this.paper.addEventListener(
+      "mousedown",
+      this.freeformShapeMouseDownHandler
+    );
+  }
+
+  /**
+   * Disable freeform shape drawing mode
+   */
+  public disableFreeformShapeDrawingMode(): void {
+    this.freeformShapeDrawingMode = null;
+    this.canvas.style.cursor = "default";
+
+    // Remove freeform shape drawing listeners
+    if (this.freeformShapeMouseDownHandler) {
+      this.paper.removeEventListener(
+        "mousedown",
+        this.freeformShapeMouseDownHandler
+      );
+      this.freeformShapeMouseDownHandler = null;
+    }
+    if (this.freeformShapeMouseMoveHandler) {
+      document.removeEventListener(
+        "mousemove",
+        this.freeformShapeMouseMoveHandler
+      );
+      this.freeformShapeMouseMoveHandler = null;
+    }
+    if (this.freeformShapeMouseUpHandler) {
+      document.removeEventListener("mouseup", this.freeformShapeMouseUpHandler);
+      this.freeformShapeMouseUpHandler = null;
+    }
+
+    // Remove preview if exists
+    if (this.freeformShapePreviewElement) {
+      this.freeformShapePreviewElement.remove();
+      this.freeformShapePreviewElement = null;
+    }
+  }
+
+  /**
+   * Check if freeform shape drawing mode is active
+   */
+  public isFreeformShapeDrawingMode(): boolean {
+    return this.freeformShapeDrawingMode !== null;
+  }
+
+  /**
+   * Get current freeform shape drawing type
+   */
+  public getFreeformShapeDrawingType(): FreeformShapeType | null {
+    return this.freeformShapeDrawingMode;
+  }
+
+  /**
+   * Start drawing a freeform shape
+   */
+  private startFreeformShapeDrawing = (event: MouseEvent): void => {
+    if (!this.freeformShapeDrawingMode) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    this.freeformShapeDrawingStart = { x: paperPos.x, y: paperPos.y };
+
+    // Create preview element
+    this.freeformShapePreviewElement = document.createElement("div");
+    this.freeformShapePreviewElement.className = `freeform-preview ${
+      this.freeformShapeDrawingMode === "white"
+        ? "freeform-white"
+        : "freeform-black"
+    }`;
+    this.freeformShapePreviewElement.style.position = "absolute";
+    this.freeformShapePreviewElement.style.pointerEvents = "none";
+    this.freeformShapePreviewElement.style.border = "2px dashed #666";
+    this.freeformShapePreviewElement.style.backgroundColor =
+      this.freeformShapeDrawingMode === "white" ? "#ffffff" : "#000000";
+    this.paper.appendChild(this.freeformShapePreviewElement);
+
+    // Store bound handlers
+    this.freeformShapeMouseMoveHandler =
+      this.updateFreeformShapePreview.bind(this);
+    this.freeformShapeMouseUpHandler =
+      this.finishFreeformShapeDrawing.bind(this);
+
+    document.addEventListener("mousemove", this.freeformShapeMouseMoveHandler);
+    document.addEventListener("mouseup", this.freeformShapeMouseUpHandler);
+  };
+
+  /**
+   * Update freeform shape preview while dragging
+   */
+  private updateFreeformShapePreview = (event: MouseEvent): void => {
+    if (!this.freeformShapeDrawingStart || !this.freeformShapePreviewElement)
+      return;
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.freeformShapeDrawingStart.x, paperPos.x);
+    const y = Math.min(this.freeformShapeDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.freeformShapeDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.freeformShapeDrawingStart.y);
+
+    this.freeformShapePreviewElement.style.left = `${x}px`;
+    this.freeformShapePreviewElement.style.top = `${y}px`;
+    this.freeformShapePreviewElement.style.width = `${width}px`;
+    this.freeformShapePreviewElement.style.height = `${height}px`;
+  };
+
+  /**
+   * Finish drawing a freeform shape
+   */
+  private finishFreeformShapeDrawing = (event: MouseEvent): void => {
+    if (!this.freeformShapeDrawingStart || !this.freeformShapeDrawingMode)
+      return;
+
+    // Remove event listeners
+    if (this.freeformShapeMouseMoveHandler) {
+      document.removeEventListener(
+        "mousemove",
+        this.freeformShapeMouseMoveHandler
+      );
+      this.freeformShapeMouseMoveHandler = null;
+    }
+    if (this.freeformShapeMouseUpHandler) {
+      document.removeEventListener("mouseup", this.freeformShapeMouseUpHandler);
+      this.freeformShapeMouseUpHandler = null;
+    }
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.freeformShapeDrawingStart.x, paperPos.x);
+    const y = Math.min(this.freeformShapeDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.freeformShapeDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.freeformShapeDrawingStart.y);
+
+    // Only create freeform shape if it has minimum size
+    if (width > 5 && height > 5) {
+      const element = this.sitplan.addFreeformShapeElement(
+        this.freeformShapeDrawingMode,
+        this.sitplan.activePage,
+        x,
+        y,
+        width,
+        height
+      );
+
+      this.redraw();
+      globalThis.undostruct.store();
+    }
+
+    // Remove preview
+    if (this.freeformShapePreviewElement) {
+      this.freeformShapePreviewElement.remove();
+      this.freeformShapePreviewElement = null;
+    }
+
+    this.freeformShapeDrawingStart = null;
+  };
+
+  /**
    * Add resize handles to a selected wall
    */
   private addWallResizeHandles(
@@ -2453,62 +2708,68 @@ export class SituationPlanView {
     const sitPlanElement = this.sitplan
       .getElements()
       .find((el) => el.id === wallId);
-    if (!sitPlanElement || !sitPlanElement.isWall()) return;
+    if (
+      !sitPlanElement ||
+      (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape())
+    )
+      return;
 
     const wallElement = sitPlanElement.getWallElement();
-    if (!wallElement) return;
+    const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
+    const shapeElement = wallElement || freeformShapeElement;
+    if (!shapeElement) return;
 
     const startX = event.clientX;
     const startY = event.clientY;
-    const startWallX = wallElement.x;
-    const startWallY = wallElement.y;
-    const startWallWidth = wallElement.width;
-    const startWallHeight = wallElement.height;
+    const startShapeX = shapeElement.x;
+    const startShapeY = shapeElement.y;
+    const startShapeWidth = shapeElement.width;
+    const startShapeHeight = shapeElement.height;
 
     const handleResize = (e: MouseEvent) => {
       const deltaX = (e.clientX - startX) / this.zoomfactor;
       const deltaY = (e.clientY - startY) / this.zoomfactor;
 
-      let newX = startWallX;
-      let newY = startWallY;
-      let newWidth = startWallWidth;
-      let newHeight = startWallHeight;
+      let newX = startShapeX;
+      let newY = startShapeY;
+      let newWidth = startShapeWidth;
+      let newHeight = startShapeHeight;
 
       // Calculate new dimensions based on handle position
       switch (position) {
         case "nw":
-          newX = startWallX + deltaX;
-          newY = startWallY + deltaY;
-          newWidth = startWallWidth - deltaX;
-          newHeight = startWallHeight - deltaY;
+          newX = startShapeX + deltaX;
+          newY = startShapeY + deltaY;
+          newWidth = startShapeWidth - deltaX;
+          newHeight = startShapeHeight - deltaY;
           break;
         case "n":
-          newY = startWallY + deltaY;
-          newHeight = startWallHeight - deltaY;
+          newY = startShapeY + deltaY;
+          newHeight = startShapeHeight - deltaY;
           break;
         case "ne":
-          newY = startWallY + deltaY;
-          newWidth = startWallWidth + deltaX;
-          newHeight = startWallHeight - deltaY;
+          newY = startShapeY + deltaY;
+          newWidth = startShapeWidth + deltaX;
+          newHeight = startShapeHeight - deltaY;
           break;
         case "e":
-          newWidth = startWallWidth + deltaX;
+          newWidth = startShapeWidth + deltaX;
           break;
         case "se":
-          newWidth = startWallWidth + deltaX;
-          newHeight = startWallHeight + deltaY;
+          newWidth = startShapeWidth + deltaX;
+          newHeight = startShapeHeight + deltaY;
           break;
         case "s":
-          newHeight = startWallHeight + deltaY;
+          newHeight = startShapeHeight + deltaY;
           break;
         case "sw":
-          newX = startWallX + deltaX;
-          newWidth = startWallWidth - deltaX;
-          newHeight = startWallHeight + deltaY;
+          newX = startShapeX + deltaX;
+          newWidth = startShapeWidth - deltaX;
+          newHeight = startShapeHeight + deltaY;
           break;
         case "w":
-          newX = startWallX + deltaX;
-          newWidth = startWallWidth - deltaX;
+          newX = startShapeX + deltaX;
+          newWidth = startShapeWidth - deltaX;
           break;
       }
 
@@ -2516,11 +2777,11 @@ export class SituationPlanView {
       if (newWidth < 10) newWidth = 10;
       if (newHeight < 10) newHeight = 10;
 
-      // Update wall element
-      wallElement.x = newX;
-      wallElement.y = newY;
-      wallElement.width = newWidth;
-      wallElement.height = newHeight;
+      // Update wall or freeform shape element
+      shapeElement.x = newX;
+      shapeElement.y = newY;
+      shapeElement.width = newWidth;
+      shapeElement.height = newHeight;
 
       // Update situation plan element
       sitPlanElement.posx = newX + newWidth / 2;
@@ -2553,7 +2814,7 @@ export class SituationPlanView {
   };
 
   /**
-   * Start rotating a wall
+   * Start rotating a wall or freeform shape
    */
   private startWallRotation = (event: MouseEvent): void => {
     event.stopPropagation();
@@ -2565,7 +2826,11 @@ export class SituationPlanView {
     const sitPlanElement = this.sitplan
       .getElements()
       .find((el) => el.id === wallId);
-    if (!sitPlanElement || !sitPlanElement.isWall()) return;
+    if (
+      !sitPlanElement ||
+      (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape())
+    )
+      return;
 
     const centerX = sitPlanElement.posx;
     const centerY = sitPlanElement.posy;

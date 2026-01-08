@@ -20,6 +20,7 @@ export const SitPlanView: React.FC = () => {
   const [numPages, setNumPages] = useState(1);
   const draggedElectroItemId = useRef<number | null>(null);
   const [wallDrawingMode, setWallDrawingMode] = useState<'inner' | 'outer' | null>(null);
+  const [freeformShapeDrawingMode, setFreeformShapeDrawingMode] = useState<'white' | 'black' | null>(null);
 
   const updatePageInfo = () => {
     if (structure?.sitplanview) {
@@ -320,6 +321,8 @@ export const SitPlanView: React.FC = () => {
     } else {
       // Enable inner wall drawing mode
       structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setFreeformShapeDrawingMode(null);
       structure.sitplanview.enableWallDrawingMode('inner');
       setWallDrawingMode('inner');
     }
@@ -335,6 +338,8 @@ export const SitPlanView: React.FC = () => {
     } else {
       // Enable outer wall drawing mode
       structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setFreeformShapeDrawingMode(null);
       structure.sitplanview.enableWallDrawingMode('outer');
       setWallDrawingMode('outer');
     }
@@ -343,6 +348,42 @@ export const SitPlanView: React.FC = () => {
   const handleToggleLayerManager = () => {
     if (!structure?.sitplanview?.layerManager) return;
     structure.sitplanview.layerManager.toggle();
+  };
+
+  const handleToggleWhiteShape = () => {
+    if (!structure?.sitplanview) return;
+    
+    if (freeformShapeDrawingMode === 'white') {
+      // Disable freeform shape drawing mode
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setFreeformShapeDrawingMode(null);
+    } else {
+      // Disable any existing modes first
+      structure.sitplanview.disableWallDrawingMode();
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setWallDrawingMode(null);
+      // Enable white shape drawing mode
+      structure.sitplanview.enableFreeformShapeDrawingMode('white');
+      setFreeformShapeDrawingMode('white');
+    }
+  };
+
+  const handleToggleBlackShape = () => {
+    if (!structure?.sitplanview) return;
+    
+    if (freeformShapeDrawingMode === 'black') {
+      // Disable freeform shape drawing mode
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setFreeformShapeDrawingMode(null);
+    } else {
+      // Disable any existing modes first
+      structure.sitplanview.disableWallDrawingMode();
+      structure.sitplanview.disableFreeformShapeDrawingMode();
+      setWallDrawingMode(null);
+      // Enable black shape drawing mode
+      structure.sitplanview.enableFreeformShapeDrawingMode('black');
+      setFreeformShapeDrawingMode('black');
+    }
   };
 
   return (
@@ -471,49 +512,105 @@ export const SitPlanView: React.FC = () => {
 
           <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
 
-          {/* Wall drawing buttons */}
-          <button
-            onClick={handleToggleInnerWall}
-            style={{
-              padding: '6px 10px',
-              border: `2px solid ${wallDrawingMode === 'inner' ? '#28a745' : '#6c757d'}`,
-              borderRadius: '4px',
-              backgroundColor: wallDrawingMode === 'inner' ? '#28a745' : 'white',
-              color: wallDrawingMode === 'inner' ? 'white' : '#6c757d',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap'
-            }}
-            title="Binnenmuur tekenen"
-          >
-            <span style={{ fontSize: '16px' }}>🧱</span>
-            <span>Binnen</span>
-          </button>
-          <button
-            onClick={handleToggleOuterWall}
-            style={{
-              padding: '6px 10px',
-              border: `2px solid ${wallDrawingMode === 'outer' ? '#28a745' : '#495057'}`,
-              borderRadius: '4px',
-              backgroundColor: wallDrawingMode === 'outer' ? '#28a745' : 'white',
-              color: wallDrawingMode === 'outer' ? 'white' : '#495057',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '13px',
-              fontWeight: '600',
-              whiteSpace: 'nowrap'
-            }}
-            title="Buitenmuur tekenen"
-          >
-            <span style={{ fontSize: '16px' }}>🧱</span>
-            <span>Buiten</span>
-          </button>
+          {/* Drawing tools group - Muren en Vormen */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '4px',
+            padding: '4px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '6px',
+            border: '1px solid #dee2e6'
+          }}>
+            {/* Wall drawing buttons */}
+            <button
+              onClick={handleToggleInnerWall}
+              style={{
+                padding: '6px 10px',
+                border: `2px solid ${wallDrawingMode === 'inner' ? '#28a745' : '#6c757d'}`,
+                borderRadius: '4px',
+                backgroundColor: wallDrawingMode === 'inner' ? '#28a745' : 'white',
+                color: wallDrawingMode === 'inner' ? 'white' : '#6c757d',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '13px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap'
+              }}
+              title="Binnenmuur tekenen"
+            >
+              <span style={{ fontSize: '16px' }}>🧱</span>
+              <span>Binnen</span>
+            </button>
+            <button
+              onClick={handleToggleOuterWall}
+              style={{
+                padding: '6px 10px',
+                border: `2px solid ${wallDrawingMode === 'outer' ? '#28a745' : '#495057'}`,
+                borderRadius: '4px',
+                backgroundColor: wallDrawingMode === 'outer' ? '#28a745' : 'white',
+                color: wallDrawingMode === 'outer' ? 'white' : '#495057',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '13px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap'
+              }}
+              title="Buitenmuur tekenen"
+            >
+              <span style={{ fontSize: '16px' }}>🧱</span>
+              <span>Buiten</span>
+            </button>
+
+            <div style={{ width: '1px', height: '100%', backgroundColor: '#ced4da', margin: '0 2px' }}></div>
+
+            {/* Freeform shape drawing buttons */}
+            <button
+              onClick={handleToggleWhiteShape}
+              style={{
+                padding: '6px 10px',
+                border: `2px solid ${freeformShapeDrawingMode === 'white' ? '#28a745' : '#6c757d'}`,
+                borderRadius: '4px',
+                backgroundColor: freeformShapeDrawingMode === 'white' ? '#28a745' : 'white',
+                color: freeformShapeDrawingMode === 'white' ? 'white' : '#6c757d',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '13px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap'
+              }}
+              title="Witte vrije vorm tekenen"
+            >
+              <span style={{ fontSize: '16px' }}>⬜</span>
+              <span>Wit</span>
+            </button>
+            <button
+              onClick={handleToggleBlackShape}
+              style={{
+                padding: '6px 10px',
+                border: `2px solid ${freeformShapeDrawingMode === 'black' ? '#28a745' : '#495057'}`,
+                borderRadius: '4px',
+                backgroundColor: freeformShapeDrawingMode === 'black' ? '#28a745' : 'white',
+                color: freeformShapeDrawingMode === 'black' ? 'white' : '#495057',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '13px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap'
+              }}
+              title="Zwarte vrije vorm tekenen"
+            >
+              <span style={{ fontSize: '16px' }}>⬛</span>
+              <span>Zwart</span>
+            </button>
+          </div>
 
           <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
 

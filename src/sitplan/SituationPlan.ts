@@ -6,6 +6,10 @@ import { Electro_Item } from "../List_Item/Electro_Item";
 import { AdresType, AdresLocation } from "./SituationPlanElement";
 import { Container } from "../List_Item/Container";
 import { WallElement, WallType } from "./WallElement";
+import {
+  FreeformShapeElement,
+  FreeformShapeType,
+} from "./FreeformShapeElement";
 
 /**
  * Volledig overzicht van een situatieplan.
@@ -214,6 +218,42 @@ export class SituationPlan {
 
     const element = new SituationPlanElement();
     element.setWallElement(wallElement);
+    element.movable = true;
+
+    this.elements.push(element);
+    return element;
+  }
+
+  /**
+   * Creëer een nieuw vrije vorm element in het situatieplan
+   *
+   * @param {FreeformShapeType} shapeType Het type vrije vorm ('white' of 'black')
+   * @param {number} page Het pagina-nummer van het element in het situatieplan
+   * @param {number} x De x-coordinaat van de linkerbovenhoek van de vorm
+   * @param {number} y De y-coordinaat van de linkerbovenhoek van de vorm
+   * @param {number} width De breedte van de vorm
+   * @param {number} height De hoogte van de vorm
+   * @returns {SituationPlanElement} Het element dat is toegevoegd
+   */
+  addFreeformShapeElement(
+    shapeType: FreeformShapeType,
+    page: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): SituationPlanElement {
+    const freeformShapeElement = new FreeformShapeElement({
+      type: shapeType,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      page: page,
+    });
+
+    const element = new SituationPlanElement();
+    element.setFreeformShapeElement(freeformShapeElement);
     element.movable = true;
 
     this.elements.push(element);
