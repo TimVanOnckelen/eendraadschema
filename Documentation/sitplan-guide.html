@@ -187,13 +187,22 @@
   <div class="container">
     <h1>🏠 Situatieschema - Handleiding</h1>
     
+    <div class="feature-box">
+      <strong>🆕 Nieuw in versie Januari 2026:</strong>
+      <ul style="margin-bottom: 0;">
+        <li><strong>Vrije vormen</strong> - Teken witte en zwarte rechthoekige vormen voor het markeren van ruimtes, maskeren van delen, of decoratieve elementen</li>
+        <li><strong>Gegroepeerde tekentools</strong> - Muren en vormen zijn nu visueel gegroepeerd in de toolbar voor betere overzichtelijkheid</li>
+        <li><strong>Verbeterde UI</strong> - Alle tekentools hebben dezelfde functionaliteit: verplaatsen, roteren, resize en dupliceren</li>
+      </ul>
+    </div>
+    
     <div class="toc">
       <h2>Inhoudstafel</h2>
       <ul>
         <li><a href="#introductie">1. Introductie</a></li>
         <li><a href="#interface">2. Interface overzicht</a></li>
         <li><a href="#plattegrond">3. Plattegrond toevoegen</a></li>
-        <li><a href="#muren">4. Muren tekenen</a></li>
+        <li><a href="#muren">4. Muren en vormen tekenen</a></li>
         <li><a href="#symbolen">5. Elektrische symbolen plaatsen</a></li>
         <li><a href="#bewerken">6. Elementen bewerken</a></li>
         <li><a href="#layers">7. Layer manager</a></li>
@@ -211,14 +220,15 @@
     </p>
     
     <div class="feature-box">
-      <strong>✨ Nieuwe functies:</strong>
+      <strong>✨ Belangrijkste functies:</strong>
       <ul style="margin-bottom: 0;">
-        <li>Interactief muren tekenen (binnen- en buitenmuren)</li>
+        <li>Interactief muren en vormen tekenen (binnen- en buitenmuren, witte en zwarte vormen)</li>
         <li>Inline bewerking met handvatten voor resize en rotatie</li>
         <li>Properties sidebar voor real-time aanpassingen</li>
         <li>Layer manager voor organisatie en volgorde</li>
         <li>Drag-and-drop voor symbolen</li>
         <li>Automatische snapping en uitlijning</li>
+        <li>Volledig undo/redo support voor alle bewerkingen</li>
       </ul>
     </div>
 
@@ -231,8 +241,14 @@
       <li><span class="toolbar-item">↪️ Opnieuw</span> - Ongedaan gemaakte actie herstellen (<span class="keyboard-key">Ctrl+Y</span>)</li>
       <li><span class="toolbar-item">📁 Uit bestand</span> - Afbeelding toevoegen van uw computer</li>
       <li><span class="toolbar-item">⚡ Uit schema</span> - Elektrische symbolen uit uw schema</li>
-      <li><span class="toolbar-item">🧱 Binnenmuur</span> - Binnenmuur tekenmodus</li>
-      <li><span class="toolbar-item">🧱 Buitenmuur</span> - Buitenmuur tekenmodus (met textuur)</li>
+      <li><strong>Tekentoolsgroep</strong> (gegroepeerd in grijze box):
+        <ul style="margin-top: 5px;">
+          <li><span class="toolbar-item">🧱 Binnen</span> - Binnenmuur tekenmodus</li>
+          <li><span class="toolbar-item">🧱 Buiten</span> - Buitenmuur tekenmodus (met textuur)</li>
+          <li><span class="toolbar-item">⬜ Wit</span> - Witte vrije vorm tekenen</li>
+          <li><span class="toolbar-item">⬛ Zwart</span> - Zwarte vrije vorm tekenen</li>
+        </ul>
+      </li>
       <li><span class="toolbar-item">🗑️</span> - Geselecteerd element verwijderen (<span class="keyboard-key">Del</span>)</li>
       <li><span class="toolbar-item">📤 Naar achter</span> / <span class="toolbar-item">📥 Naar voor</span> - Z-volgorde aanpassen</li>
       <li><span class="toolbar-item">🔍 Zoom</span> - In-/uitzoomen en zoom reset</li>
@@ -281,11 +297,16 @@
       <li><strong>Rotatie</strong> - Draai de afbeelding (0° - 359°)</li>
     </ul>
 
-    <h2 id="muren">4. Muren tekenen</h2>
+    <h2 id="muren">4. Muren en vormen tekenen</h2>
     
+    <p>
+      De tekentoolsgroep bevat vier verschillende tekeninstrumenten om uw plattegrond vorm te geven:
+      muren (binnen en buiten) en vrije vormen (wit en zwart). Alle tools werken op dezelfde manier.
+    </p>
+
     <h3>4.1 Binnenmuren</h3>
     <ol>
-      <li>Klik op <span class="button">🧱 Binnenmuur</span> in de toolbar</li>
+      <li>Klik op <span class="button">🧱 Binnen</span> in de tekentoolsgroep</li>
       <li>Klik op het canvas voor het startpunt</li>
       <li>Beweeg de muis naar het eindpunt</li>
       <li>Klik opnieuw om de muur te plaatsen</li>
@@ -294,10 +315,30 @@
 
     <h3>4.2 Buitenmuren</h3>
     <ol>
-      <li>Klik op <span class="button">🧱 Buitenmuur</span> in de toolbar</li>
+      <li>Klik op <span class="button">🧱 Buiten</span> in de tekentoolsgroep</li>
       <li>Teken op dezelfde manier als binnenmuren</li>
       <li>Buitenmuren hebben een diagonale textuur voor visuele herkenning</li>
     </ol>
+
+    <h3>4.3 Vrije vormen (Wit en Zwart)</h3>
+    <p>
+      Gebruik vrije vormen om vlakken te creëren, ruimtes te markeren, of decoratieve elementen toe te voegen:
+    </p>
+    <ol>
+      <li>Klik op <span class="button">⬜ Wit</span> of <span class="button">⬛ Zwart</span> in de tekentoolsgroep</li>
+      <li>Klik en sleep op het canvas om een rechthoek te tekenen</li>
+      <li>Laat de muisknop los om de vorm te plaatsen</li>
+      <li>Herhaal voor meer vormen of druk <span class="keyboard-key">Esc</span> om te stoppen</li>
+    </ol>
+
+    <div class="tip-box">
+      <strong>💡 Toepassingen voor vrije vormen:</strong>
+      <ul style="margin-bottom: 0;">
+        <li><strong>Witte vormen</strong> - Ideaal voor het maskeren van delen van de plattegrond, accentueren van ruimtes, of het creëren van labels</li>
+        <li><strong>Zwarte vormen</strong> - Perfect voor het aangeven van vaste elementen, pilaren, kasten, of schaduwen</li>
+        <li>Combineer met de <span class="button">📤 Naar achter</span> / <span class="button">📥 Naar voor</span> knoppen om de z-volgorde aan te passen</li>
+      </ul>
+    </div>
 
     <div class="feature-box">
       <strong>✨ Snapping:</strong> Muren snappen automatisch naar:
@@ -308,36 +349,37 @@
       </ul>
     </div>
 
-    <h3>4.3 Muren bewerken</h3>
+    <h3>4.4 Muren en vormen bewerken</h3>
     <p>
-      Wanneer u een muur selecteert, verschijnen er verschillende handvatten:
+      Wanneer u een muur of vorm selecteert, verschijnen er verschillende handvatten:
     </p>
     <ul>
       <li><strong>8 vierkante handvatten</strong> - Aan de hoeken en zijkanten voor resize</li>
-      <li><strong>Groen rond handvat</strong> - Boven de muur voor rotatie</li>
+      <li><strong>Groen rond handvat</strong> - Boven het element voor rotatie</li>
     </ul>
 
     <div class="tip-box">
-      <strong>💡 Sneltoetsen voor muren:</strong>
+      <strong>💡 Sneltoetsen voor muren en vormen:</strong>
       <ul style="margin-bottom: 0;">
         <li><span class="keyboard-key">↑</span><span class="keyboard-key">↓</span><span class="keyboard-key">←</span><span class="keyboard-key">→</span> - Verplaats 1px</li>
         <li><span class="keyboard-key">Shift</span> + pijltjes - Verplaats 10px</li>
         <li><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">↑</span><span class="keyboard-key">↓</span> - Roteer 15°</li>
-        <li><span class="keyboard-key">Ctrl+D</span> - Dupliceer geselecteerde muur</li>
-        <li><span class="keyboard-key">Del</span> - Verwijder muur</li>
+        <li><span class="keyboard-key">Ctrl+D</span> - Dupliceer geselecteerd element</li>
+        <li><span class="keyboard-key">Del</span> - Verwijder element</li>
+        <li><span class="keyboard-key">Esc</span> - Stop tekenmodus</li>
       </ul>
     </div>
 
-    <h3>4.4 Muur properties</h3>
+    <h3>4.5 Muur en vorm properties</h3>
     <p>
-      Selecteer een muur om de properties sidebar te openen met:
+      Selecteer een muur of vorm om de properties sidebar te openen met:
     </p>
     <ul>
-      <li><strong>Type</strong> - Binnen- of buitenmuur</li>
-      <li><strong>Breedte</strong> - Dikte van de muur in pixels</li>
-      <li><strong>Lengte</strong> - Lengte van de muur in pixels (read-only)</li>
-      <li><strong>Kleur</strong> - RGB of hex kleur voor de muur</li>
-      <li><strong>Rotatie</strong> - Hoek van de muur (0° - 359°)</li>
+      <li><strong>Type</strong> - Binnen-/buitenmuur of wit/zwart voor vormen</li>
+      <li><strong>Breedte</strong> - Horizontale afmeting in pixels</li>
+      <li><strong>Hoogte</strong> - Verticale afmeting in pixels</li>
+      <li><strong>Rotatie</strong> - Hoek van het element (0° - 359°)</li>
+      <li><strong>Positie (X, Y)</strong> - Coördinaten op het canvas</li>
     </ul>
     <p>
       Alle wijzigingen worden <strong>real-time</strong> toegepast - geen "Toepassen" knop nodig!
@@ -446,7 +488,7 @@
       Het layer paneel toont alle elementen gesorteerd op z-index (voorkant bovenaan):
     </p>
     <ul>
-      <li><strong>Iconen</strong> - 🧱 = muur, ⚡ = symbool, 🖼️ = afbeelding</li>
+      <li><strong>Iconen</strong> - 🧱 = muur, ⬜⬛ = vorm, ⚡ = symbool, 🖼️ = afbeelding</li>
       <li><strong>Namen</strong> - Type en adres/locatie van het element</li>
       <li><strong>Z-index</strong> - Huidige laagnummer</li>
       <li><strong>👁️ knop</strong> - Toon/verberg element</li>

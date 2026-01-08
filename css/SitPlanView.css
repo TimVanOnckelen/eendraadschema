@@ -140,6 +140,32 @@
   border: 2px dashed #1a1a1a;
 }
 
+/* Freeform shape styles */
+.freeform-white {
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+}
+
+.freeform-black {
+  background-color: #000000;
+  border: 1px solid #000000;
+}
+
+.freeform-preview {
+  opacity: 0.6;
+  z-index: 1000;
+}
+
+.freeform-preview.freeform-white {
+  background-color: #ffffff;
+  border: 2px dashed #666666;
+}
+
+.freeform-preview.freeform-black {
+  background-color: #000000;
+  border: 2px dashed #333333;
+}
+
 /* Wall resize handles */
 .wall-resize-handle {
   position: absolute;

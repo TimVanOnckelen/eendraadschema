@@ -1,6 +1,10 @@
 import { randomId } from "../general";
 import { Electro_Item } from "../List_Item/Electro_Item";
 import { WallElement, WallType } from "./WallElement";
+import {
+  FreeformShapeElement,
+  FreeformShapeType,
+} from "./FreeformShapeElement";
 
 export type AdresLocation = "rechts" | "links" | "boven" | "onder";
 export type AdresType = "auto" | "manueel";
@@ -18,6 +22,7 @@ export class SituationPlanElement {
   public id: string; //unieke identificatie van het element
   private electroItemId: number | null = null; // Referentie naar het electro-element in de datastructuur indien van toepassing
   private wallElement: WallElement | null = null; // Referentie naar een muur element indien het een muur is
+  private freeformShapeElement: FreeformShapeElement | null = null; // Referentie naar een vrije vorm indien het een vrije vorm is
 
   // -- Basis eigenschappen van het element zelf --
   public boxref: HTMLDivElement | null = null; // Referentie naar het DIV document in de browser waar het element wordt afgebeeld
@@ -122,6 +127,7 @@ export class SituationPlanElement {
   setWallElement(wallElement: WallElement) {
     this.wallElement = wallElement;
     this.electroItemId = null; // Een muur kan geen electro element zijn
+    this.freeformShapeElement = null; // Een muur kan geen vrije vorm zijn
 
     // Synchronize position and size
     this.posx = wallElement.x + wallElement.width / 2;
@@ -130,6 +136,49 @@ export class SituationPlanElement {
     this.sizey = wallElement.height;
     this.page = wallElement.page;
     this.svg = wallElement.toSVG();
+    this.needsViewUpdate = true;
+  }
+
+  /**
+   * isFreeformShape
+   *
+   * Controleer of het element een vrije vorm is
+   *
+   * @returns boolean
+   */
+
+  isFreeformShape(): boolean {
+    return this.freeformShapeElement != null;
+  }
+
+  /**
+   * getFreeformShapeElement
+   *
+   * @returns FreeformShapeElement | null - Het vrije vorm element indien het een vrije vorm is, anders null
+   */
+
+  getFreeformShapeElement(): FreeformShapeElement | null {
+    return this.freeformShapeElement;
+  }
+
+  /**
+   * setFreeformShapeElement
+   *
+   * @param freeformShapeElement FreeformShapeElement - Het vrije vorm element
+   */
+
+  setFreeformShapeElement(freeformShapeElement: FreeformShapeElement) {
+    this.freeformShapeElement = freeformShapeElement;
+    this.electroItemId = null; // Een vrije vorm kan geen electro element zijn
+    this.wallElement = null; // Een vrije vorm kan geen muur zijn
+
+    // Synchronize position and size
+    this.posx = freeformShapeElement.x + freeformShapeElement.width / 2;
+    this.posy = freeformShapeElement.y + freeformShapeElement.height / 2;
+    this.sizex = freeformShapeElement.width;
+    this.sizey = freeformShapeElement.height;
+    this.page = freeformShapeElement.page;
+    this.svg = freeformShapeElement.toSVG();
     this.needsViewUpdate = true;
   }
 
@@ -395,6 +444,19 @@ export class SituationPlanElement {
       }
     }
 
+    // For freeform shapes, always regenerate SVG to ensure correct dimensions
+    if (this.isFreeformShape()) {
+      const freeformShapeElement = this.getFreeformShapeElement();
+      if (freeformShapeElement) {
+        freeformShapeElement.width = this.sizex;
+        freeformShapeElement.height = this.sizey;
+        freeformShapeElement.x = this.posx - this.sizex / 2;
+        freeformShapeElement.y = this.posy - this.sizey / 2;
+        this.svg = freeformShapeElement.toSVG();
+        this.needsViewUpdate = true; // Force update
+      }
+    }
+
     let posinfo = "";
     let transform = "";
 
@@ -568,6 +630,11 @@ export class SituationPlanElement {
       baseObject.wall = this.wallElement.toJSON();
     }
 
+    // Add freeform shape data if this is a freeform shape
+    if (this.isFreeformShape()) {
+      baseObject.freeformShape = this.freeformShapeElement.toJSON();
+    }
+
     return baseObject;
   }
 
@@ -607,6 +674,14 @@ export class SituationPlanElement {
     if (json.wall != null) {
       this.wallElement = WallElement.fromJSON(json.wall);
       this.svg = this.wallElement.toSVG();
+    }
+
+    // Load freeform shape data if present
+    if (json.freeformShape != null) {
+      this.freeformShapeElement = FreeformShapeElement.fromJSON(
+        json.freeformShape
+      );
+      this.svg = this.freeformShapeElement.toSVG();
     }
 
     this.needsViewUpdate = true; // TODO: make this more efficient as it will always trigger redraws, even when not needed
