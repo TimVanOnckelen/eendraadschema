@@ -1,5 +1,6 @@
 import { randomId } from "../general";
 import { Electro_Item } from "../List_Item/Electro_Item";
+import { WallElement, WallType } from "./WallElement";
 
 export type AdresLocation = "rechts" | "links" | "boven" | "onder";
 export type AdresType = "auto" | "manueel";
@@ -16,6 +17,7 @@ export class SituationPlanElement {
   // -- Identificatie --
   public id: string; //unieke identificatie van het element
   private electroItemId: number | null = null; // Referentie naar het electro-element in de datastructuur indien van toepassing
+  private wallElement: WallElement | null = null; // Referentie naar een muur element indien het een muur is
 
   // -- Basis eigenschappen van het element zelf --
   public boxref: HTMLDivElement | null = null; // Referentie naar het DIV document in de browser waar het element wordt afgebeeld
@@ -87,6 +89,48 @@ export class SituationPlanElement {
       );
     }
     return false;
+  }
+
+  /**
+   * isWall
+   *
+   * Controleer of het element een muur is
+   *
+   * @returns boolean
+   */
+
+  isWall(): boolean {
+    return this.wallElement != null;
+  }
+
+  /**
+   * getWallElement
+   *
+   * @returns WallElement | null - Het muur element indien het een muur is, anders null
+   */
+
+  getWallElement(): WallElement | null {
+    return this.wallElement;
+  }
+
+  /**
+   * setWallElement
+   *
+   * @param wallElement WallElement - Het muur element
+   */
+
+  setWallElement(wallElement: WallElement) {
+    this.wallElement = wallElement;
+    this.electroItemId = null; // Een muur kan geen electro element zijn
+
+    // Synchronize position and size
+    this.posx = wallElement.x + wallElement.width / 2;
+    this.posy = wallElement.y + wallElement.height / 2;
+    this.sizex = wallElement.width;
+    this.sizey = wallElement.height;
+    this.page = wallElement.page;
+    this.svg = wallElement.toSVG();
+    this.needsViewUpdate = true;
   }
 
   /**
@@ -338,6 +382,19 @@ export class SituationPlanElement {
       if (electroItem != null) electroItem.updateSituationPlanElement(this);
     }
 
+    // For walls, always regenerate SVG to ensure correct dimensions
+    if (this.isWall()) {
+      const wallElement = this.getWallElement();
+      if (wallElement) {
+        wallElement.width = this.sizex;
+        wallElement.height = this.sizey;
+        wallElement.x = this.posx - this.sizex / 2;
+        wallElement.y = this.posy - this.sizey / 2;
+        this.svg = wallElement.toSVG();
+        this.needsViewUpdate = true; // Force update
+      }
+    }
+
     let posinfo = "";
     let transform = "";
 
@@ -479,7 +536,7 @@ export class SituationPlanElement {
    */
 
   toJsonObject() {
-    return {
+    const baseObject: any = {
       page: this.page,
 
       posx: this.posx,
@@ -505,6 +562,13 @@ export class SituationPlanElement {
       svg: this.isEendraadschemaSymbool() ? "" : this.svg,
       electroItemId: this.electroItemId,
     };
+
+    // Add wall data if this is a wall
+    if (this.isWall()) {
+      baseObject.wall = this.wallElement.toJSON();
+    }
+
+    return baseObject;
   }
 
   /**
@@ -538,6 +602,12 @@ export class SituationPlanElement {
 
     this.svg = json.svg;
     this.electroItemId = json.electroItemId;
+
+    // Load wall data if present
+    if (json.wall != null) {
+      this.wallElement = WallElement.fromJSON(json.wall);
+      this.svg = this.wallElement.toSVG();
+    }
 
     this.needsViewUpdate = true; // TODO: make this more efficient as it will always trigger redraws, even when not needed
 

@@ -5,6 +5,7 @@ import { htmlspecialchars } from "../general";
 import { Electro_Item } from "../List_Item/Electro_Item";
 import { AdresType, AdresLocation } from "./SituationPlanElement";
 import { Container } from "../List_Item/Container";
+import { WallElement, WallType } from "./WallElement";
 
 /**
  * Volledig overzicht van een situatieplan.
@@ -179,6 +180,42 @@ export class SituationPlan {
     Object.assign(element, { page, posx, posy, labelfontsize, scale, rotate });
     element.setElectroItemId(electroItemId);
     element.setAdres(adrestype, adres, adreslocation);
+    this.elements.push(element);
+    return element;
+  }
+
+  /**
+   * Creëer een nieuw muur element in het situatieplan
+   *
+   * @param {WallType} wallType Het type muur ('inner' of 'outer')
+   * @param {number} page Het pagina-nummer van het element in het situatieplan
+   * @param {number} x De x-coordinaat van de linkerbovenhoek van de muur
+   * @param {number} y De y-coordinaat van de linkerbovenhoek van de muur
+   * @param {number} width De breedte van de muur
+   * @param {number} height De hoogte van de muur
+   * @returns {SituationPlanElement} Het element dat is toegevoegd
+   */
+  addWallElement(
+    wallType: WallType,
+    page: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): SituationPlanElement {
+    const wallElement = new WallElement({
+      type: wallType,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      page: page,
+    });
+
+    const element = new SituationPlanElement();
+    element.setWallElement(wallElement);
+    element.movable = true;
+
     this.elements.push(element);
     return element;
   }
