@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eéndraadschema - Handleiding</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #0d6efd;
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+    
+    h2 {
+      color: #34495e;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      font-size: 24px;
+      border-left: 4px solid #0d6efd;
+      padding-left: 15px;
+    }
+    
+    h3 {
+      color: #5a6c7d;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    p {
+      margin-bottom: 15px;
+      text-align: justify;
+    }
+    
+    ul, ol {
+      margin-left: 30px;
+      margin-bottom: 20px;
+    }
+    
+    li {
+      margin-bottom: 10px;
+    }
+    
+    .feature-box {
+      background: #f8f9fa;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .tip-box {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .warning-box {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .info-box {
+      background: #d1ecf1;
+      border-left: 4px solid #0c5460;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .keyboard-key {
+      display: inline-block;
+      background: #e9ecef;
+      border: 1px solid #adb5bd;
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 0 #adb5bd;
+      margin: 0 2px;
+    }
+    
+    .button {
+      display: inline-block;
+      background: #0d6efd;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-weight: 500;
+      margin: 0 2px;
+    }
+    
+    .icon {
+      font-size: 18px;
+      margin-right: 5px;
+    }
+    
+    .toc {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    .toc h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+    
+    .toc ul {
+      list-style: none;
+      margin-left: 0;
+    }
+    
+    .toc li {
+      margin-bottom: 8px;
+    }
+    
+    .toc a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+    
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    
+    th {
+      background: #f8f9fa;
+      padding: 10px;
+      text-align: left;
+      border: 1px solid #dee2e6;
+      font-weight: 600;
+    }
+    
+    td {
+      padding: 8px;
+      border: 1px solid #dee2e6;
+    }
+    
+    tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    .element-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .element-card {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .container {
+        box-shadow: none;
+        padding: 20px;
+      }
+      
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ Eéndraadschema - Handleiding</h1>
+    
+    <div class="toc">
+      <h2>Inhoudstafel</h2>
+      <ul>
+        <li><a href="#introductie">1. Introductie</a></li>
+        <li><a href="#interface">2. Interface overzicht</a></li>
+        <li><a href="#starten">3. Een nieuw schema starten</a></li>
+        <li><a href="#elementen">4. Elementen toevoegen</a></li>
+        <li><a href="#eigenschappen">5. Eigenschappen bewerken</a></li>
+        <li><a href="#structuur">6. Structuur beheren</a></li>
+        <li><a href="#kringen">7. Kringen en beveiligingen</a></li>
+        <li><a href="#verbruikers">8. Verbruikers en toestellen</a></li>
+        <li><a href="#navigatie">9. Navigatie en zoom</a></li>
+        <li><a href="#exporteren">10. Exporteren en printen</a></li>
+        <li><a href="#tips">11. Tips en best practices</a></li>
+      </ul>
+    </div>
+
+    <h2 id="introductie">1. Introductie</h2>
+    <p>
+      Het eéndraadschema is een schematische weergave van een elektrische installatie volgens de Belgische normen. 
+      Deze handleiding beschrijft hoe u een compleet eéndraadschema kunt maken met de React-versie van de applicatie.
+    </p>
+    
+    <div class="info-box">
+      <strong>📋 Wat is een eéndraadschema?</strong><br>
+      Een eéndraadschema toont de elektrische installatie in vereenvoudigde vorm, waarbij alle geleiders 
+      (fase, nul, aarde) als één enkele lijn worden weergegeven. Het schema toont:
+      <ul style="margin: 10px 0 0 20px;">
+        <li>De aansluiting en hoofdbord</li>
+        <li>Alle kringen met hun beveiligingen</li>
+        <li>De verbruikers en hun locaties</li>
+        <li>Kabeltypes en doorsnedes</li>
+        <li>Aardlekschakelaars en andere beschermingen</li>
+      </ul>
+    </div>
+
+    <h2 id="interface">2. Interface overzicht</h2>
+    
+    <h3>2.1 Driekolommen layout</h3>
+    <p>De editor bestaat uit drie hoofdgebieden:</p>
+    <ul>
+      <li><strong>Linker paneel</strong> - Hiërarchische lijst van alle elementen</li>
+      <li><strong>Midden paneel</strong> - SVG schema weergave</li>
+      <li><strong>Rechter paneel</strong> - Properties editor voor geselecteerd element</li>
+    </ul>
+    
+    <div class="tip-box">
+      <strong>💡 Verstelbare panelen:</strong> Sleep de scheidingslijnen tussen de panelen om de breedte aan te passen. 
+      De instellingen worden automatisch opgeslagen in uw browser.
+    </div>
+
+    <h3>2.2 Linker paneel: Element lijst</h3>
+    <p>Het linker paneel toont alle elementen in een boomstructuur:</p>
+    <ul>
+      <li><strong>Zoekbalk</strong> - Snel elementen vinden op type, naam of adres</li>
+      <li><strong>Element iconen</strong> - Visuele indicatie van element type</li>
+      <li><strong>Kleur codering</strong> - Verschillende kleuren voor verschillende types</li>
+      <li><strong>Drag-and-drop</strong> - Verplaats elementen door te slepen</li>
+      <li><strong>Context menu</strong> - Rechtsklik voor meer opties</li>
+    </ul>
+
+    <h3>2.3 Midden paneel: Schema weergave</h3>
+    <p>Het midden paneel toont het gegenereerde schema:</p>
+    <ul>
+      <li><strong>SVG rendering</strong> - Schaalbare vectorgrafiek voor perfecte kwaliteit</li>
+      <li><strong>Hover highlighting</strong> - Element licht op bij mouse-over</li>
+      <li><strong>Click selectie</strong> - Klik element om te selecteren</li>
+      <li><strong>Zoom en pan</strong> - Muiswiel zoomen, slepen om te pannen</li>
+      <li><strong>Fullscreen modus</strong> - Knop rechtsboven voor volledig scherm</li>
+    </ul>
+
+    <h3>2.4 Rechter paneel: Properties</h3>
+    <p>Het rechter paneel toont de eigenschappen van het geselecteerde element:</p>
+    <ul>
+      <li><strong>Type-specifieke velden</strong> - Verschillende opties per element type</li>
+      <li><strong>Real-time preview</strong> - Wijzigingen direct zichtbaar</li>
+      <li><strong>Validatie</strong> - Automatische controle op geldige waarden</li>
+      <li><strong>Tooltips</strong> - Hover over labels voor uitleg</li>
+    </ul>
+
+    <h2 id="starten">3. Een nieuw schema starten</h2>
+
+    <h3>3.1 Basis structuur</h3>
+    <p>Elk eéndraadschema begint met een vaste hiërarchie:</p>
+    <ol>
+      <li><strong>Aansluiting</strong> - De elektriciteitsleverancier aansluiting</li>
+      <li><strong>Elektriciteitsmeter</strong> - Vaak automatisch toegevoegd</li>
+      <li><strong>Bord</strong> - Het hoofdverdeelbord of teller</li>
+      <li><strong>Kringen</strong> - De verschillende circuits</li>
+      <li><strong>Verbruikers</strong> - Lampen, stopcontacten, toestellen</li>
+    </ol>
+
+    <h3>3.2 Aansluiting instellen</h3>
+    <p>Start met het configureren van de aansluiting:</p>
+    <ul>
+      <li><strong>Spanning</strong> - Meestal 230V (enkelfasig) of 400V (driefasig)</li>
+      <li><strong>Stroomsterkte</strong> - De maximale stroom van uw aansluiting (bijv. 40A)</li>
+      <li><strong>Type</strong> - Bovengronds of ondergronds</li>
+      <li><strong>Zekeringgrootte</strong> - Hoofdzekering in de meter</li>
+    </ul>
+
+    <h3>3.3 Hoofdbord toevoegen</h3>
+    <p>Voeg een hoofdbord toe onder de aansluiting:</p>
+    <ol>
+      <li>Selecteer de aansluiting of meter</li>
+      <li>Klik op "➕ Toevoegen" in de toolbar</li>
+      <li>Kies "Bord" uit de lijst</li>
+      <li>Geef het bord een naam (bijv. "Hoofdbord", "Teller")</li>
+    </ol>
+
+    <h2 id="elementen">4. Elementen toevoegen</h2>
+
+    <h3>4.1 Element toevoegen</h3>
+    <p>Er zijn meerdere manieren om elementen toe te voegen:</p>
+
+    <h4>Methode 1: Via toolbar knop</h4>
+    <ol>
+      <li>Selecteer het parent element in de lijst</li>
+      <li>Klik op <span class="button">➕ Toevoegen</span> in de toolbar</li>
+      <li>Kies het type element uit de lijst</li>
+      <li>Het element wordt als laatste kind toegevoegd</li>
+    </ol>
+
+    <h4>Methode 2: Via context menu</h4>
+    <ol>
+      <li>Rechtsklik op een element</li>
+      <li>Kies "Element toevoegen" of "Element invoegen voor/na"</li>
+      <li>Selecteer het gewenste type</li>
+    </ol>
+
+    <h4>Methode 3: Via ➕ icoontje</h4>
+    <ol>
+      <li>Hover over een element in de lijst</li>
+      <li>Klik op het groene ➕ icoontje</li>
+      <li>Kies het element type</li>
+    </ol>
+
+    <h3>4.2 Beschikbare element types</h3>
+    
+    <h4>Structuur elementen</h4>
+    <div class="element-grid">
+      <div class="element-card"><strong>Aansluiting</strong><br>Hoofdaansluiting</div>
+      <div class="element-card"><strong>Bord</strong><br>Verdeelbord/Teller</div>
+      <div class="element-card"><strong>Kring</strong><br>Elektrisch circuit</div>
+      <div class="element-card"><strong>Splitsing</strong><br>Vertakking in kring</div>
+      <div class="element-card"><strong>Aansluitpunt</strong><br>Tussenverbinding</div>
+    </div>
+
+    <h4>Verbruikers</h4>
+    <div class="element-grid">
+      <div class="element-card"><strong>Contactdoos</strong><br>Stopcontact</div>
+      <div class="element-card"><strong>Lichtpunt</strong><br>Lamp of verlichtingspunt</div>
+      <div class="element-card"><strong>Lichtcircuit</strong><br>Schakelaar + lamp</div>
+      <div class="element-card"><strong>Schakelaars</strong><br>Enkel schakelaar</div>
+      <div class="element-card"><strong>Drukknop</strong><br>Beldrukker</div>
+      <div class="element-card"><strong>Bel</strong><br>Deurbel</div>
+    </div>
+
+    <h4>Keukentoestellen</h4>
+    <div class="element-grid">
+      <div class="element-card"><strong>Kookfornuis</strong><br>Elektrisch fornuis</div>
+      <div class="element-card"><strong>Elektrische oven</strong><br>Inbouwoven</div>
+      <div class="element-card"><strong>Microgolfoven</strong><br>Magnetron</div>
+      <div class="element-card"><strong>Stoomoven</strong><br>Combi-stoomoven</div>
+      <div class="element-card"><strong>Vaatwasmachine</strong><br>Vaatwasser</div>
+      <div class="element-card"><strong>Koelkast</strong><br>Koelkast/frigo</div>
+      <div class="element-card"><strong>Diepvriezer</strong><br>Vriezer</div>
+    </div>
+
+    <h4>Sanitair & Verwarming</h4>
+    <div class="element-grid">
+      <div class="element-card"><strong>Boiler</strong><br>Warmwaterboiler</div>
+      <div class="element-card"><strong>Verwarmingstoestel</strong><br>Verwarming</div>
+      <div class="element-card"><strong>Droogkast</strong><br>Wasdroger</div>
+      <div class="element-card"><strong>Ketel</strong><br>CV-ketel</div>
+      <div class="element-card"><strong>Ventilator</strong><br>Afzuiging</div>
+    </div>
+
+    <h4>Speciale elementen</h4>
+    <div class="element-grid">
+      <div class="element-card"><strong>EV lader</strong><br>Laadpaal elektrisch</div>
+      <div class="element-card"><strong>Omvormer</strong><br>Zonnepanelen inverter</div>
+      <div class="element-card"><strong>Batterij</strong><br>Thuisbatterij</div>
+      <div class="element-card"><strong>Transformator</strong><br>Spanningsomzetter</div>
+      <div class="element-card"><strong>Motor</strong><br>Elektromotor</div>
+      <div class="element-card"><strong>Domotica</strong><br>Slim systeem</div>
+      <div class="element-card"><strong>Elektriciteitsmeter</strong><br>Meter</div>
+      <div class="element-card"><strong>Media</strong><br>TV/Telefoon</div>
+      <div class="element-card"><strong>USB lader</strong><br>USB stopcontact</div>
+    </div>
+
+    <h2 id="eigenschappen">5. Eigenschappen bewerken</h2>
+
+    <h3>5.1 Element selecteren</h3>
+    <p>Er zijn twee manieren om een element te selecteren:</p>
+    <ul>
+      <li>Klik op het element in de linker lijst</li>
+      <li>Klik op het element in het SVG schema (midden)</li>
+    </ul>
+    <p>Het geselecteerde element wordt gehighlight en de eigenschappen verschijnen rechts.</p>
+
+    <h3>5.2 Algemene eigenschappen</h3>
+    <p>Bijna alle elementen hebben deze eigenschappen:</p>
+    <ul>
+      <li><strong>Nr</strong> - Volgnummer voor in het schema</li>
+      <li><strong>Adres/tekst</strong> - Locatie of beschrijving (bijv. "Woonkamer", "Keuken")</li>
+      <li><strong>Commentaar</strong> - Extra notities (optioneel)</li>
+    </ul>
+
+    <h3>5.3 Contactdoos eigenschappen</h3>
+    <table>
+      <tr>
+        <th>Eigenschap</th>
+        <th>Beschrijving</th>
+      </tr>
+      <tr>
+        <td>Geaard</td>
+        <td>Contactdoos met aardingspen (standaard aan)</td>
+      </tr>
+      <tr>
+        <td>Kinderveiligheid</td>
+        <td>Beveiligd tegen inkomen met voorwerpen</td>
+      </tr>
+      <tr>
+        <td>Halfwaterdicht</td>
+        <td>Voor gebruik in vochtige ruimtes (IP44+)</td>
+      </tr>
+      <tr>
+        <td>Meerfasig</td>
+        <td>Voor 3-fasige toestellen (16A/32A kracht)</td>
+      </tr>
+      <tr>
+        <td>Aantal</td>
+        <td>Aantal stopcontacten (1-6)</td>
+      </tr>
+      <tr>
+        <td>Ingebouwde schakelaar</td>
+        <td>Stopcontact met aan/uit schakelaar</td>
+      </tr>
+      <tr>
+        <td>In verdeelbord</td>
+        <td>Gemonteerd in kast (andere weergave)</td>
+      </tr>
+    </table>
+
+    <h3>5.4 Lichtpunt eigenschappen</h3>
+    <table>
+      <tr>
+        <th>Eigenschap</th>
+        <th>Beschrijving</th>
+      </tr>
+      <tr>
+        <td>Type</td>
+        <td>Lamp, Spot, Armatuur, LED, TL, etc.</td>
+      </tr>
+      <tr>
+        <td>Aantal</td>
+        <td>Aantal lampen op dit punt</td>
+      </tr>
+      <tr>
+        <td>Noodverlichting</td>
+        <td>Type noodverlichting (geen, centraal, decentraal)</td>
+      </tr>
+      <tr>
+        <td>Is schakelbaar</td>
+        <td>Of de lamp geschakeld kan worden</td>
+      </tr>
+      <tr>
+        <td>Trekschakelaar</td>
+        <td>Lamp met trekkoord</td>
+      </tr>
+    </table>
+
+    <h3>5.5 Schakelaar types</h3>
+    <p>Voor Lichtcircuit en Schakelaars elementen:</p>
+    <ul>
+      <li><strong>Enkelpolig</strong> - Eenvoudige aan/uit schakelaar</li>
+      <li><strong>Dubbelpolig</strong> - Twee lampen op één schakelaar</li>
+      <li><strong>Wissel enkel/dubbel</strong> - Lamp bedienen van 2 plaatsen</li>
+      <li><strong>Kruis</strong> - Voor 3+ bedieningspunten</li>
+      <li><strong>Dubbelaansteking</strong> - 2 onafhankelijke schakelaars</li>
+      <li><strong>Dimschakelaar</strong> - Dimbaar licht</li>
+      <li><strong>Bewegingsschakelaar</strong> - PIR sensor</li>
+      <li><strong>Schemerschakelaar</strong> - Lichtsensor</li>
+      <li><strong>Teleruptor</strong> - Drukknop bediening</li>
+      <li><strong>Minuterie</strong> - Traphuisschakelaar met timer</li>
+    </ul>
+
+    <h2 id="structuur">6. Structuur beheren</h2>
+
+    <h3>6.1 Elementen verplaatsen</h3>
+    <p>Verplaats elementen in de hiërarchie:</p>
+    
+    <h4>Methode 1: Drag-and-drop</h4>
+    <ol>
+      <li>Klik en houd een element vast in de lijst</li>
+      <li>Sleep naar de gewenste positie</li>
+      <li>Een blauwe indicator toont waar het element komt</li>
+      <li>Laat los om te plaatsen</li>
+    </ol>
+
+    <h4>Methode 2: Context menu</h4>
+    <ol>
+      <li>Rechtsklik op het element</li>
+      <li>Kies "Verplaats omhoog" of "Verplaats omlaag"</li>
+      <li>Of kies "Verplaats naar..." voor andere parent</li>
+    </ol>
+
+    <h3>6.2 Elementen dupliceren</h3>
+    <p>Kopieer een element met al zijn eigenschappen:</p>
+    <ol>
+      <li>Selecteer het element</li>
+      <li>Rechtsklik en kies "Dupliceren"</li>
+      <li>Of druk <span class="keyboard-key">Ctrl+D</span></li>
+      <li>Het duplicaat verschijnt direct na het origineel</li>
+    </ol>
+
+    <h3>6.3 Elementen verwijderen</h3>
+    <div class="warning-box">
+      <strong>⚠️ Let op:</strong> Verwijderen van een element verwijdert ook alle onderliggende elementen!
+    </div>
+    <p>Om een element te verwijderen:</p>
+    <ul>
+      <li>Selecteer het element en druk <span class="keyboard-key">Del</span></li>
+      <li>Of rechtsklik en kies "Verwijderen"</li>
+      <li>Of klik op de 🗑️ knop in de toolbar</li>
+      <li>Gebruik <span class="keyboard-key">Ctrl+Z</span> om te herstellen indien nodig</li>
+    </ul>
+
+    <h3>6.4 Type wijzigen</h3>
+    <p>Verander het type van een bestaand element:</p>
+    <ol>
+      <li>Selecteer het element</li>
+      <li>Klik op de knop "Type wijzigen" bovenaan het properties paneel</li>
+      <li>Kies het nieuwe type uit de lijst</li>
+      <li>Eigenschappen worden waar mogelijk behouden</li>
+    </ol>
+
+    <div class="tip-box">
+      <strong>💡 Tip:</strong> Type wijzigen is handig als u bijvoorbeeld een "Lichtpunt" wilt veranderen 
+      in een "Lichtcircuit" zonder opnieuw te moeten toevoegen.
+    </div>
+
+    <h3>6.5 In- en uitklappen</h3>
+    <p>Voor overzicht in grote schema's:</p>
+    <ul>
+      <li>Klik op het <strong>▼</strong> of <strong>▶</strong> icoontje voor een element met kinderen</li>
+      <li>Uitgeklapte elementen tonen hun kinderen</li>
+      <li>Ingeklapte elementen verbergen hun kinderen</li>
+      <li>Inklapstatus wordt per element onthouden</li>
+    </ul>
+
+    <h2 id="kringen">7. Kringen en beveiligingen</h2>
+
+    <h3>7.1 Kring toevoegen</h3>
+    <p>Voeg een nieuwe kring toe onder een bord:</p>
+    <ol>
+      <li>Selecteer het bord</li>
+      <li>Voeg een "Kring" element toe</li>
+      <li>Geef de kring een naam (optioneel, bijv. "Stopcontacten woonkamer")</li>
+      <li>Stel de beveiliging in</li>
+    </ol>
+
+    <h3>7.2 Beveiliging types</h3>
+    <table>
+      <tr>
+        <th>Type</th>
+        <th>Wanneer gebruiken</th>
+      </tr>
+      <tr>
+        <td><strong>Automatisch</strong></td>
+        <td>Standaard automaat/zekering voor normale kringen</td>
+      </tr>
+      <tr>
+        <td><strong>Differentieel</strong></td>
+        <td>Aardlekschakelaar (30mA voor vochtige ruimtes, persoonsbescherming)</td>
+      </tr>
+      <tr>
+        <td><strong>Differentieelautomaat</strong></td>
+        <td>Combinatie automaat + aardlek in één (meest gebruikt)</td>
+      </tr>
+      <tr>
+        <td><strong>Smelt</strong></td>
+        <td>Smeltzekering (oudere installaties)</td>
+      </tr>
+      <tr>
+        <td><strong>Geen</strong></td>
+        <td>Geen beveiliging (bijv. na splitsing)</td>
+      </tr>
+      <tr>
+        <td><strong>Contact</strong></td>
+        <td>Contactautomaat (speciale doeleinden)</td>
+      </tr>
+    </table>
+
+    <h3>7.3 Kring eigenschappen</h3>
+    <table>
+      <tr>
+        <th>Eigenschap</th>
+        <th>Beschrijving</th>
+      </tr>
+      <tr>
+        <td>Aantal polen</td>
+        <td>1P (enkelfasig), 2P, 3P, 4P (driefasig)</td>
+      </tr>
+      <tr>
+        <td>Amperage</td>
+        <td>Stroomsterkte van de beveiliging (bijv. 16A, 20A, 32A)</td>
+      </tr>
+      <tr>
+        <td>Kortsluitvermogen</td>
+        <td>kA rating (bijv. 6kA, 10kA)</td>
+      </tr>
+      <tr>
+        <td>Differentieel selectief</td>
+        <td>Voor selectieve aardlekschakelaars (hoofdbord)</td>
+      </tr>
+      <tr>
+        <td>Kabeltype</td>
+        <td>Type kabel (bijv. XVB, XVGB, VOB)</td>
+      </tr>
+      <tr>
+        <td>Aantal aders</td>
+        <td>Aantal geleiders in de kabel</td>
+      </tr>
+      <tr>
+        <td>Doorsnede</td>
+        <td>Kabeldikte in mm² (1.5, 2.5, 4, 6, 10, ...)</td>
+      </tr>
+      <tr>
+        <td>Kabel locatie</td>
+        <td>In buis, in wand/grond, luchtleiding</td>
+      </tr>
+      <tr>
+        <td>Huishoudelijk</td>
+        <td>Of de kring huishoudelijk (rood) of industrieel (zwart) is</td>
+      </tr>
+    </table>
+
+    <h3>7.4 Splitsingen</h3>
+    <p>Een splitsing verdeelt een kring in meerdere takken:</p>
+    <ol>
+      <li>Voeg een "Splitsing" element toe in een kring</li>
+      <li>Voeg onder de splitsing nieuwe "Kring" elementen toe</li>
+      <li>Elke tak kan andere verbruikers hebben</li>
+      <li>Meestal zonder eigen beveiliging (gebruik beveiliging van hoofdkring)</li>
+    </ol>
+
+    <div class="info-box">
+      <strong>📘 Voorbeeld splitsing:</strong><br>
+      Kring 16A → Splitsing → Tak 1 (3x stopcontacten) + Tak 2 (2x stopcontacten)
+    </div>
+
+    <h2 id="verbruikers">8. Verbruikers en toestellen</h2>
+
+    <h3>8.1 Stopcontacten (Contactdoos)</h3>
+    <p><strong>Typische configuraties:</strong></p>
+    <ul>
+      <li><strong>Normale kring:</strong> 16A automaat, 2.5mm² kabel, max 8 stopcontacten</li>
+      <li><strong>Keuken:</strong> 20A differentieel, 2.5mm² of 4mm², geaard + kinderveilig</li>
+      <li><strong>Badkamer:</strong> 30mA differentieel, halfwaterdicht, geaard</li>
+      <li><strong>Kracht:</strong> 32A 3-fasig voor zware machines</li>
+    </ul>
+
+    <h3>8.2 Verlichting</h3>
+    <p><strong>Best practices:</strong></p>
+    <ul>
+      <li>Gebruik "Lichtcircuit" voor lamp + schakelaar combinatie</li>
+      <li>Gebruik "Lichtpunt" voor enkel de lamp (zonder schakelaar)</li>
+      <li>Gebruik "Schakelaars" voor enkel de schakelaar</li>
+      <li>Typisch: 10A of 16A automaat, 1.5mm² kabel</li>
+      <li>Max 8 lichtpunten per kring (aanbeveling)</li>
+    </ul>
+
+    <h3>8.3 Grote verbruikers</h3>
+    <p>Deze toestellen krijgen meestal een aparte kring:</p>
+
+    <table>
+      <tr>
+        <th>Toestel</th>
+        <th>Typische beveiliging</th>
+        <th>Kabel</th>
+      </tr>
+      <tr>
+        <td>Kookfornuis</td>
+        <td>32A of 40A</td>
+        <td>6mm² of 10mm²</td>
+      </tr>
+      <tr>
+        <td>Elektrische oven</td>
+        <td>20A of 25A</td>
+        <td>4mm² of 6mm²</td>
+      </tr>
+      <tr>
+        <td>Boiler</td>
+        <td>16A of 20A</td>
+        <td>2.5mm² of 4mm²</td>
+      </tr>
+      <tr>
+        <td>EV lader</td>
+        <td>16A tot 32A (1-fasig) of 3-fasig</td>
+        <td>2.5mm² tot 10mm²</td>
+      </tr>
+      <tr>
+        <td>Wasmachine</td>
+        <td>16A differentieel (30mA)</td>
+        <td>2.5mm²</td>
+      </tr>
+      <tr>
+        <td>Vaatwasmachine</td>
+        <td>16A differentieel (30mA)</td>
+        <td>2.5mm²</td>
+      </tr>
+    </table>
+
+    <h3>8.4 Verbruiker als kind</h3>
+    <p>Sommige verbruikers kunnen als "kind" onder een contactdoos hangen:</p>
+    <ol>
+      <li>Voeg een contactdoos toe in de kring</li>
+      <li>Selecteer de contactdoos</li>
+      <li>Voeg een verbruiker toe als kind (bijv. Wasmachine, Droogkast)</li>
+      <li>Dit toont dat het toestel op die contactdoos aangesloten is</li>
+    </ol>
+
+    <div class="tip-box">
+      <strong>💡 Tip:</strong> Dit is vooral handig voor tijdelijke aansluitingen of om te tonen 
+      dat een specifiek toestel op een specifiek stopcontact hangt.
+    </div>
+
+    <h2 id="navigatie">9. Navigatie en zoom</h2>
+
+    <h3>9.1 Zoomen</h3>
+    <p>Er zijn meerdere manieren om te zoomen in het schema:</p>
+    <ul>
+      <li><strong>Muiswiel</strong> - Scroll om in/uit te zoomen (met <span class="keyboard-key">Ctrl</span>)</li>
+      <li><strong>Zoom knoppen</strong> - + en - knoppen rechts in toolbar</li>
+      <li><strong>Zoom reset</strong> - Knop om terug naar 100% te gaan</li>
+      <li><strong>Zoom to fit</strong> - Past zoom aan zodat alles zichtbaar is</li>
+    </ul>
+
+    <h3>9.2 Pannen</h3>
+    <p>Verschuif het zichtbare gebied:</p>
+    <ul>
+      <li>Klik en sleep in het schema om te pannen</li>
+      <li>Of gebruik de scrollbars</li>
+    </ul>
+
+    <h3>9.3 Fullscreen modus</h3>
+    <p>Voor maximale werkruimte:</p>
+    <ol>
+      <li>Klik op de fullscreen knop rechtsboven in het schema paneel</li>
+      <li>Het schema vult het hele scherm</li>
+      <li>Druk <span class="keyboard-key">Esc</span> of klik opnieuw om te verlaten</li>
+    </ol>
+
+    <h3>9.4 Element zoeken</h3>
+    <p>Vind snel een element:</p>
+    <ol>
+      <li>Gebruik de zoekbalk bovenaan het linker paneel</li>
+      <li>Typ een deel van de naam, adres, of type</li>
+      <li>De lijst wordt gefilterd op matchende elementen</li>
+      <li>Klik op een element om te selecteren</li>
+    </ol>
+
+    <h3>9.5 Highlighting</h3>
+    <p>Visuele feedback in het schema:</p>
+    <ul>
+      <li><strong>Hover</strong> - Element licht op bij mouse-over</li>
+      <li><strong>Selectie</strong> - Geselecteerd element heeft blauwe rand</li>
+      <li><strong>Link lijst-schema</strong> - Hover in lijst highlight in schema en vice versa</li>
+    </ul>
+
+    <h2 id="exporteren">10. Exporteren en printen</h2>
+
+    <h3>10.1 PDF exporteren</h3>
+    <ol>
+      <li>Klik op het hoofdmenu (☰) linksboven</li>
+      <li>Kies "Print / PDF"</li>
+      <li>Selecteer wat u wilt exporteren:
+        <ul>
+          <li>Eéndraadschema</li>
+          <li>Situatieschema (indien aanwezig)</li>
+          <li>Kabellijst</li>
+          <li>Elektriciteitslijst</li>
+        </ul>
+      </li>
+      <li>Kies papierformaat (A4, A3)</li>
+      <li>Kies oriëntatie (staand/liggend)</li>
+      <li>Klik "PDF genereren"</li>
+      <li>De PDF wordt automatisch gedownload</li>
+    </ol>
+
+    <h3>10.2 Opslaan en laden</h3>
+    <p>Uw werk wordt automatisch opgeslagen in de browser, maar u kunt ook bestanden maken:</p>
+
+    <h4>Exporteren naar bestand:</h4>
+    <ol>
+      <li>Klik op hoofdmenu → "Opslaan"</li>
+      <li>Of gebruik <span class="keyboard-key">Ctrl+S</span></li>
+      <li>Een .eds bestand wordt gedownload</li>
+      <li>Bewaar dit bestand veilig als backup</li>
+    </ol>
+
+    <h4>Importeren van bestand:</h4>
+    <ol>
+      <li>Klik op hoofdmenu → "Openen"</li>
+      <li>Of gebruik <span class="keyboard-key">Ctrl+O</span></li>
+      <li>Selecteer een .eds bestand</li>
+      <li>Het schema wordt geladen</li>
+    </ol>
+
+    <div class="warning-box">
+      <strong>⚠️ Belangrijk:</strong> Browser opslag kan verloren gaan bij het wissen van browsercache. 
+      Exporteer regelmatig naar een .eds bestand voor permanente backup!
+    </div>
+
+    <h3>10.3 Printen vanuit browser</h3>
+    <p>Voor snelle prints:</p>
+    <ol>
+      <li>Gebruik de zoom knoppen om het schema goed zichtbaar te maken</li>
+      <li>Druk <span class="keyboard-key">Ctrl+P</span> (browser print)</li>
+      <li>Pas print instellingen aan</li>
+      <li>Print of sla op als PDF</li>
+    </ol>
+
+    <h2 id="tips">11. Tips en best practices</h2>
+
+    <h3>11.1 Structuur organisatie</h3>
+    <ul>
+      <li>✅ Groepeer kringen logisch (per verdieping, per ruimte)</li>
+      <li>✅ Gebruik duidelijke namen voor kringen en verbruikers</li>
+      <li>✅ Geef adressen/locaties op voor alle elementen</li>
+      <li>✅ Nummer elementen consequent (1, 2, 3... per type of ruimte)</li>
+      <li>✅ Gebruik commentaar voor extra informatie</li>
+    </ul>
+
+    <h3>11.2 Elektrische veiligheid</h3>
+    <ul>
+      <li>✅ Vochtige ruimtes: gebruik 30mA differentieel</li>
+      <li>✅ Buitenkringen: gebruik ook 30mA differentieel</li>
+      <li>✅ Zware toestellen: aparte kring met juiste doorsnede</li>
+      <li>✅ Max 8 stopcontacten op 16A kring (2.5mm²)</li>
+      <li>✅ Max 8 lichtpunten per kring</li>
+      <li>✅ Kookfornuis en oven: altijd aparte kring</li>
+      <li>✅ Wasmachine en droogkast: bij voorkeur aparte kring</li>
+    </ul>
+
+    <h3>11.3 Kabels en doorsnedes</h3>
+    <table>
+      <tr>
+        <th>Toepassig</th>
+        <th>Beveiliging</th>
+        <th>Doorsnede</th>
+      </tr>
+      <tr>
+        <td>Verlichting</td>
+        <td>10A-16A</td>
+        <td>1.5mm²</td>
+      </tr>
+      <tr>
+        <td>Stopcontacten</td>
+        <td>16A-20A</td>
+        <td>2.5mm²</td>
+      </tr>
+      <tr>
+        <td>Boiler, oven</td>
+        <td>20A-25A</td>
+        <td>4mm² of 6mm²</td>
+      </tr>
+      <tr>
+        <td>Fornuis</td>
+        <td>32A-40A</td>
+        <td>6mm² of 10mm²</td>
+      </tr>
+      <tr>
+        <td>Hoofdkabel</td>
+        <td>40A-63A</td>
+        <td>10mm² of 16mm²</td>
+      </tr>
+    </table>
+
+    <h3>11.4 Workflow tips</h3>
+    <ul>
+      <li>💡 Begin met de hoofdstructuur (aansluiting, bord, kringen)</li>
+      <li>💡 Voeg daarna verbruikers toe per kring</li>
+      <li>💡 Vul eigenschappen in terwijl u toevoegt</li>
+      <li>💡 Gebruik de zoekfunctie bij grote schema's</li>
+      <li>💡 Dupliceer vergelijkbare elementen om tijd te besparen</li>
+      <li>💡 Gebruik Ctrl+Z liberaal - fouten zijn snel ongedaan</li>
+      <li>💡 Sla regelmatig op naar een .eds bestand</li>
+      <li>💡 Test de PDF export regelmatig</li>
+    </ul>
+
+    <h3>11.5 Veelgemaakte fouten</h3>
+    <div class="warning-box">
+      <strong>❌ Vermijd deze fouten:</strong>
+      <ul style="margin: 10px 0 0 20px;">
+        <li>Te veel stopcontacten op één kring (&gt;8)</li>
+        <li>Te dunne kabels voor zware verbruikers</li>
+        <li>Geen differentieel in vochtige ruimtes</li>
+        <li>Verkeerde hiërarchie (verbruiker direct onder bord)</li>
+        <li>Geen adressen/locaties invullen</li>
+        <li>Vergeten op te slaan naar bestand</li>
+      </ul>
+    </div>
+
+    <h3>11.6 Sneltoetsen overzicht</h3>
+    <table>
+      <tr>
+        <th>Actie</th>
+        <th>Sneltoets</th>
+      </tr>
+      <tr>
+        <td>Element toevoegen</td>
+        <td><span class="keyboard-key">Ctrl+N</span></td>
+      </tr>
+      <tr>
+        <td>Element dupliceren</td>
+        <td><span class="keyboard-key">Ctrl+D</span></td>
+      </tr>
+      <tr>
+        <td>Element verwijderen</td>
+        <td><span class="keyboard-key">Del</span></td>
+      </tr>
+      <tr>
+        <td>Ongedaan maken</td>
+        <td><span class="keyboard-key">Ctrl+Z</span></td>
+      </tr>
+      <tr>
+        <td>Opnieuw</td>
+        <td><span class="keyboard-key">Ctrl+Y</span></td>
+      </tr>
+      <tr>
+        <td>Opslaan</td>
+        <td><span class="keyboard-key">Ctrl+S</span></td>
+      </tr>
+      <tr>
+        <td>Openen</td>
+        <td><span class="keyboard-key">Ctrl+O</span></td>
+      </tr>
+      <tr>
+        <td>Zoeken</td>
+        <td><span class="keyboard-key">Ctrl+F</span></td>
+      </tr>
+      <tr>
+        <td>Fullscreen toggle</td>
+        <td><span class="keyboard-key">F11</span></td>
+      </tr>
+    </table>
+
+    <hr style="margin: 40px 0; border: none; border-top: 2px solid #dee2e6;">
+
+    <div style="text-align: center; color: #6c757d; font-size: 14px; padding: 20px 0;">
+      <p><strong>Eéndraadschema</strong> - Gratis tool voor elektrische schema's</p>
+      <p style="margin-top: 10px;">
+        Voor vragen of ondersteuning, gebruik het contactformulier in de applicatie.
+      </p>
+      <p style="margin-top: 10px; font-size: 12px;">
+        Versie: React 2026 | Laatste update: Januari 2026
+      </p>
+      <p style="margin-top: 15px; font-size: 13px; font-style: italic;">
+        ⚠️ Deze applicatie is een hulpmiddel voor het maken van schema's. 
+        Raadpleeg altijd een erkend elektricien voor de uitvoering van elektrische installaties.
+      </p>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+      <button onclick="window.print()" style="
+        background: #0d6efd;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      ">
+        🖨️ Print deze handleiding
+      </button>
+      <button onclick="window.close()" style="
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-left: 10px;
+      ">
+        Sluiten
+      </button>
+    </div>
+  </div>
+</body>
+</html>
