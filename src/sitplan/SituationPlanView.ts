@@ -7,13 +7,15 @@ import { SituationPlanView_ChooseCustomElementPopup } from "./SituationPlanView_
 import { ContextMenu } from "./ContextMenu";
 import { MouseDrag } from "./MouseDrag";
 import { EventManager } from "../EventManager";
-import { showSelectPopup, htmlspecialchars } from "../general";
+import { showSelectPopup, htmlspecialchars, randomId } from "../general";
 import { getXYRectangleSize } from "./GeometricFunctions";
 import { HelperTip } from "../documentation/HelperTip";
 import { Dialog } from "../documentation/Dialog";
 import { SituationPlanView_ElementPropertiesPopup } from "./SituationPlanView_ElementPropertiesPopup";
 import { SituationPlanView_MultiElementPropertiesPopup } from "./SituationPlanView_MultiElementPropertiesPopup";
 import { AskLegacySchakelaar } from "../importExport/AskLegacySchakelaar";
+import { WallType } from "./WallElement";
+import { LayerManager } from "./LayerManager";
 
 enum MovableType {
   Movable,
@@ -43,6 +45,8 @@ export class SituationPlanView {
     document.getElementById("sidebar")
   );
 
+  public layerManager: LayerManager | null = null;
+
   public contextMenu: ContextMenu = null;
 
   private draggedBox: HTMLElement =
@@ -63,6 +67,14 @@ export class SituationPlanView {
 
   private event_manager;
 
+  // Wall drawing mode
+  private wallDrawingMode: WallType | null = null;
+  private wallDrawingStart: { x: number; y: number } | null = null;
+  private wallPreviewElement: HTMLDivElement | null = null;
+  private wallMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private wallMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private wallMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+
   constructor(canvas: HTMLElement, paper: HTMLElement, sitplan: SituationPlan) {
     this.canvas = canvas;
     this.paper = paper;
@@ -74,14 +86,22 @@ export class SituationPlanView {
     this.mousedrag = new MouseDrag();
     this.event_manager = new EventManager();
 
+    // Initialize layer manager (initially hidden)
+    this.layerManager = new LayerManager(sitplan, this);
+    this.layerManager.hide();
+
     // Verwijder alle selecties wanneer we ergens anders klikken dan op een box
     this.event_manager.addEventListener(canvas, "mousedown", () => {
-      this.contextMenu.hide();
-      this.clearSelection();
+      if (!this.isWallDrawingMode()) {
+        this.contextMenu.hide();
+        this.clearSelection();
+      }
     });
     this.event_manager.addEventListener(canvas, "touchstart", () => {
-      this.contextMenu.hide();
-      this.clearSelection();
+      if (!this.isWallDrawingMode()) {
+        this.contextMenu.hide();
+        this.clearSelection();
+      }
     });
 
     // Control wieltje om te zoomen
@@ -433,6 +453,7 @@ export class SituationPlanView {
 
     this.contextMenu.clearMenu();
 
+    // Add rotation options for movable elements (including walls)
     if (sitPlanElement.movable) {
       this.contextMenu.addMenuItem(
         "Draai rechts",
@@ -451,12 +472,15 @@ export class SituationPlanView {
       this.contextMenu.addLine();
     }
 
-    this.contextMenu.addMenuItem(
-      "Bewerk",
-      this.editSelectedBox.bind(this),
-      "Enter"
-    );
-    this.contextMenu.addLine();
+    // Don't show edit for walls (for now - they can just be deleted and redrawn)
+    if (!sitPlanElement.isWall()) {
+      this.contextMenu.addMenuItem(
+        "Bewerk",
+        this.editSelectedBox.bind(this),
+        "Enter"
+      );
+      this.contextMenu.addLine();
+    }
 
     switch (this.getSelectionMovability()) {
       case MovableType.Movable:
@@ -493,6 +517,15 @@ export class SituationPlanView {
 
     if (sitPlanElement.movable) {
       this.contextMenu.addLine();
+
+      this.contextMenu.addMenuItem(
+        "Dupliceer",
+        () => {
+          this.duplicateSelectedBoxes();
+          globalThis.undostruct.store();
+        },
+        "Ctrl D"
+      );
 
       this.contextMenu.addMenuItem(
         "Verwijder",
@@ -537,38 +570,59 @@ export class SituationPlanView {
     // Box aanmaken op de DOM voor het symbool of in te laden externe figuur
     // extra property sitPlanElementRef toegevoegd aan DOM zodat we later ons situatieplan element kunnen terugvinden
     let box = document.createElement("div");
+
+    // Add wall class if this is a wall element
+    let className = "box";
+    if (element.isWall()) {
+      const wallElement = element.getWallElement();
+      if (wallElement) {
+        className += ` ${wallElement.getCSSClass()}`;
+      }
+    }
+
     Object.assign(box, {
       id: element.id,
-      className: "box",
+      className: className,
       sitPlanElementRef: element,
     });
     box.setAttribute("movable", element.movable ? "true" : "false");
     element.boxref = box;
 
     // Boxlabel aanmaken op de DOM voor de tekst bij het symbool
-    let boxlabel = document.createElement("div");
-    Object.assign(boxlabel, {
-      id: element.id + "_label",
-      className: "boxlabel",
-      sitPlanElementRef: element,
-    });
-    boxlabel.setAttribute("movable", element.movable ? "true" : "false");
-    boxlabel.innerHTML = htmlspecialchars(element.getAdres()); // is deze nodig? Wellicht reeds onderdeel van updateContent
-    element.boxlabelref = boxlabel;
+    // Walls don't need labels
+    let boxlabel = null;
+    if (!element.isWall()) {
+      boxlabel = document.createElement("div");
+      Object.assign(boxlabel, {
+        id: element.id + "_label",
+        className: "boxlabel",
+        sitPlanElementRef: element,
+      });
+      boxlabel.setAttribute("movable", element.movable ? "true" : "false");
+      boxlabel.innerHTML = htmlspecialchars(element.getAdres()); // is deze nodig? Wellicht reeds onderdeel van updateContent
+      element.boxlabelref = boxlabel;
+    }
 
     // Content updaten en toevoegen aan de DOM
     this.updateBoxContent(element); //content moet eerst updated worden om te weten hoe groot de box is
-    if (fragment) fragment.append(box, boxlabel);
-    else this.paper.append(box, boxlabel);
+    if (fragment) {
+      fragment.append(box);
+      if (boxlabel) fragment.append(boxlabel);
+    } else {
+      this.paper.append(box);
+      if (boxlabel) this.paper.append(boxlabel);
+    }
     //this.updateSymbolAndLabelPosition(element); //pas als alles op de DOM zit kunnen we berekenen waar het label hoort
 
     // Event handlers voor het bewegen met muis of touch
     box.addEventListener("mousedown", this.startDrag);
     box.addEventListener("touchstart", this.startDrag);
-    boxlabel.addEventListener("mousedown", this.startDrag);
-    boxlabel.addEventListener("touchstart", this.startDrag);
+    if (boxlabel) {
+      boxlabel.addEventListener("mousedown", this.startDrag);
+      boxlabel.addEventListener("touchstart", this.startDrag);
+      boxlabel.addEventListener("contextmenu", this.showContextMenu);
+    }
     box.addEventListener("contextmenu", this.showContextMenu);
-    boxlabel.addEventListener("contextmenu", this.showContextMenu);
   }
 
   /**
@@ -815,6 +869,11 @@ export class SituationPlanView {
     this.updateRibbon();
     this.sideBar.render();
 
+    // Update layer manager if visible
+    if (this.layerManager && this.layerManager.isVisible()) {
+      this.layerManager.render();
+    }
+
     const end = performance.now();
     console.log(`Redraw took ${end - start}ms`);
   }
@@ -867,8 +926,35 @@ export class SituationPlanView {
     box.classList.add("selected");
     this.selected.select(box);
     globalThis.undostruct.updateSelectedBoxes();
-  }
 
+    // Add resize handles for walls
+    const sitPlanElement = (box as any).sitPlanElementRef;
+    if (sitPlanElement && sitPlanElement.isWall()) {
+      this.addWallResizeHandles(box, sitPlanElement);
+
+      // Show wall properties in sidebar
+      if (this.sideBar) {
+        this.sideBar.selectedWallElement = sitPlanElement;
+        this.sideBar.selectedElement = null; // Clear element selection
+        this.sideBar.render();
+      }
+    } else if (
+      sitPlanElement &&
+      (sitPlanElement.isEendraadschemaSymbool() || sitPlanElement.isImage())
+    ) {
+      // Show element properties in sidebar for symbols and images
+      if (this.sideBar) {
+        this.sideBar.selectedElement = sitPlanElement;
+        this.sideBar.selectedWallElement = null; // Clear wall selection
+        this.sideBar.render();
+      }
+    }
+
+    // Update layer manager
+    if (this.layerManager && this.layerManager.isVisible()) {
+      this.layerManager.render();
+    }
+  }
   /**
    * Selecteert de gegeven box als deze niet al geselecteerd is, of deselecteert deze als deze al geselecteerd is.
    * De allerlaatste box in de selectie wordt nooit gedeselecteerd.
@@ -890,6 +976,26 @@ export class SituationPlanView {
     let boxes = document.querySelectorAll(".box");
     boxes.forEach((b) => b.classList.remove("selected"));
     this.selected.clear();
+
+    // Remove all resize handles
+    this.removeAllWallResizeHandles();
+
+    // Clear wall properties from sidebar
+    if (this.sideBar && this.sideBar.selectedWallElement) {
+      this.sideBar.selectedWallElement = null;
+      this.sideBar.render();
+    }
+
+    // Clear element properties from sidebar
+    if (this.sideBar && this.sideBar.selectedElement) {
+      this.sideBar.selectedElement = null;
+      this.sideBar.render();
+    }
+
+    // Update layer manager
+    if (this.layerManager && this.layerManager.isVisible()) {
+      this.layerManager.render();
+    }
   }
 
   /**
@@ -912,6 +1018,87 @@ export class SituationPlanView {
     }
     this.selected.clear();
     this.sideBar.render();
+  }
+
+  /**
+   * Dupliceert de geselecteerde boxen en positioneert ze een beetje rechtsonder van de originelen.
+   */
+  duplicateSelectedBoxes() {
+    if (this.selected.length() == 0) return;
+
+    const newSelectedBoxes: HTMLElement[] = [];
+    const offset = 20; // Offset voor de gedupliceerde elementen
+
+    for (let selectedBox of this.selected.getAllSelected()) {
+      let sitPlanElement = (selectedBox as any).sitPlanElementRef;
+      if (sitPlanElement == null) continue;
+      if (sitPlanElement.movable == false) continue;
+
+      // Create a deep copy of the element
+      let newElement: SituationPlanElement;
+
+      if (sitPlanElement.isWall()) {
+        // Duplicate wall
+        const wallElement = sitPlanElement.getWallElement();
+        if (!wallElement) continue;
+
+        // Create wall with original position
+        newElement = this.sitplan.addWallElement(
+          wallElement.type,
+          sitPlanElement.page,
+          wallElement.x,
+          wallElement.y,
+          wallElement.width,
+          wallElement.height
+        );
+
+        // Copy rotation
+        newElement.rotate = sitPlanElement.rotate || 0;
+
+        // Apply offset to center position (posx/posy)
+        newElement.posx = sitPlanElement.posx + offset;
+        newElement.posy = sitPlanElement.posy + offset;
+
+        // Update wall element coordinates to match new center
+        const newWallElement = newElement.getWallElement();
+        if (newWallElement) {
+          newWallElement.x = newElement.posx - newWallElement.width / 2;
+          newWallElement.y = newElement.posy - newWallElement.height / 2;
+        }
+      } else {
+        // Duplicate regular element - create new instance and copy properties
+        newElement = new SituationPlanElement();
+
+        // Copy JSON representation to get all properties
+        const json = sitPlanElement.toJsonObject();
+        newElement.fromJsonObject(json);
+
+        // Update position with offset
+        newElement.posx = sitPlanElement.posx + offset;
+        newElement.posy = sitPlanElement.posy + offset;
+        newElement.labelposx = sitPlanElement.labelposx + offset;
+        newElement.labelposy = sitPlanElement.labelposy + offset;
+
+        // Generate new ID
+        newElement.id = randomId("SP_");
+
+        // Add to sitplan
+        this.sitplan.elements.push(newElement);
+      }
+
+      // Create the box on the DOM
+      this.makeBox(newElement);
+
+      if (newElement.boxref) {
+        newSelectedBoxes.push(newElement.boxref);
+      }
+    }
+
+    // Clear old selection and select the new duplicated elements
+    this.clearSelection();
+    for (let box of newSelectedBoxes) {
+      this.selectBox(box);
+    }
   }
 
   /**
@@ -1029,6 +1216,13 @@ export class SituationPlanView {
   private startDrag = (event) => {
     // Initialisatie
     if (event == null) return;
+
+    // Don't start drag if in wall drawing mode - wall drawing takes priority on paper
+    // But boxes should still be draggable
+    if (this.isWallDrawingMode() && event.target === this.paper) {
+      return;
+    }
+
     const shiftPressed = event.shiftKey; //Controleert of de shift-toets is ingedrukt
     if (event.button == 1) return; //Indien de middelste knop werd gebruikt doen we niets
     this.contextMenu.hide();
@@ -1234,10 +1428,10 @@ export class SituationPlanView {
     for (let element of this.sitplan.elements) {
       if (element.page != page) {
         element.boxref.classList.add("hidden");
-        element.boxlabelref.classList.add("hidden");
+        if (element.boxlabelref) element.boxlabelref.classList.add("hidden");
       } else {
         element.boxref.classList.remove("hidden");
-        element.boxlabelref.classList.remove("hidden");
+        if (element.boxlabelref) element.boxlabelref.classList.remove("hidden");
       }
     }
     this.updateRibbon();
@@ -1271,8 +1465,10 @@ export class SituationPlanView {
       let pic = (selected as any).sitPlanElementRef;
       if (pic == null) continue;
       if (pic.movable == false) continue;
+      // Walls can now rotate too!
       pic.rotate = (pic.rotate + degrees) % 360;
-      if (rotateLabelToo) rotateLabel.bind(this)(pic, Math.round(degrees / 90));
+      if (rotateLabelToo && !pic.isWall())
+        rotateLabel.bind(this)(pic, Math.round(degrees / 90));
       this.updateBoxContent(pic);
       this.updateSymbolAndLabelPosition(pic);
     }
@@ -1451,6 +1647,16 @@ export class SituationPlanView {
               if (this.selected.length() > 0) {
                 this.deleteSelectedBoxes();
                 globalThis.undostruct.store();
+              }
+              break;
+            case "d":
+            case "D":
+              if (event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+                if (this.selected.length() > 0) {
+                  this.duplicateSelectedBoxes();
+                  globalThis.undostruct.store();
+                }
               }
               break;
             default:
@@ -2029,6 +2235,385 @@ export class SituationPlanView {
     this.selectPage(pageNum);
     globalThis.undostruct.store("changePage");
   }
+
+  /**
+   * Enable wall drawing mode
+   * @param wallType Type of wall to draw ('inner' or 'outer')
+   */
+  public enableWallDrawingMode(wallType: WallType): void {
+    this.wallDrawingMode = wallType;
+    this.canvas.style.cursor = "crosshair";
+    this.clearSelection();
+
+    // Store bound handler references so we can remove them later
+    this.wallMouseDownHandler = this.startWallDrawing.bind(this);
+
+    // Add mousedown listener to paper for wall drawing
+    this.paper.addEventListener("mousedown", this.wallMouseDownHandler);
+  }
+
+  /**
+   * Disable wall drawing mode
+   */
+  public disableWallDrawingMode(): void {
+    this.wallDrawingMode = null;
+    this.canvas.style.cursor = "default";
+
+    // Remove wall drawing listeners
+    if (this.wallMouseDownHandler) {
+      this.paper.removeEventListener("mousedown", this.wallMouseDownHandler);
+      this.wallMouseDownHandler = null;
+    }
+    if (this.wallMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.wallMouseMoveHandler);
+      this.wallMouseMoveHandler = null;
+    }
+    if (this.wallMouseUpHandler) {
+      document.removeEventListener("mouseup", this.wallMouseUpHandler);
+      this.wallMouseUpHandler = null;
+    }
+
+    // Remove preview if exists
+    if (this.wallPreviewElement) {
+      this.wallPreviewElement.remove();
+      this.wallPreviewElement = null;
+    }
+  }
+
+  /**
+   * Check if wall drawing mode is active
+   */
+  public isWallDrawingMode(): boolean {
+    return this.wallDrawingMode !== null;
+  }
+
+  /**
+   * Get current wall drawing type
+   */
+  public getWallDrawingType(): WallType | null {
+    return this.wallDrawingMode;
+  }
+
+  /**
+   * Start drawing a wall
+   */
+  private startWallDrawing = (event: MouseEvent): void => {
+    if (!this.wallDrawingMode) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    this.wallDrawingStart = { x: paperPos.x, y: paperPos.y };
+
+    // Create preview element
+    this.wallPreviewElement = document.createElement("div");
+    this.wallPreviewElement.className = `wall-preview ${
+      this.wallDrawingMode === "outer" ? "wall-outer" : "wall-inner"
+    }`;
+    this.wallPreviewElement.style.position = "absolute";
+    this.wallPreviewElement.style.pointerEvents = "none";
+    this.paper.appendChild(this.wallPreviewElement);
+
+    // Store bound handlers
+    this.wallMouseMoveHandler = this.updateWallPreview.bind(this);
+    this.wallMouseUpHandler = this.finishWallDrawing.bind(this);
+
+    document.addEventListener("mousemove", this.wallMouseMoveHandler);
+    document.addEventListener("mouseup", this.wallMouseUpHandler);
+  };
+
+  /**
+   * Update wall preview while dragging
+   */
+  private updateWallPreview = (event: MouseEvent): void => {
+    if (!this.wallDrawingStart || !this.wallPreviewElement) return;
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.wallDrawingStart.x, paperPos.x);
+    const y = Math.min(this.wallDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.wallDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.wallDrawingStart.y);
+
+    this.wallPreviewElement.style.left = `${x}px`;
+    this.wallPreviewElement.style.top = `${y}px`;
+    this.wallPreviewElement.style.width = `${width}px`;
+    this.wallPreviewElement.style.height = `${height}px`;
+  };
+
+  /**
+   * Finish drawing a wall
+   */
+  private finishWallDrawing = (event: MouseEvent): void => {
+    if (!this.wallDrawingStart || !this.wallDrawingMode) return;
+
+    // Remove event listeners
+    if (this.wallMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.wallMouseMoveHandler);
+      this.wallMouseMoveHandler = null;
+    }
+    if (this.wallMouseUpHandler) {
+      document.removeEventListener("mouseup", this.wallMouseUpHandler);
+      this.wallMouseUpHandler = null;
+    }
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.wallDrawingStart.x, paperPos.x);
+    const y = Math.min(this.wallDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.wallDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.wallDrawingStart.y);
+
+    // Only create wall if it has minimum size
+    if (width > 5 && height > 5) {
+      const element = this.sitplan.addWallElement(
+        this.wallDrawingMode,
+        this.sitplan.activePage,
+        x,
+        y,
+        width,
+        height
+      );
+
+      this.redraw();
+      globalThis.undostruct.store();
+    }
+
+    // Remove preview
+    if (this.wallPreviewElement) {
+      this.wallPreviewElement.remove();
+      this.wallPreviewElement = null;
+    }
+
+    this.wallDrawingStart = null;
+  };
+
+  /**
+   * Add resize handles to a selected wall
+   */
+  private addWallResizeHandles(
+    box: HTMLElement,
+    sitPlanElement: SituationPlanElement
+  ): void {
+    // Remove any existing handles first
+    this.removeAllWallResizeHandles();
+
+    const handles = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+    handles.forEach((position) => {
+      const handle = document.createElement("div");
+      handle.className = `wall-resize-handle ${position}`;
+      handle.dataset.handlePosition = position;
+      handle.dataset.wallId = sitPlanElement.id;
+
+      handle.addEventListener("mousedown", this.startWallResize);
+      box.appendChild(handle);
+    });
+
+    // Add rotation handle
+    const rotationHandle = document.createElement("div");
+    rotationHandle.className = "wall-rotation-handle";
+    rotationHandle.dataset.wallId = sitPlanElement.id;
+    rotationHandle.addEventListener("mousedown", this.startWallRotation);
+    box.appendChild(rotationHandle);
+  }
+
+  /**
+   * Remove all wall resize handles
+   */
+  private removeAllWallResizeHandles(): void {
+    const handles = document.querySelectorAll(
+      ".wall-resize-handle, .wall-rotation-handle"
+    );
+    handles.forEach((handle) => handle.remove());
+  }
+
+  /**
+   * Start resizing a wall
+   */
+  private startWallResize = (event: MouseEvent): void => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const handle = event.target as HTMLElement;
+    const position = handle.dataset.handlePosition;
+    const wallId = handle.dataset.wallId;
+
+    const sitPlanElement = this.sitplan
+      .getElements()
+      .find((el) => el.id === wallId);
+    if (!sitPlanElement || !sitPlanElement.isWall()) return;
+
+    const wallElement = sitPlanElement.getWallElement();
+    if (!wallElement) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startWallX = wallElement.x;
+    const startWallY = wallElement.y;
+    const startWallWidth = wallElement.width;
+    const startWallHeight = wallElement.height;
+
+    const handleResize = (e: MouseEvent) => {
+      const deltaX = (e.clientX - startX) / this.zoomfactor;
+      const deltaY = (e.clientY - startY) / this.zoomfactor;
+
+      let newX = startWallX;
+      let newY = startWallY;
+      let newWidth = startWallWidth;
+      let newHeight = startWallHeight;
+
+      // Calculate new dimensions based on handle position
+      switch (position) {
+        case "nw":
+          newX = startWallX + deltaX;
+          newY = startWallY + deltaY;
+          newWidth = startWallWidth - deltaX;
+          newHeight = startWallHeight - deltaY;
+          break;
+        case "n":
+          newY = startWallY + deltaY;
+          newHeight = startWallHeight - deltaY;
+          break;
+        case "ne":
+          newY = startWallY + deltaY;
+          newWidth = startWallWidth + deltaX;
+          newHeight = startWallHeight - deltaY;
+          break;
+        case "e":
+          newWidth = startWallWidth + deltaX;
+          break;
+        case "se":
+          newWidth = startWallWidth + deltaX;
+          newHeight = startWallHeight + deltaY;
+          break;
+        case "s":
+          newHeight = startWallHeight + deltaY;
+          break;
+        case "sw":
+          newX = startWallX + deltaX;
+          newWidth = startWallWidth - deltaX;
+          newHeight = startWallHeight + deltaY;
+          break;
+        case "w":
+          newX = startWallX + deltaX;
+          newWidth = startWallWidth - deltaX;
+          break;
+      }
+
+      // Minimum size constraint
+      if (newWidth < 10) newWidth = 10;
+      if (newHeight < 10) newHeight = 10;
+
+      // Update wall element
+      wallElement.x = newX;
+      wallElement.y = newY;
+      wallElement.width = newWidth;
+      wallElement.height = newHeight;
+
+      // Update situation plan element
+      sitPlanElement.posx = newX + newWidth / 2;
+      sitPlanElement.posy = newY + newHeight / 2;
+      sitPlanElement.sizex = newWidth;
+      sitPlanElement.sizey = newHeight;
+      sitPlanElement.needsViewUpdate = true;
+
+      this.updateBoxContent(sitPlanElement);
+      this.updateSymbolPosition(sitPlanElement);
+
+      // Re-add resize handles if the box is selected
+      if (
+        sitPlanElement.boxref &&
+        sitPlanElement.boxref.classList.contains("selected")
+      ) {
+        this.removeAllWallResizeHandles();
+        this.addWallResizeHandles(sitPlanElement.boxref, sitPlanElement);
+      }
+    };
+
+    const stopResize = () => {
+      document.removeEventListener("mousemove", handleResize);
+      document.removeEventListener("mouseup", stopResize);
+      globalThis.undostruct.store();
+    };
+
+    document.addEventListener("mousemove", handleResize);
+    document.addEventListener("mouseup", stopResize);
+  };
+
+  /**
+   * Start rotating a wall
+   */
+  private startWallRotation = (event: MouseEvent): void => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const handle = event.target as HTMLElement;
+    const wallId = handle.dataset.wallId;
+
+    const sitPlanElement = this.sitplan
+      .getElements()
+      .find((el) => el.id === wallId);
+    if (!sitPlanElement || !sitPlanElement.isWall()) return;
+
+    const centerX = sitPlanElement.posx;
+    const centerY = sitPlanElement.posy;
+
+    const getAngle = (clientX: number, clientY: number) => {
+      const rect = this.paper.getBoundingClientRect();
+      const canvasx = clientX - rect.left;
+      const canvasy = clientY - rect.top;
+      const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+      return (
+        (Math.atan2(paperPos.y - centerY, paperPos.x - centerX) * 180) / Math.PI
+      );
+    };
+
+    const startAngle = getAngle(event.clientX, event.clientY);
+    const startRotation = sitPlanElement.rotate || 0;
+
+    const handleRotation = (e: MouseEvent) => {
+      const currentAngle = getAngle(e.clientX, e.clientY);
+      let newRotation = startRotation + (currentAngle - startAngle);
+
+      // Normalize to 0-360
+      while (newRotation < 0) newRotation += 360;
+      while (newRotation >= 360) newRotation -= 360;
+
+      sitPlanElement.rotate = newRotation;
+      this.updateSymbolPosition(sitPlanElement);
+
+      // Re-add resize handles if the box is selected
+      if (
+        sitPlanElement.boxref &&
+        sitPlanElement.boxref.classList.contains("selected")
+      ) {
+        this.removeAllWallResizeHandles();
+        this.addWallResizeHandles(sitPlanElement.boxref, sitPlanElement);
+      }
+    };
+
+    const stopRotation = () => {
+      document.removeEventListener("mousemove", handleRotation);
+      document.removeEventListener("mouseup", stopRotation);
+      globalThis.undostruct.store();
+    };
+
+    document.addEventListener("mousemove", handleRotation);
+    document.addEventListener("mouseup", stopRotation);
+  };
 } // *** END CLASS ***
 
 /**

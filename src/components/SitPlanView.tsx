@@ -19,6 +19,7 @@ export const SitPlanView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(1);
   const draggedElectroItemId = useRef<number | null>(null);
+  const [wallDrawingMode, setWallDrawingMode] = useState<'inner' | 'outer' | null>(null);
 
   const updatePageInfo = () => {
     if (structure?.sitplanview) {
@@ -87,6 +88,13 @@ export const SitPlanView: React.FC = () => {
         <p>We werken elke dag om dit programma beter te maken. Opmerkingen en ideeën zijn welkom in het "contact"-formulier.</p>`
       );
     }
+
+    // Cleanup: hide layer manager when leaving the sitplan view
+    return () => {
+      if (structure?.sitplanview?.layerManager) {
+        structure.sitplanview.layerManager.hide();
+      }
+    };
   }, [structure, appDocStorage]);
 
   // Setup drag and drop handlers for sidebar
@@ -254,11 +262,6 @@ export const SitPlanView: React.FC = () => {
     if (button) button.click();
   };
 
-  const handleEdit = () => {
-    const button = document.getElementById('button_edit') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
   const handleSendBack = () => {
     const button = document.getElementById('sendBack') as HTMLButtonElement;
     if (button) button.click();
@@ -305,6 +308,41 @@ export const SitPlanView: React.FC = () => {
         updatePageInfo();
       });
     }
+  };
+
+  const handleToggleInnerWall = () => {
+    if (!structure?.sitplanview) return;
+    
+    if (wallDrawingMode === 'inner') {
+      // Disable wall drawing mode
+      structure.sitplanview.disableWallDrawingMode();
+      setWallDrawingMode(null);
+    } else {
+      // Enable inner wall drawing mode
+      structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
+      structure.sitplanview.enableWallDrawingMode('inner');
+      setWallDrawingMode('inner');
+    }
+  };
+
+  const handleToggleOuterWall = () => {
+    if (!structure?.sitplanview) return;
+    
+    if (wallDrawingMode === 'outer') {
+      // Disable wall drawing mode
+      structure.sitplanview.disableWallDrawingMode();
+      setWallDrawingMode(null);
+    } else {
+      // Enable outer wall drawing mode
+      structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
+      structure.sitplanview.enableWallDrawingMode('outer');
+      setWallDrawingMode('outer');
+    }
+  };
+
+  const handleToggleLayerManager = () => {
+    if (!structure?.sitplanview?.layerManager) return;
+    structure.sitplanview.layerManager.toggle();
   };
 
   return (
@@ -433,25 +471,78 @@ export const SitPlanView: React.FC = () => {
 
           <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
 
-          {/* Edit and Delete */}
+          {/* Wall drawing buttons */}
           <button
-            onClick={handleEdit}
+            onClick={handleToggleInnerWall}
             style={{
               padding: '6px 10px',
-              border: '1px solid #dee2e6',
+              border: `2px solid ${wallDrawingMode === 'inner' ? '#28a745' : '#6c757d'}`,
               borderRadius: '4px',
-              backgroundColor: 'white',
+              backgroundColor: wallDrawingMode === 'inner' ? '#28a745' : 'white',
+              color: wallDrawingMode === 'inner' ? 'white' : '#6c757d',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               fontSize: '13px',
+              fontWeight: '500',
               whiteSpace: 'nowrap'
             }}
-            title="Geselecteerde symbool bewerken"
+            title="Binnenmuur tekenen"
           >
-            <span style={{ fontSize: '16px' }}>✏️</span>
+            <span style={{ fontSize: '16px' }}>🧱</span>
+            <span>Binnen</span>
           </button>
+          <button
+            onClick={handleToggleOuterWall}
+            style={{
+              padding: '6px 10px',
+              border: `2px solid ${wallDrawingMode === 'outer' ? '#28a745' : '#495057'}`,
+              borderRadius: '4px',
+              backgroundColor: wallDrawingMode === 'outer' ? '#28a745' : 'white',
+              color: wallDrawingMode === 'outer' ? 'white' : '#495057',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '13px',
+              fontWeight: '600',
+              whiteSpace: 'nowrap'
+            }}
+            title="Buitenmuur tekenen"
+          >
+            <span style={{ fontSize: '16px' }}>🧱</span>
+            <span>Buiten</span>
+          </button>
+
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
+
+          {/* Layer Manager */}
+          <button
+            onClick={handleToggleLayerManager}
+            style={{
+              padding: '6px 10px',
+              border: '1px solid #6c757d',
+              borderRadius: '4px',
+              backgroundColor: 'white',
+              color: '#6c757d',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '13px',
+              fontWeight: '500',
+              whiteSpace: 'nowrap'
+            }}
+            title="Laagbeheer tonen/verbergen"
+          >
+            <span style={{ fontSize: '16px' }}>🗂️</span>
+            <span>Lagen</span>
+          </button>
+
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
+
+          {/* Delete */}
           <button
             onClick={handleDelete}
             style={{
