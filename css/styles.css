@@ -225,6 +225,32 @@ ul#minitabs a:hover {
   transform: none !important;
 }
 
+/* Submenu divider and header styling */
+.submenu a[style*="cursor: default"] {
+  cursor: default !important;
+}
+
+.submenu a[style*="cursor: default"]:hover {
+  background: transparent !important;
+}
+
+.submenu li:has(a[style*="cursor: default"]) {
+  pointer-events: none;
+}
+
+.submenu li:has(a:contains("─────────")) {
+  padding: 4px 0;
+  margin: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.submenu li:has(a:contains("Recente bestanden:")) a {
+  font-weight: 600 !important;
+  font-size: 0.85rem;
+  color: var(--text-secondary) !important;
+  padding: 8px 16px 4px 16px !important;
+}
+
 /* RIBBON */
 
 #ribbon {

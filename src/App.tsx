@@ -10,6 +10,8 @@ import { SitPlanView } from './components/SitPlanView';
 import { PrintView } from './components/PrintView';
 import { DocumentationView } from './components/DocumentationView';
 import { ContactView } from './components/ContactView';
+import { FileLibraryView } from './components/FileLibraryView';
+import { FileLibraryStorage, EdsFileMetadata } from './storage/FileLibraryStorage';
 import '../css/all.css';
 
 const App: React.FC = () => {
@@ -26,6 +28,37 @@ const App: React.FC = () => {
   const [reactInitialized, setReactInitialized] = useState(false);
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const [recoveryData, setRecoveryData] = useState<{lastSavedStr: string | null, lastSavedInfo: any} | null>(null);
+  const [recentFiles, setRecentFiles] = useState<EdsFileMetadata[]>([]);
+  const [currentFilename, setCurrentFilename] = useState<string>('');
+
+  // Load recent files from library
+  useEffect(() => {
+    const loadRecentFiles = async () => {
+      const storage = new FileLibraryStorage();
+      const files = await storage.listFiles();
+      // Get the 5 most recent files (excluding autosaves)
+      const recent = files
+        .filter(f => !f.isAutoSave)
+        .sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime())
+        .slice(0, 5);
+      setRecentFiles(recent);
+    };
+    loadRecentFiles();
+  }, [currentView]); // Reload when view changes (in case files were added/removed)
+
+  // Update current filename when structure changes
+  useEffect(() => {
+    const updateFilename = () => {
+      if (structure && structure.properties) {
+        setCurrentFilename(structure.properties.filename || '');
+      }
+    };
+    updateFilename();
+    
+    // Poll for filename changes every 500ms
+    const interval = setInterval(updateFilename, 500);
+    return () => clearInterval(interval);
+  }, [structure]);
 
   // File operations
   const handleNewFile = () => {
@@ -66,14 +99,24 @@ const App: React.FC = () => {
       subMenu: [
         { name: "Nieuw", icon: "➕", action: handleNewFile },
         { name: "Openen...", icon: "📂", action: handleOpenFile },
+        { name: "Bibliotheek", icon: "📚", action: () => setCurrentView('library') },
         { name: "Opslaan", icon: "💾", action: handleSave },
-        { name: "Opslaan als...", icon: "📥", action: handleSaveAs },
+        { name: "Opslaan als...", icon: "💾", action: handleSaveAs },
+        ...(recentFiles.length > 0 ? [
+          { name: "─────────", icon: "", action: () => {} }, // Divider
+          { name: "Recente bestanden:", icon: "🕐", action: () => {} }, // Header
+          ...recentFiles.map(file => ({
+            name: `  ${file.filename}`,
+            icon: "📄",
+            action: () => handleFileOpen(file.content, file.filename)
+          }))
+        ] : [])
       ]
     },
     { name: "Eéndraadschema", icon: "⚡", view: "editor" },
     { name: "Situatieschema", icon: "🏠", view: "sitplan" },
     { name: "Print", icon: "🖨️", view: "print" },
-    { name: "Documentatie", icon: "📚", view: "documentation" },
+    { name: "Documentatie", icon: "📖", view: "documentation" },
     { name: "Info/Contact", icon: "ℹ️", view: "contact" },
   ];
 
@@ -112,6 +155,7 @@ const App: React.FC = () => {
       const viewMap: { [key: string]: AppView } = {
         'Nieuw': 'start',
         'Bestand': 'file',
+        'Bibliotheek': 'library',
         'Eéndraadschema': 'editor',
         'Situatieschema': 'sitplan',
         'Print': 'print',
@@ -168,10 +212,33 @@ const App: React.FC = () => {
     setCurrentView('editor');
   };
 
+  const handleFileOpen = (content: string, filename: string) => {
+    try {
+      const EDStoStructure = (globalThis as any).EDStoStructure;
+      if (EDStoStructure) {
+        // Clear any existing file handle to prevent save from overwriting filesystem file
+        if ((globalThis as any).fileAPIobj) {
+          (globalThis as any).fileAPIobj.fileHandle = null;
+          (globalThis as any).fileAPIobj.filename = null;
+        }
+        
+        EDStoStructure(content, true, false);
+        if (structure) {
+          structure.properties.filename = filename;
+          setCurrentFilename(filename);
+        }
+        setCurrentView('editor');
+      }
+    } catch (error) {
+      console.error('Error opening file from library:', error);
+      alert('Er is een fout opgetreden bij het openen van het bestand.');
+    }
+  };
+
   // Always render with menu
   return (
     <>
-      <TopMenu items={menuItems} />
+      <TopMenu items={menuItems} currentFilename={currentFilename} />
       
       {/* Recovery Dialog */}
       {showRecoveryDialog && recoveryData && (
@@ -250,6 +317,11 @@ const App: React.FC = () => {
         />
       ) : currentView === 'file' ? (
         <FilePage />
+      ) : currentView === 'library' ? (
+        <FileLibraryView 
+          onFileOpen={handleFileOpen}
+          onBack={() => setCurrentView('start')}
+        />
       ) : currentView === 'editor' ? (
         <EditorView />
       ) : currentView === 'sitplan' ? (

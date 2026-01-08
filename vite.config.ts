@@ -14,37 +14,42 @@ const formatDate = () => {
   return `${year}${month}${day}-${hours}${minutes}${seconds}`;
 };
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: "resources",
-          dest: ".",
-        },
-        {
-          src: "examples",
-          dest: ".",
-        },
-        {
-          src: "gif",
-          dest: ".",
-        },
-        {
-          src: "Documentation",
-          dest: ".",
-        },
-        {
-          src: "prop",
-          dest: ".",
-        },
-        {
-          src: "css",
-          dest: ".",
-        },
-      ],
-    }),
+    // Only use viteStaticCopy during build, not dev
+    ...(command === "build"
+      ? [
+          viteStaticCopy({
+            targets: [
+              {
+                src: "resources",
+                dest: ".",
+              },
+              {
+                src: "examples",
+                dest: ".",
+              },
+              {
+                src: "gif",
+                dest: ".",
+              },
+              {
+                src: "Documentation",
+                dest: ".",
+              },
+              {
+                src: "prop",
+                dest: ".",
+              },
+              {
+                src: "css",
+                dest: ".",
+              },
+            ],
+          }),
+        ]
+      : []),
   ],
   base: "./", // Use relative paths for flexible deployment
   define: {
@@ -57,4 +62,4 @@ export default defineConfig({
       input: "index.html",
     },
   },
-});
+}));
