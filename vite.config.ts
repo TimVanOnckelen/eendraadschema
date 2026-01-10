@@ -23,10 +23,6 @@ export default defineConfig(({ command }) => ({
           viteStaticCopy({
             targets: [
               {
-                src: "resources",
-                dest: ".",
-              },
-              {
                 src: "examples",
                 dest: ".",
               },

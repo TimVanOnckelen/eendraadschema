@@ -6,27 +6,74 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../AppContext';
 import { SituationPlan } from '../sitplan/SituationPlan';
 import { SituationPlanView as SitPlanViewClass } from '../sitplan/SituationPlanView';
+import { SituationPlanElement } from '../sitplan/SituationPlanElement';
 import { AskLegacySchakelaar } from '../importExport/AskLegacySchakelaar';
 import { HelperTip } from '../documentation/HelperTip';
+import { SitPlanSidebar } from './SitPlanSidebar';
+import { useSitPlan } from '../hooks/useSitPlan';
 
 export const SitPlanView: React.FC = () => {
   const { structure, appDocStorage, undostruct } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [numPages, setNumPages] = useState(1);
-  const draggedElectroItemId = useRef<number | null>(null);
-  const [wallDrawingMode, setWallDrawingMode] = useState<'inner' | 'outer' | null>(null);
-  const [freeformShapeDrawingMode, setFreeformShapeDrawingMode] = useState<'white' | 'black' | null>(null);
+  
+  // Use the sitplan hook for state management
+  const sitPlan = useSitPlan(
+    structure?.sitplan || null,
+    structure || null,
+    canvasRef,
+    paperRef
+  );
+  
+  const [buildingElementsMenuOpen, setBuildingElementsMenuOpen] = useState<boolean>(false);
+  const [shapesMenuOpen, setShapesMenuOpen] = useState<boolean>(false);
+  const [selectedElement, setSelectedElement] = useState<SituationPlanElement | null>(null);
+
+  // Helper functions to check drawing modes from hook state
+  const isWallDrawingMode = (type: 'inner' | 'outer') => 
+    sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType === type;
+  
+  const isWindowDrawingMode = () => sitPlan.state.drawingMode?.type === 'window';
+  const isDoorDrawingMode = () => sitPlan.state.drawingMode?.type === 'door';
+  
+  const isShapeDrawingMode = (type: 'white' | 'black' | 'gray' | 'darkgray') =>
+    sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType === type;
+
+  // Close dropdown menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (buildingElementsMenuOpen && !target.closest('[data-building-menu]')) {
+        setBuildingElementsMenuOpen(false);
+      }
+      if (shapesMenuOpen && !target.closest('[data-shapes-menu]')) {
+        setShapesMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [buildingElementsMenuOpen]);
+
+  // Listen for selection changes from the legacy system
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      // Selection is handled by legacy code, we just need to refresh sidebar
+      // The sidebar will query the selection when it needs to display it
+    };
+
+    window.addEventListener('sitplan-selection-change', handleSelectionChange as EventListener);
+    return () => {
+      window.removeEventListener('sitplan-selection-change', handleSelectionChange as EventListener);
+    };
+  }, []);
 
   const updatePageInfo = () => {
-    if (structure?.sitplanview) {
-      setCurrentPage(structure.sitplanview.getCurrentPage());
-      setNumPages(structure.sitplanview.getNumPages());
-    }
+    // No longer needed - state is managed by the hook
   };
 
   // Initialize sitplan
@@ -51,7 +98,7 @@ export const SitPlanView: React.FC = () => {
         structure.sitplan
       );
 
-      structure.sitplanview.zoomToFit();
+      sitPlan.zoomToFit();
       initialized.current = true;
     }
 
@@ -60,10 +107,7 @@ export const SitPlanView: React.FC = () => {
       if (structure.sitplan.heeftEenzameSchakelaars()) {
         const askLegacySchakelaar = new AskLegacySchakelaar();
         askLegacySchakelaar.show().then(() => {
-          if (structure.sitplanview) {
-            structure.sitplanview.redraw();
-            updatePageInfo();
-          }
+          sitPlan.redraw();
         });
         return;
       } else {
@@ -73,10 +117,7 @@ export const SitPlanView: React.FC = () => {
 
     // Redraw the sitplan
     if (structure.sitplanview) {
-      console.log('About to redraw sitplan. Paper element:', paperRef.current);
-      console.log('Paper element dimensions:', paperRef.current?.getBoundingClientRect());
-      structure.sitplanview.redraw();
-      updatePageInfo();
+      sitPlan.redraw();
       
       // Show helper tip
       const helperTip = new HelperTip(appDocStorage);
@@ -92,42 +133,12 @@ export const SitPlanView: React.FC = () => {
 
     // Cleanup: hide layer manager when leaving the sitplan view
     return () => {
+      window.removeEventListener('sitplan-selection-change', () => {});
       if (structure?.sitplanview?.layerManager) {
         structure.sitplanview.layerManager.hide();
       }
     };
   }, [structure, appDocStorage]);
-
-  // Setup drag and drop handlers for sidebar
-  useEffect(() => {
-    if (!sidebarRef.current || !paperRef.current) return;
-
-    const handleDragStart = (e: DragEvent) => {
-      const target = e.target as HTMLElement;
-      const electroItemId = target.getAttribute('data-electroitem-id');
-      if (electroItemId) {
-        draggedElectroItemId.current = parseInt(electroItemId);
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'copy';
-        }
-      }
-    };
-
-    const handleDragEnd = () => {
-      draggedElectroItemId.current = null;
-    };
-
-    // Attach to dynamically created elements
-    sidebarRef.current.addEventListener('dragstart', handleDragStart as any);
-    sidebarRef.current.addEventListener('dragend', handleDragEnd as any);
-
-    return () => {
-      if (sidebarRef.current) {
-        sidebarRef.current.removeEventListener('dragstart', handleDragStart as any);
-        sidebarRef.current.removeEventListener('dragend', handleDragEnd as any);
-      }
-    };
-  }, [sidebarRef.current]);
 
   // Drag and drop handlers for React events
   const handleDragOver = (e: React.DragEvent) => {
@@ -139,107 +150,38 @@ export const SitPlanView: React.FC = () => {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!draggedElectroItemId.current || !structure?.sitplanview) return;
-
-    // Get drop position relative to paper
-    const rect = paperRef.current!.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / structure.sitplanview.getZoomFactor();
-    const y = (e.clientY - rect.top) / structure.sitplanview.getZoomFactor();
-
-    // Add element to sitplan
-    const electroItem = structure.getElectroItemById(draggedElectroItemId.current);
-    if (electroItem) {
-      const element = structure.sitplan.addElementFromElectroItem(
-        draggedElectroItemId.current,
-        currentPage,
-        x,
-        y,
-        'auto',
-        '',
-        'onder',
-        11,
-        structure.sitplan.defaults.scale,
-        structure.sitplan.defaults.rotate
-      );
-      
-      if (element) {
-        structure.sitplanview.redraw();
-        globalThis.undostruct.store();
-        updatePageInfo();
-      }
+    
+    // Get the electroItemId from dataTransfer
+    const dataTransferId = e.dataTransfer.getData('text/plain');
+    if (!dataTransferId) {
+      return;
+    }
+    
+    const electroItemId = parseInt(dataTransferId);
+    if (!electroItemId) {
+      return;
     }
 
-    draggedElectroItemId.current = null;
+    // Get drop position using the hook
+    const { x, y } = sitPlan.getCoordinatesFromEvent(e);
+
+    // Add element using the hook
+    const element = sitPlan.addElement(electroItemId, x, y);
+    
+    if (element && undostruct) {
+      undostruct.store();
+    }
   };
-
-  // Setup drop handler for paper (for legacy DOM manipulation)
-  useEffect(() => {
-    if (!paperRef.current || !structure?.sitplanview) return;
-
-    const handleDragOverLegacy = (e: DragEvent) => {
-      e.preventDefault();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'copy';
-      }
-    };
-
-    const handleDropLegacy = (e: DragEvent) => {
-      e.preventDefault();
-      if (!draggedElectroItemId.current || !structure?.sitplanview) return;
-
-      // Get drop position relative to paper
-      const rect = paperRef.current!.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / structure.sitplanview.getZoomFactor();
-      const y = (e.clientY - rect.top) / structure.sitplanview.getZoomFactor();
-
-      // Add element to sitplan
-      const electroItem = structure.getElectroItemById(draggedElectroItemId.current);
-      if (electroItem) {
-        const element = structure.sitplan.addElementFromElectroItem(
-          draggedElectroItemId.current,
-          currentPage,
-          x,
-          y,
-          'auto',
-          '',
-          'onder',
-          11,
-          structure.sitplan.defaults.scale,
-          structure.sitplan.defaults.rotate
-        );
-        
-        if (element) {
-          structure.sitplanview.redraw();
-          globalThis.undostruct.store();
-          updatePageInfo();
-        }
-      }
-
-      draggedElectroItemId.current = null;
-    };
-
-    paperRef.current.addEventListener('dragover', handleDragOverLegacy as any);
-    paperRef.current.addEventListener('drop', handleDropLegacy as any);
-
-    return () => {
-      if (paperRef.current) {
-        paperRef.current.removeEventListener('dragover', handleDragOverLegacy as any);
-        paperRef.current.removeEventListener('drop', handleDropLegacy as any);
-      }
-    };
-  }, [paperRef.current, structure, currentPage]);
 
   const handleUndo = () => {
     if (undostruct?.undoStackSize() > 0) {
       (globalThis as any).undoClicked();
-      updatePageInfo();
     }
   };
 
   const handleRedo = () => {
     if (undostruct?.redoStackSize() > 0) {
       (globalThis as any).redoClicked();
-      updatePageInfo();
     }
   };
 
@@ -290,58 +232,48 @@ export const SitPlanView: React.FC = () => {
 
   const handlePageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pageNum = parseInt(e.target.value);
-    if (structure?.sitplanview) {
-      structure.sitplanview.changePage(pageNum);
-      updatePageInfo();
-    }
+    sitPlan.changePage(pageNum);
   };
 
   const handleAddPage = () => {
-    if (structure?.sitplanview) {
-      structure.sitplanview.addPage();
-      updatePageInfo();
-    }
+    sitPlan.addPage();
   };
 
   const handleDeletePage = () => {
-    if (structure?.sitplanview) {
-      structure.sitplanview.deletePage(() => {
-        updatePageInfo();
-      });
-    }
+    sitPlan.deletePage();
   };
 
   const handleToggleInnerWall = () => {
-    if (!structure?.sitplanview) return;
-    
-    if (wallDrawingMode === 'inner') {
-      // Disable wall drawing mode
-      structure.sitplanview.disableWallDrawingMode();
-      setWallDrawingMode(null);
+    const wallType = sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType;
+    if (wallType === 'inner') {
+      sitPlan.disableDrawingMode();
     } else {
-      // Enable inner wall drawing mode
-      structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setFreeformShapeDrawingMode(null);
-      structure.sitplanview.enableWallDrawingMode('inner');
-      setWallDrawingMode('inner');
+      sitPlan.enableWallDrawing('inner');
     }
   };
 
   const handleToggleOuterWall = () => {
-    if (!structure?.sitplanview) return;
-    
-    if (wallDrawingMode === 'outer') {
-      // Disable wall drawing mode
-      structure.sitplanview.disableWallDrawingMode();
-      setWallDrawingMode(null);
+    const wallType = sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType;
+    if (wallType === 'outer') {
+      sitPlan.disableDrawingMode();
     } else {
-      // Enable outer wall drawing mode
-      structure.sitplanview.disableWallDrawingMode(); // Disable any existing mode first
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setFreeformShapeDrawingMode(null);
-      structure.sitplanview.enableWallDrawingMode('outer');
-      setWallDrawingMode('outer');
+      sitPlan.enableWallDrawing('outer');
+    }
+  };
+
+  const handleToggleWindow = () => {
+    if (sitPlan.state.drawingMode?.type === 'window') {
+      sitPlan.disableDrawingMode();
+    } else {
+      sitPlan.enableWindowDrawing();
+    }
+  };
+
+  const handleToggleDoor = () => {
+    if (sitPlan.state.drawingMode?.type === 'door') {
+      sitPlan.disableDrawingMode();
+    } else {
+      sitPlan.enableDoorDrawing();
     }
   };
 
@@ -351,39 +283,50 @@ export const SitPlanView: React.FC = () => {
   };
 
   const handleToggleWhiteShape = () => {
-    if (!structure?.sitplanview) return;
-    
-    if (freeformShapeDrawingMode === 'white') {
-      // Disable freeform shape drawing mode
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setFreeformShapeDrawingMode(null);
+    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
+    if (shapeType === 'white') {
+      sitPlan.disableDrawingMode();
     } else {
-      // Disable any existing modes first
-      structure.sitplanview.disableWallDrawingMode();
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setWallDrawingMode(null);
-      // Enable white shape drawing mode
-      structure.sitplanview.enableFreeformShapeDrawingMode('white');
-      setFreeformShapeDrawingMode('white');
+      sitPlan.enableShapeDrawing('white');
     }
   };
 
   const handleToggleBlackShape = () => {
-    if (!structure?.sitplanview) return;
-    
-    if (freeformShapeDrawingMode === 'black') {
-      // Disable freeform shape drawing mode
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setFreeformShapeDrawingMode(null);
+    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
+    if (shapeType === 'black') {
+      sitPlan.disableDrawingMode();
     } else {
-      // Disable any existing modes first
-      structure.sitplanview.disableWallDrawingMode();
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      setWallDrawingMode(null);
-      // Enable black shape drawing mode
-      structure.sitplanview.enableFreeformShapeDrawingMode('black');
-      setFreeformShapeDrawingMode('black');
+      sitPlan.enableShapeDrawing('black');
     }
+  };
+
+  const handleToggleGrayShape = () => {
+    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
+    if (shapeType === 'gray') {
+      sitPlan.disableDrawingMode();
+    } else {
+      sitPlan.enableShapeDrawing('gray');
+    }
+  };
+
+  const handleToggleDarkGrayShape = () => {
+    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
+    if (shapeType === 'darkgray') {
+      sitPlan.disableDrawingMode();
+    } else {
+      sitPlan.enableShapeDrawing('darkgray');
+    }
+  };
+
+  const handleUpdateElement = (element: SituationPlanElement) => {
+    sitPlan.updateElement(element);
+    if (undostruct) {
+      undostruct.store('updateElement');
+    }
+  };
+
+  const handleCloseSidebar = () => {
+    setSelectedElement(null);
   };
 
   return (
@@ -400,7 +343,7 @@ export const SitPlanView: React.FC = () => {
         minHeight: '48px',
         flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'visible' }}>
           {/* Undo/Redo */}
           <button
             onClick={handleUndo}
@@ -512,104 +455,339 @@ export const SitPlanView: React.FC = () => {
 
           <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
 
-          {/* Drawing tools group - Muren en Vormen */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '4px',
-            padding: '4px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '6px',
-            border: '1px solid #dee2e6'
-          }}>
-            {/* Wall drawing buttons */}
+          {/* Drawing tools group - Bouwelementen Dropdown */}
+          <div style={{ position: 'relative', display: 'inline-block' }} data-building-menu>
             <button
-              onClick={handleToggleInnerWall}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Building menu clicked, current state:', buildingElementsMenuOpen);
+                setBuildingElementsMenuOpen(!buildingElementsMenuOpen);
+              }}
               style={{
-                padding: '6px 10px',
-                border: `2px solid ${wallDrawingMode === 'inner' ? '#28a745' : '#6c757d'}`,
+                padding: '6px 12px',
+                border: `2px solid ${sitPlan.state.drawingMode ? '#28a745' : '#6c757d'}`,
                 borderRadius: '4px',
-                backgroundColor: wallDrawingMode === 'inner' ? '#28a745' : 'white',
-                color: wallDrawingMode === 'inner' ? 'white' : '#6c757d',
+                backgroundColor: sitPlan.state.drawingMode ? '#28a745' : 'white',
+                color: sitPlan.state.drawingMode ? 'white' : '#6c757d',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '6px',
                 fontSize: '13px',
                 fontWeight: '500',
                 whiteSpace: 'nowrap'
               }}
-              title="Binnenmuur tekenen"
+              title="Bouwelementen"
             >
-              <span style={{ fontSize: '16px' }}>🧱</span>
-              <span>Binnen</span>
+              <span style={{ fontSize: '16px' }}>🏗️</span>
+              <span>
+                {isWallDrawingMode('inner') ? 'Binnenmuur' : 
+                 isWallDrawingMode('outer') ? 'Buitenmuur' :
+                 isWindowDrawingMode() ? 'Raam' :
+                 isDoorDrawingMode() ? 'Deur' :
+                 'Bouwelementen'}
+              </span>
+              <span style={{ fontSize: '10px' }}>▼</span>
             </button>
+
+            {buildingElementsMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                backgroundColor: '#ffffff',
+                border: '2px solid #adb5bd',
+                borderRadius: '6px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                zIndex: 9999,
+                minWidth: '180px',
+                overflow: 'hidden'
+              }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleInnerWall();
+                    setBuildingElementsMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isWallDrawingMode('inner') ? '#e8f5e9' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('inner') ? '#e8f5e9' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('inner') ? '#e8f5e9' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>🧱</span>
+                  <span>Binnenmuur</span>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleOuterWall();
+                    setBuildingElementsMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isWallDrawingMode('outer') ? '#e8f5e9' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('outer') ? '#e8f5e9' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('outer') ? '#e8f5e9' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>🧱</span>
+                  <span>Buitenmuur</span>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleWindow();
+                    setBuildingElementsMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isWindowDrawingMode() ? '#e3f2fd' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWindowDrawingMode() ? '#e3f2fd' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWindowDrawingMode() ? '#e3f2fd' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>🪟</span>
+                  <span>Raam</span>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleDoor();
+                    setBuildingElementsMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isDoorDrawingMode() ? '#fff3e0' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDoorDrawingMode() ? '#fff3e0' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDoorDrawingMode() ? '#fff3e0' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>🚪</span>
+                  <span>Deur</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
+
+          {/* Shapes/Patterns Dropdown */}
+          <div style={{ position: 'relative', display: 'inline-block' }} data-shapes-menu>
             <button
-              onClick={handleToggleOuterWall}
-              style={{
-                padding: '6px 10px',
-                border: `2px solid ${wallDrawingMode === 'outer' ? '#28a745' : '#495057'}`,
-                borderRadius: '4px',
-                backgroundColor: wallDrawingMode === 'outer' ? '#28a745' : 'white',
-                color: wallDrawingMode === 'outer' ? 'white' : '#495057',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '13px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap'
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShapesMenuOpen(!shapesMenuOpen);
               }}
-              title="Buitenmuur tekenen"
-            >
-              <span style={{ fontSize: '16px' }}>🧱</span>
-              <span>Buiten</span>
-            </button>
-
-            <div style={{ width: '1px', height: '100%', backgroundColor: '#ced4da', margin: '0 2px' }}></div>
-
-            {/* Freeform shape drawing buttons */}
-            <button
-              onClick={handleToggleWhiteShape}
               style={{
-                padding: '6px 10px',
-                border: `2px solid ${freeformShapeDrawingMode === 'white' ? '#28a745' : '#6c757d'}`,
+                padding: '6px 12px',
+                border: `2px solid ${sitPlan.state.drawingMode?.type === 'shape' ? '#28a745' : '#6c757d'}`,
                 borderRadius: '4px',
-                backgroundColor: freeformShapeDrawingMode === 'white' ? '#28a745' : 'white',
-                color: freeformShapeDrawingMode === 'white' ? 'white' : '#6c757d',
+                backgroundColor: sitPlan.state.drawingMode?.type === 'shape' ? '#28a745' : 'white',
+                color: sitPlan.state.drawingMode?.type === 'shape' ? 'white' : '#6c757d',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '6px',
                 fontSize: '13px',
                 fontWeight: '500',
                 whiteSpace: 'nowrap'
               }}
-              title="Witte vrije vorm tekenen"
+              title="Vormen & Patronen"
             >
-              <span style={{ fontSize: '16px' }}>⬜</span>
-              <span>Wit</span>
+              <span style={{ fontSize: '16px' }}>🎨</span>
+              <span>
+                {isShapeDrawingMode('white') ? 'Wit' :
+                 isShapeDrawingMode('black') ? 'Zwart' :
+                 isShapeDrawingMode('gray') ? 'Grijs' :
+                 isShapeDrawingMode('darkgray') ? 'Donkergrijs' :
+                 'Vormen'}
+              </span>
+              <span style={{ fontSize: '10px' }}>▼</span>
             </button>
-            <button
-              onClick={handleToggleBlackShape}
-              style={{
-                padding: '6px 10px',
-                border: `2px solid ${freeformShapeDrawingMode === 'black' ? '#28a745' : '#495057'}`,
-                borderRadius: '4px',
-                backgroundColor: freeformShapeDrawingMode === 'black' ? '#28a745' : 'white',
-                color: freeformShapeDrawingMode === 'black' ? 'white' : '#495057',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '13px',
-                fontWeight: '600',
-                whiteSpace: 'nowrap'
-              }}
-              title="Zwarte vrije vorm tekenen"
-            >
-              <span style={{ fontSize: '16px' }}>⬛</span>
-              <span>Zwart</span>
-            </button>
+
+            {shapesMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                backgroundColor: '#ffffff',
+                border: '2px solid #adb5bd',
+                borderRadius: '6px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                zIndex: 9999,
+                minWidth: '180px',
+                overflow: 'hidden'
+              }}>
+                {/* White */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleWhiteShape();
+                    setShapesMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isShapeDrawingMode('white') ? '#f5f5f5' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('white') ? '#f5f5f5' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('white') ? '#f5f5f5' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>⬜</span>
+                  <span>Wit</span>
+                </button>
+
+                {/* Black */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleBlackShape();
+                    setShapesMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isShapeDrawingMode('black') ? '#e8e8e8' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('black') ? '#e8e8e8' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('black') ? '#e8e8e8' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px' }}>⬛</span>
+                  <span>Zwart</span>
+                </button>
+
+                {/* Gray */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleGrayShape();
+                    setShapesMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isShapeDrawingMode('gray') ? '#e0e0e0' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('gray') ? '#e0e0e0' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('gray') ? '#e0e0e0' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px', backgroundColor: '#999999', borderRadius: '2px', padding: '2px' }}>◼️</span>
+                  <span>Grijs</span>
+                </button>
+
+                {/* Dark Gray */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleDarkGrayShape();
+                    setShapesMenuOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    backgroundColor: isShapeDrawingMode('darkgray') ? '#d0d0d0' : 'transparent',
+                    color: '#333',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('darkgray') ? '#d0d0d0' : '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('darkgray') ? '#d0d0d0' : 'transparent'}
+                >
+                  <span style={{ fontSize: '16px', backgroundColor: '#555555', borderRadius: '2px', padding: '2px' }}>◼️</span>
+                  <span>Donkergrijs</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
@@ -703,7 +881,7 @@ export const SitPlanView: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Page selector */}
-          {numPages > 0 && (
+          {sitPlan.state.numPages > 0 && (
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -717,7 +895,7 @@ export const SitPlanView: React.FC = () => {
               <span style={{ fontSize: '13px', color: '#495057' }}>Pag.</span>
               <select 
                 id="id_sitplanpage" 
-                value={currentPage} 
+                value={sitPlan.state.currentPage} 
                 onChange={handlePageChange}
                 style={{
                   padding: '3px 6px',
@@ -727,7 +905,7 @@ export const SitPlanView: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: sitPlan.state.numPages }, (_, i) => i + 1).map((page) => (
                   <option key={page} value={page}>
                     {page}
                   </option>
@@ -735,14 +913,14 @@ export const SitPlanView: React.FC = () => {
               </select>
               <button 
                 onClick={handleAddPage}
-                disabled={currentPage !== numPages}
+                disabled={sitPlan.state.currentPage !== sitPlan.state.numPages}
                 style={{
                   padding: '3px 8px',
                   border: '1px solid #28a745',
                   borderRadius: '3px',
-                  backgroundColor: currentPage === numPages ? '#28a745' : '#e9ecef',
-                  color: currentPage === numPages ? 'white' : '#6c757d',
-                  cursor: currentPage === numPages ? 'pointer' : 'not-allowed',
+                  backgroundColor: sitPlan.state.currentPage === sitPlan.state.numPages ? '#28a745' : '#e9ecef',
+                  color: sitPlan.state.currentPage === sitPlan.state.numPages ? 'white' : '#6c757d',
+                  cursor: sitPlan.state.currentPage === sitPlan.state.numPages ? 'pointer' : 'not-allowed',
                   fontSize: '12px',
                   fontWeight: '500'
                 }}
@@ -752,14 +930,14 @@ export const SitPlanView: React.FC = () => {
               </button>
               <button 
                 onClick={handleDeletePage}
-                disabled={numPages <= 1}
+                disabled={sitPlan.state.numPages <= 1}
                 style={{
                   padding: '3px 8px',
                   border: '1px solid #dc3545',
                   borderRadius: '3px',
-                  backgroundColor: numPages > 1 ? '#dc3545' : '#e9ecef',
-                  color: numPages > 1 ? 'white' : '#6c757d',
-                  cursor: numPages > 1 ? 'pointer' : 'not-allowed',
+                  backgroundColor: sitPlan.state.numPages > 1 ? '#dc3545' : '#e9ecef',
+                  color: sitPlan.state.numPages > 1 ? 'white' : '#6c757d',
+                  cursor: sitPlan.state.numPages > 1 ? 'pointer' : 'not-allowed',
                   fontSize: '14px'
                 }}
                 title="Huidige pagina verwijderen"
@@ -838,7 +1016,14 @@ export const SitPlanView: React.FC = () => {
         margin: 0,
         padding: 0
       }}>
-        <div id="sidebar" ref={sidebarRef}></div>
+        {/* React Sidebar Component */}
+        <SitPlanSidebar
+          selectedElement={selectedElement}
+          onClose={handleCloseSidebar}
+          onUpdateElement={handleUpdateElement}
+          structure={structure}
+        />
+        
         <div 
           id="canvas" 
           ref={canvasRef}

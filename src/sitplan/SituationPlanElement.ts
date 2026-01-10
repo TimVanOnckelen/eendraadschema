@@ -5,6 +5,8 @@ import {
   FreeformShapeElement,
   FreeformShapeType,
 } from "./FreeformShapeElement";
+import { WindowElement } from "./WindowElement";
+import { DoorElement } from "./DoorElement";
 
 export type AdresLocation = "rechts" | "links" | "boven" | "onder";
 export type AdresType = "auto" | "manueel";
@@ -22,6 +24,8 @@ export class SituationPlanElement {
   public id: string; //unieke identificatie van het element
   private electroItemId: number | null = null; // Referentie naar het electro-element in de datastructuur indien van toepassing
   private wallElement: WallElement | null = null; // Referentie naar een muur element indien het een muur is
+  private windowElement: WindowElement | null = null; // Referentie naar een raam element indien het een raam is
+  private doorElement: DoorElement | null = null; // Referentie naar een deur element indien het een deur is
   private freeformShapeElement: FreeformShapeElement | null = null; // Referentie naar een vrije vorm indien het een vrije vorm is
 
   // -- Basis eigenschappen van het element zelf --
@@ -127,6 +131,8 @@ export class SituationPlanElement {
   setWallElement(wallElement: WallElement) {
     this.wallElement = wallElement;
     this.electroItemId = null; // Een muur kan geen electro element zijn
+    this.windowElement = null; // Een muur kan geen raam zijn
+    this.doorElement = null; // Een muur kan geen deur zijn
     this.freeformShapeElement = null; // Een muur kan geen vrije vorm zijn
 
     // Synchronize position and size
@@ -136,6 +142,96 @@ export class SituationPlanElement {
     this.sizey = wallElement.height;
     this.page = wallElement.page;
     this.svg = wallElement.toSVG();
+    this.needsViewUpdate = true;
+  }
+
+  /**
+   * isWindow
+   *
+   * Controleer of het element een raam is
+   *
+   * @returns boolean
+   */
+
+  isWindow(): boolean {
+    return this.windowElement != null;
+  }
+
+  /**
+   * getWindowElement
+   *
+   * @returns WindowElement | null - Het raam element indien het een raam is, anders null
+   */
+
+  getWindowElement(): WindowElement | null {
+    return this.windowElement;
+  }
+
+  /**
+   * setWindowElement
+   *
+   * @param windowElement WindowElement - Het raam element
+   */
+
+  setWindowElement(windowElement: WindowElement) {
+    this.windowElement = windowElement;
+    this.electroItemId = null; // Een raam kan geen electro element zijn
+    this.wallElement = null; // Een raam kan geen muur zijn
+    this.doorElement = null; // Een raam kan geen deur zijn
+    this.freeformShapeElement = null; // Een raam kan geen vrije vorm zijn
+
+    // Synchronize position and size
+    this.posx = windowElement.x + windowElement.width / 2;
+    this.posy = windowElement.y + windowElement.height / 2;
+    this.sizex = windowElement.width;
+    this.sizey = windowElement.height;
+    this.page = windowElement.page;
+    this.svg = windowElement.toSVG();
+    this.needsViewUpdate = true;
+  }
+
+  /**
+   * isDoor
+   *
+   * Controleer of het element een deur is
+   *
+   * @returns boolean
+   */
+
+  isDoor(): boolean {
+    return this.doorElement != null;
+  }
+
+  /**
+   * getDoorElement
+   *
+   * @returns DoorElement | null - Het deur element indien het een deur is, anders null
+   */
+
+  getDoorElement(): DoorElement | null {
+    return this.doorElement;
+  }
+
+  /**
+   * setDoorElement
+   *
+   * @param doorElement DoorElement - Het deur element
+   */
+
+  setDoorElement(doorElement: DoorElement) {
+    this.doorElement = doorElement;
+    this.electroItemId = null; // Een deur kan geen electro element zijn
+    this.wallElement = null; // Een deur kan geen muur zijn
+    this.windowElement = null; // Een deur kan geen raam zijn
+    this.freeformShapeElement = null; // Een deur kan geen vrije vorm zijn
+
+    // Synchronize position and size
+    this.posx = doorElement.x + doorElement.width / 2;
+    this.posy = doorElement.y + doorElement.height / 2;
+    this.sizex = doorElement.width;
+    this.sizey = doorElement.height;
+    this.page = doorElement.page;
+    this.svg = doorElement.toSVG();
     this.needsViewUpdate = true;
   }
 
@@ -171,6 +267,8 @@ export class SituationPlanElement {
     this.freeformShapeElement = freeformShapeElement;
     this.electroItemId = null; // Een vrije vorm kan geen electro element zijn
     this.wallElement = null; // Een vrije vorm kan geen muur zijn
+    this.windowElement = null; // Een vrije vorm kan geen raam zijn
+    this.doorElement = null; // Een vrije vorm kan geen deur zijn
 
     // Synchronize position and size
     this.posx = freeformShapeElement.x + freeformShapeElement.width / 2;
@@ -630,6 +728,16 @@ export class SituationPlanElement {
       baseObject.wall = this.wallElement.toJSON();
     }
 
+    // Add window data if this is a window
+    if (this.isWindow()) {
+      baseObject.window = this.windowElement.toJSON();
+    }
+
+    // Add door data if this is a door
+    if (this.isDoor()) {
+      baseObject.door = this.doorElement.toJSON();
+    }
+
     // Add freeform shape data if this is a freeform shape
     if (this.isFreeformShape()) {
       baseObject.freeformShape = this.freeformShapeElement.toJSON();
@@ -674,6 +782,18 @@ export class SituationPlanElement {
     if (json.wall != null) {
       this.wallElement = WallElement.fromJSON(json.wall);
       this.svg = this.wallElement.toSVG();
+    }
+
+    // Load window data if present
+    if (json.window != null) {
+      this.windowElement = WindowElement.fromJSON(json.window);
+      this.svg = this.windowElement.toSVG();
+    }
+
+    // Load door data if present
+    if (json.door != null) {
+      this.doorElement = DoorElement.fromJSON(json.door);
+      this.svg = this.doorElement.toSVG();
     }
 
     // Load freeform shape data if present
