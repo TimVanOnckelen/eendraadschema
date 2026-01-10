@@ -1,8 +1,7 @@
 import { Hierarchical_List } from "../Hierarchical_List";
 import { SituationPlan } from "../sitplan/SituationPlan";
 import { Electro_Item } from "../List_Item/Electro_Item";
-
-declare var pako: any;
+import * as pako from "pako";
 
 export class importExportUsingFileAPI {
   saveNeeded: boolean;

@@ -1,9 +1,4 @@
-// Import jsPDF types if available (otherwise use 'any')
-declare global {
-  interface Window {
-    jspdf: any;
-  }
-}
+import { jsPDF } from "jspdf";
 
 type PrintTable = {
   papersize: string;
@@ -177,8 +172,7 @@ export function printPDF(
   }
 
   function init() {
-    const { jsPDF } = window.jspdf;
-    let doc: any;
+    let doc: jsPDF;
     if (print_table.papersize === "A3") {
       doc = new jsPDF("landscape", "mm", "a3", true);
     } else {
