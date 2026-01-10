@@ -59,40 +59,31 @@ export class WallElement {
 
   /**
    * Create SVG representation of the wall for rendering
+   * Professional architectural style with filled walls
    */
   toSVG(): string {
-    const strokeColor = this.type === "outer" ? "#1a1a1a" : "#4d4d4d";
-
     if (this.type === "outer") {
-      // Outer wall with diagonal line pattern
+      // Outer wall: darker fill (professional architectural style)
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="0 0 ${this.width} ${this.height}">
-        <defs>
-          <pattern id="outerWallPattern_${this.width}_${this.height}" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="2" height="4" fill="#333333"/>
-            <rect x="2" y="0" width="2" height="4" fill="#1a1a1a"/>
-          </pattern>
-        </defs>
         <rect 
           x="0" 
           y="0" 
           width="${this.width}" 
           height="${this.height}" 
-          fill="url(#outerWallPattern_${this.width}_${this.height})" 
-          stroke="${strokeColor}" 
-          stroke-width="1"
+          fill="#999999" 
+          stroke="none"
         />
       </svg>`;
     } else {
-      // Inner wall with solid color
+      // Inner wall: lighter fill
       return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="0 0 ${this.width} ${this.height}">
         <rect 
           x="0" 
           y="0" 
           width="${this.width}" 
           height="${this.height}" 
-          fill="#666666" 
-          stroke="${strokeColor}" 
-          stroke-width="1"
+          fill="#cccccc" 
+          stroke="none"
         />
       </svg>`;
     }

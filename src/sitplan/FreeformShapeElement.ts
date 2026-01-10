@@ -1,9 +1,9 @@
 /**
  * FreeformShapeElement - Represents a freeform shape in the situation plan
- * Freeform shapes are rectangular elements that can be either white or black
+ * Freeform shapes are rectangular elements that can be white, black, gray, or dark gray
  */
 
-export type FreeformShapeType = "white" | "black";
+export type FreeformShapeType = "white" | "black" | "gray" | "darkgray";
 
 export interface FreeformShapeProperties {
   type: FreeformShapeType;
@@ -41,15 +41,48 @@ export class FreeformShapeElement {
    * Get CSS class name for this freeform shape type
    */
   getCSSClass(): string {
-    return this.type === "white" ? "freeform-white" : "freeform-black";
+    switch (this.type) {
+      case "white":
+        return "freeform-white";
+      case "black":
+        return "freeform-black";
+      case "gray":
+        return "freeform-gray";
+      case "darkgray":
+        return "freeform-darkgray";
+      default:
+        return "freeform-white";
+    }
   }
 
   /**
    * Create SVG representation of the freeform shape for rendering
    */
   toSVG(): string {
-    const fillColor = this.type === "white" ? "#ffffff" : "#000000";
-    const strokeColor = this.type === "white" ? "#cccccc" : "#000000";
+    let fillColor: string;
+    let strokeColor: string;
+
+    switch (this.type) {
+      case "white":
+        fillColor = "#ffffff";
+        strokeColor = "#cccccc";
+        break;
+      case "black":
+        fillColor = "#000000";
+        strokeColor = "#000000";
+        break;
+      case "gray":
+        fillColor = "#999999";
+        strokeColor = "#777777";
+        break;
+      case "darkgray":
+        fillColor = "#555555";
+        strokeColor = "#333333";
+        break;
+      default:
+        fillColor = "#ffffff";
+        strokeColor = "#cccccc";
+    }
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="0 0 ${this.width} ${this.height}">
       <rect 

@@ -1,7 +1,6 @@
 import { SituationPlan } from "./SituationPlan";
 import { SituationPlanElement } from "./SituationPlanElement";
 import { AdresType, AdresLocation } from "./SituationPlanElement";
-import { SituationPlanView_SideBar } from "./SituationPlanView_SideBar";
 import { SituationPlanView_Selected } from "./SituationPlanView_Selected";
 import { SituationPlanView_ChooseCustomElementPopup } from "./SituationPlanView_ChooseCustomElementPopup";
 import { ContextMenu } from "./ContextMenu";
@@ -42,13 +41,15 @@ export class SituationPlanView {
   private canvas: HTMLElement = null;
   private paper: HTMLElement = null;
 
-  public sideBar: SituationPlanView_SideBar = new SituationPlanView_SideBar(
-    document.getElementById("sidebar")
-  );
-
   public layerManager: LayerManager | null = null;
 
   public contextMenu: ContextMenu = null;
+
+  // Stub for backwards compatibility with undoRedo system
+  public sideBar: any = {
+    getUndoRedoOptions: () => ({}),
+    render: () => {}, // No-op, rendering is handled by React now
+  };
 
   private draggedBox: HTMLElement =
     null; /** Box die op dit moment versleept wordt of null */
@@ -86,6 +87,22 @@ export class SituationPlanView {
     null;
   private freeformShapeMouseUpHandler: ((e: MouseEvent) => void) | null = null;
 
+  // Window drawing mode
+  private windowDrawingMode: boolean = false;
+  private windowDrawingStart: { x: number; y: number } | null = null;
+  private windowPreviewElement: HTMLDivElement | null = null;
+  private windowMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private windowMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private windowMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+
+  // Door drawing mode
+  private doorDrawingMode: boolean = false;
+  private doorDrawingStart: { x: number; y: number } | null = null;
+  private doorPreviewElement: HTMLDivElement | null = null;
+  private doorMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private doorMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private doorMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+
   constructor(canvas: HTMLElement, paper: HTMLElement, sitplan: SituationPlan) {
     this.canvas = canvas;
     this.paper = paper;
@@ -103,13 +120,23 @@ export class SituationPlanView {
 
     // Verwijder alle selecties wanneer we ergens anders klikken dan op een box
     this.event_manager.addEventListener(canvas, "mousedown", () => {
-      if (!this.isWallDrawingMode() && !this.isFreeformShapeDrawingMode()) {
+      if (
+        !this.isWallDrawingMode() &&
+        !this.isFreeformShapeDrawingMode() &&
+        !this.isWindowDrawingMode() &&
+        !this.isDoorDrawingMode()
+      ) {
         this.contextMenu.hide();
         this.clearSelection();
       }
     });
     this.event_manager.addEventListener(canvas, "touchstart", () => {
-      if (!this.isWallDrawingMode() && !this.isFreeformShapeDrawingMode()) {
+      if (
+        !this.isWallDrawingMode() &&
+        !this.isFreeformShapeDrawingMode() &&
+        !this.isWindowDrawingMode() &&
+        !this.isDoorDrawingMode()
+      ) {
         this.contextMenu.hide();
         this.clearSelection();
       }
@@ -483,8 +510,13 @@ export class SituationPlanView {
       this.contextMenu.addLine();
     }
 
-    // Don't show edit for walls and freeform shapes (for now - they can just be deleted and redrawn)
-    if (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape()) {
+    // Don't show edit for walls, windows, doors and freeform shapes (for now - they can just be deleted and redrawn)
+    if (
+      !sitPlanElement.isWall() &&
+      !sitPlanElement.isWindow() &&
+      !sitPlanElement.isDoor() &&
+      !sitPlanElement.isFreeformShape()
+    ) {
       this.contextMenu.addMenuItem(
         "Bewerk",
         this.editSelectedBox.bind(this),
@@ -583,6 +615,8 @@ export class SituationPlanView {
     let box = document.createElement("div");
 
     // Add wall class if this is a wall element
+    // Add window class if this is a window element
+    // Add door class if this is a door element
     // Add freeform shape class if this is a freeform shape element
     let className = "box";
     if (element.isWall()) {
@@ -590,6 +624,10 @@ export class SituationPlanView {
       if (wallElement) {
         className += ` ${wallElement.getCSSClass()}`;
       }
+    } else if (element.isWindow()) {
+      className += " window-element";
+    } else if (element.isDoor()) {
+      className += " door-element";
     } else if (element.isFreeformShape()) {
       const freeformShapeElement = element.getFreeformShapeElement();
       if (freeformShapeElement) {
@@ -606,9 +644,14 @@ export class SituationPlanView {
     element.boxref = box;
 
     // Boxlabel aanmaken op de DOM voor de tekst bij het symbool
-    // Walls and freeform shapes don't need labels
+    // Walls, windows, doors and freeform shapes don't need labels
     let boxlabel = null;
-    if (!element.isWall() && !element.isFreeformShape()) {
+    if (
+      !element.isWall() &&
+      !element.isWindow() &&
+      !element.isDoor() &&
+      !element.isFreeformShape()
+    ) {
       boxlabel = document.createElement("div");
       Object.assign(boxlabel, {
         id: element.id + "_label",
@@ -798,6 +841,24 @@ export class SituationPlanView {
       }
     }
 
+    // Update window element position if this is a window
+    if (sitPlanElement.isWindow()) {
+      const windowElement = sitPlanElement.getWindowElement();
+      if (windowElement) {
+        windowElement.x = sitPlanElement.posx - windowElement.width / 2;
+        windowElement.y = sitPlanElement.posy - windowElement.height / 2;
+      }
+    }
+
+    // Update door element position if this is a door
+    if (sitPlanElement.isDoor()) {
+      const doorElement = sitPlanElement.getDoorElement();
+      if (doorElement) {
+        doorElement.x = sitPlanElement.posx - doorElement.width / 2;
+        doorElement.y = sitPlanElement.posy - doorElement.height / 2;
+      }
+    }
+
     // Update freeform shape element position if this is a freeform shape
     if (sitPlanElement.isFreeformShape()) {
       const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
@@ -904,7 +965,6 @@ export class SituationPlanView {
     }
 
     this.updateRibbon();
-    this.sideBar.render();
 
     // Update layer manager if visible
     if (this.layerManager && this.layerManager.isVisible()) {
@@ -951,6 +1011,8 @@ export class SituationPlanView {
     box.classList.add("selected");
     this.selected.selectOne(box);
     globalThis.undostruct.updateSelectedBoxes();
+    // Notify React about selection change
+    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
   }
 
   /**
@@ -963,16 +1025,21 @@ export class SituationPlanView {
     box.classList.add("selected");
     this.selected.select(box);
     globalThis.undostruct.updateSelectedBoxes();
+    // Notify React about selection change
+    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
 
-    // Add resize handles for walls and freeform shapes
+    // Add resize handles for walls, windows, doors and freeform shapes
     const sitPlanElement = (box as any).sitPlanElementRef;
     if (
       sitPlanElement &&
-      (sitPlanElement.isWall() || sitPlanElement.isFreeformShape())
+      (sitPlanElement.isWall() ||
+        sitPlanElement.isWindow() ||
+        sitPlanElement.isDoor() ||
+        sitPlanElement.isFreeformShape())
     ) {
       this.addWallResizeHandles(box, sitPlanElement);
 
-      // Show wall/freeform shape properties in sidebar
+      // Show wall/window/freeform shape properties in sidebar
       if (this.sideBar) {
         this.sideBar.selectedWallElement = sitPlanElement;
         this.sideBar.selectedElement = null; // Clear element selection
@@ -1031,6 +1098,9 @@ export class SituationPlanView {
       this.sideBar.selectedElement = null;
       this.sideBar.render();
     }
+
+    // Notify React about selection change
+    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
 
     // Update layer manager
     if (this.layerManager && this.layerManager.isVisible()) {
@@ -1104,6 +1174,60 @@ export class SituationPlanView {
         if (newWallElement) {
           newWallElement.x = newElement.posx - newWallElement.width / 2;
           newWallElement.y = newElement.posy - newWallElement.height / 2;
+        }
+      } else if (sitPlanElement.isWindow()) {
+        // Duplicate window
+        const windowElement = sitPlanElement.getWindowElement();
+        if (!windowElement) continue;
+
+        // Create window with original position
+        newElement = this.sitplan.addWindowElement(
+          sitPlanElement.page,
+          windowElement.x,
+          windowElement.y,
+          windowElement.width,
+          windowElement.height
+        );
+
+        // Copy rotation
+        newElement.rotate = sitPlanElement.rotate || 0;
+
+        // Apply offset to center position (posx/posy)
+        newElement.posx = sitPlanElement.posx + offset;
+        newElement.posy = sitPlanElement.posy + offset;
+
+        // Update window element coordinates to match new center
+        const newWindowElement = newElement.getWindowElement();
+        if (newWindowElement) {
+          newWindowElement.x = newElement.posx - newWindowElement.width / 2;
+          newWindowElement.y = newElement.posy - newWindowElement.height / 2;
+        }
+      } else if (sitPlanElement.isDoor()) {
+        // Duplicate door
+        const doorElement = sitPlanElement.getDoorElement();
+        if (!doorElement) continue;
+
+        // Create door with original position
+        newElement = this.sitplan.addDoorElement(
+          sitPlanElement.page,
+          doorElement.x,
+          doorElement.y,
+          doorElement.width,
+          doorElement.height
+        );
+
+        // Copy rotation
+        newElement.rotate = sitPlanElement.rotate || 0;
+
+        // Apply offset to center position (posx/posy)
+        newElement.posx = sitPlanElement.posx + offset;
+        newElement.posy = sitPlanElement.posy + offset;
+
+        // Update door element coordinates to match new center
+        const newDoorElement = newElement.getDoorElement();
+        if (newDoorElement) {
+          newDoorElement.x = newElement.posx - newDoorElement.width / 2;
+          newDoorElement.y = newElement.posy - newDoorElement.height / 2;
         }
       } else if (sitPlanElement.isFreeformShape()) {
         // Duplicate freeform shape
@@ -2655,6 +2779,314 @@ export class SituationPlanView {
   };
 
   /**
+   * Enable window drawing mode
+   */
+  public enableWindowDrawingMode(): void {
+    this.windowDrawingMode = true;
+    this.canvas.style.cursor = "crosshair";
+    this.clearSelection();
+
+    // Store bound handler references so we can remove them later
+    this.windowMouseDownHandler = this.startWindowDrawing.bind(this);
+
+    // Add mousedown listener to paper for window drawing
+    this.paper.addEventListener("mousedown", this.windowMouseDownHandler);
+  }
+
+  /**
+   * Disable window drawing mode
+   */
+  public disableWindowDrawingMode(): void {
+    this.windowDrawingMode = false;
+    this.canvas.style.cursor = "default";
+
+    // Remove window drawing listeners
+    if (this.windowMouseDownHandler) {
+      this.paper.removeEventListener("mousedown", this.windowMouseDownHandler);
+      this.windowMouseDownHandler = null;
+    }
+    if (this.windowMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.windowMouseMoveHandler);
+      this.windowMouseMoveHandler = null;
+    }
+    if (this.windowMouseUpHandler) {
+      document.removeEventListener("mouseup", this.windowMouseUpHandler);
+      this.windowMouseUpHandler = null;
+    }
+
+    // Remove preview if exists
+    if (this.windowPreviewElement) {
+      this.windowPreviewElement.remove();
+      this.windowPreviewElement = null;
+    }
+  }
+
+  /**
+   * Check if window drawing mode is active
+   */
+  public isWindowDrawingMode(): boolean {
+    return this.windowDrawingMode;
+  }
+
+  /**
+   * Start drawing a window
+   */
+  private startWindowDrawing = (event: MouseEvent): void => {
+    if (!this.windowDrawingMode) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    this.windowDrawingStart = { x: paperPos.x, y: paperPos.y };
+
+    // Create preview element
+    this.windowPreviewElement = document.createElement("div");
+    this.windowPreviewElement.className = "window-preview";
+    this.windowPreviewElement.style.position = "absolute";
+    this.windowPreviewElement.style.pointerEvents = "none";
+    this.windowPreviewElement.style.border = "2px solid black";
+    this.windowPreviewElement.style.backgroundColor = "white";
+    this.paper.appendChild(this.windowPreviewElement);
+
+    // Store bound handlers
+    this.windowMouseMoveHandler = this.updateWindowPreview.bind(this);
+    this.windowMouseUpHandler = this.finishWindowDrawing.bind(this);
+
+    document.addEventListener("mousemove", this.windowMouseMoveHandler);
+    document.addEventListener("mouseup", this.windowMouseUpHandler);
+  };
+
+  /**
+   * Update window preview while dragging
+   */
+  private updateWindowPreview = (event: MouseEvent): void => {
+    if (!this.windowDrawingStart || !this.windowPreviewElement) return;
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.windowDrawingStart.x, paperPos.x);
+    const y = Math.min(this.windowDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.windowDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.windowDrawingStart.y);
+
+    this.windowPreviewElement.style.left = `${x}px`;
+    this.windowPreviewElement.style.top = `${y}px`;
+    this.windowPreviewElement.style.width = `${width}px`;
+    this.windowPreviewElement.style.height = `${height}px`;
+  };
+
+  /**
+   * Finish drawing a window
+   */
+  private finishWindowDrawing = (event: MouseEvent): void => {
+    if (!this.windowDrawingStart || !this.windowDrawingMode) return;
+
+    // Remove event listeners
+    if (this.windowMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.windowMouseMoveHandler);
+      this.windowMouseMoveHandler = null;
+    }
+    if (this.windowMouseUpHandler) {
+      document.removeEventListener("mouseup", this.windowMouseUpHandler);
+      this.windowMouseUpHandler = null;
+    }
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.windowDrawingStart.x, paperPos.x);
+    const y = Math.min(this.windowDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.windowDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.windowDrawingStart.y);
+
+    // Only create window if it has minimum size
+    if (width > 5 && height > 5) {
+      const element = this.sitplan.addWindowElement(
+        this.sitplan.activePage,
+        x,
+        y,
+        width,
+        height
+      );
+
+      this.redraw();
+      globalThis.undostruct.store();
+    }
+
+    // Remove preview
+    if (this.windowPreviewElement) {
+      this.windowPreviewElement.remove();
+      this.windowPreviewElement = null;
+    }
+
+    this.windowDrawingStart = null;
+  };
+
+  /**
+   * Enable door drawing mode
+   */
+  public enableDoorDrawingMode(): void {
+    this.doorDrawingMode = true;
+    this.canvas.style.cursor = "crosshair";
+    this.clearSelection();
+
+    // Store bound handler references so we can remove them later
+    this.doorMouseDownHandler = this.startDoorDrawing.bind(this);
+
+    // Add mousedown listener to paper for door drawing
+    this.paper.addEventListener("mousedown", this.doorMouseDownHandler);
+  }
+
+  /**
+   * Disable door drawing mode
+   */
+  public disableDoorDrawingMode(): void {
+    this.doorDrawingMode = false;
+    this.canvas.style.cursor = "default";
+
+    // Remove door drawing listeners
+    if (this.doorMouseDownHandler) {
+      this.paper.removeEventListener("mousedown", this.doorMouseDownHandler);
+      this.doorMouseDownHandler = null;
+    }
+    if (this.doorMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.doorMouseMoveHandler);
+      this.doorMouseMoveHandler = null;
+    }
+    if (this.doorMouseUpHandler) {
+      document.removeEventListener("mouseup", this.doorMouseUpHandler);
+      this.doorMouseUpHandler = null;
+    }
+
+    // Remove preview if exists
+    if (this.doorPreviewElement) {
+      this.doorPreviewElement.remove();
+      this.doorPreviewElement = null;
+    }
+  }
+
+  /**
+   * Check if door drawing mode is active
+   */
+  public isDoorDrawingMode(): boolean {
+    return this.doorDrawingMode;
+  }
+
+  /**
+   * Start drawing a door
+   */
+  private startDoorDrawing = (event: MouseEvent): void => {
+    if (!this.doorDrawingMode) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    this.doorDrawingStart = { x: paperPos.x, y: paperPos.y };
+
+    // Create preview element
+    this.doorPreviewElement = document.createElement("div");
+    this.doorPreviewElement.className = "door-preview";
+    this.doorPreviewElement.style.position = "absolute";
+    this.doorPreviewElement.style.pointerEvents = "none";
+    this.doorPreviewElement.style.border = "2px solid black";
+    this.doorPreviewElement.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+    this.paper.appendChild(this.doorPreviewElement);
+
+    // Store bound handlers
+    this.doorMouseMoveHandler = this.updateDoorPreview.bind(this);
+    this.doorMouseUpHandler = this.finishDoorDrawing.bind(this);
+
+    document.addEventListener("mousemove", this.doorMouseMoveHandler);
+    document.addEventListener("mouseup", this.doorMouseUpHandler);
+  };
+
+  /**
+   * Update door preview while dragging
+   */
+  private updateDoorPreview = (event: MouseEvent): void => {
+    if (!this.doorDrawingStart || !this.doorPreviewElement) return;
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.doorDrawingStart.x, paperPos.x);
+    const y = Math.min(this.doorDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.doorDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.doorDrawingStart.y);
+
+    this.doorPreviewElement.style.left = `${x}px`;
+    this.doorPreviewElement.style.top = `${y}px`;
+    this.doorPreviewElement.style.width = `${width}px`;
+    this.doorPreviewElement.style.height = `${height}px`;
+  };
+
+  /**
+   * Finish drawing a door
+   */
+  private finishDoorDrawing = (event: MouseEvent): void => {
+    if (!this.doorDrawingStart || !this.doorDrawingMode) return;
+
+    // Remove event listeners
+    if (this.doorMouseMoveHandler) {
+      document.removeEventListener("mousemove", this.doorMouseMoveHandler);
+      this.doorMouseMoveHandler = null;
+    }
+    if (this.doorMouseUpHandler) {
+      document.removeEventListener("mouseup", this.doorMouseUpHandler);
+      this.doorMouseUpHandler = null;
+    }
+
+    const rect = this.paper.getBoundingClientRect();
+    const canvasx = event.clientX - rect.left;
+    const canvasy = event.clientY - rect.top;
+    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+
+    const x = Math.min(this.doorDrawingStart.x, paperPos.x);
+    const y = Math.min(this.doorDrawingStart.y, paperPos.y);
+    const width = Math.abs(paperPos.x - this.doorDrawingStart.x);
+    const height = Math.abs(paperPos.y - this.doorDrawingStart.y);
+
+    // Only create door if it has minimum size
+    if (width > 5 && height > 5) {
+      const element = this.sitplan.addDoorElement(
+        this.sitplan.activePage,
+        x,
+        y,
+        width,
+        height
+      );
+
+      this.redraw();
+      globalThis.undostruct.store();
+    }
+
+    // Remove preview
+    if (this.doorPreviewElement) {
+      this.doorPreviewElement.remove();
+      this.doorPreviewElement = null;
+    }
+
+    this.doorDrawingStart = null;
+  };
+
+  /**
    * Add resize handles to a selected wall
    */
   private addWallResizeHandles(
@@ -2710,13 +3142,19 @@ export class SituationPlanView {
       .find((el) => el.id === wallId);
     if (
       !sitPlanElement ||
-      (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape())
+      (!sitPlanElement.isWall() &&
+        !sitPlanElement.isWindow() &&
+        !sitPlanElement.isDoor() &&
+        !sitPlanElement.isFreeformShape())
     )
       return;
 
     const wallElement = sitPlanElement.getWallElement();
+    const windowElement = sitPlanElement.getWindowElement();
+    const doorElement = sitPlanElement.getDoorElement();
     const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
-    const shapeElement = wallElement || freeformShapeElement;
+    const shapeElement =
+      wallElement || windowElement || doorElement || freeformShapeElement;
     if (!shapeElement) return;
 
     const startX = event.clientX;
@@ -2828,7 +3266,10 @@ export class SituationPlanView {
       .find((el) => el.id === wallId);
     if (
       !sitPlanElement ||
-      (!sitPlanElement.isWall() && !sitPlanElement.isFreeformShape())
+      (!sitPlanElement.isWall() &&
+        !sitPlanElement.isWindow() &&
+        !sitPlanElement.isDoor() &&
+        !sitPlanElement.isFreeformShape())
     )
       return;
 

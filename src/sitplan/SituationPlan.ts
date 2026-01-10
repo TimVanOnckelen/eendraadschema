@@ -10,6 +10,8 @@ import {
   FreeformShapeElement,
   FreeformShapeType,
 } from "./FreeformShapeElement";
+import { WindowElement } from "./WindowElement";
+import { DoorElement } from "./DoorElement";
 
 /**
  * Volledig overzicht van een situatieplan.
@@ -254,6 +256,72 @@ export class SituationPlan {
 
     const element = new SituationPlanElement();
     element.setFreeformShapeElement(freeformShapeElement);
+    element.movable = true;
+
+    this.elements.push(element);
+    return element;
+  }
+
+  /**
+   * Creëer een nieuw raam element in het situatieplan
+   *
+   * @param {number} page Het pagina-nummer van het element in het situatieplan
+   * @param {number} x De x-coordinaat van de linkerbovenhoek van het raam
+   * @param {number} y De y-coordinaat van de linkerbovenhoek van het raam
+   * @param {number} width De breedte van het raam
+   * @param {number} height De hoogte van het raam
+   * @returns {SituationPlanElement} Het element dat is toegevoegd
+   */
+  addWindowElement(
+    page: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): SituationPlanElement {
+    const windowElement = new WindowElement({
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      page: page,
+    });
+
+    const element = new SituationPlanElement();
+    element.setWindowElement(windowElement);
+    element.movable = true;
+
+    this.elements.push(element);
+    return element;
+  }
+
+  /**
+   * Creëer een nieuw deur element in het situatieplan
+   *
+   * @param {number} page Het pagina-nummer van het element in het situatieplan
+   * @param {number} x De x-coordinaat van de linkerbovenhoek van de deur
+   * @param {number} y De y-coordinaat van de linkerbovenhoek van de deur
+   * @param {number} width De breedte van de deur
+   * @param {number} height De hoogte van de deur
+   * @returns {SituationPlanElement} Het element dat is toegevoegd
+   */
+  addDoorElement(
+    page: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): SituationPlanElement {
+    const doorElement = new DoorElement({
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      page: page,
+    });
+
+    const element = new SituationPlanElement();
+    element.setDoorElement(doorElement);
     element.movable = true;
 
     this.elements.push(element);
