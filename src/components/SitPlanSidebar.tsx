@@ -6,8 +6,6 @@
 import React, { useState, useEffect } from 'react';
 import { SituationPlanElement } from '../sitplan/SituationPlanElement';
 import { WallType } from '../sitplan/WallElement';
-import { Electro_Item } from '../List_Item/Electro_Item';
-import { Hierarchical_List } from '../Hierarchical_List';
 
 interface SitPlanSidebarProps {
   selectedElement: SituationPlanElement | null;
