@@ -57,6 +57,7 @@ export class Kring extends Electro_Item {
         this.props.sturing = "";
         this.props.adres = "";
         this.props.newPage = false;
+        this.props.is_draaischakelaar = false;
 
         //Bepalen of er per default een kabel aanwezig is en of we zekeringen plaatsen
         let parent = this.getParent();
@@ -183,6 +184,7 @@ export class Kring extends Electro_Item {
             case "contact":
                 output += ", Normaal Gesloten: " + this.checkboxPropToHTML('normaalGesloten');
                 output += ", Sturing: " + this.selectPropToHTML('sturing',["","spoel"]);
+                output += ", Draaischakelaar: " + this.checkboxPropToHTML('is_draaischakelaar');
                 break;
 
             case "zekeringscheider":

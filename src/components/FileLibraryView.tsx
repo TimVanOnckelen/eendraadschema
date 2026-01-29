@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileLibraryStorage, EdsFileMetadata } from '../storage/FileLibraryStorage';
+import { dialogAlert, dialogConfirm, dialogPrompt } from '../utils/DialogHelpers';
 
 interface FileLibraryViewProps {
     onFileOpen: (content: string, filename: string) => void;
@@ -35,13 +36,14 @@ export const FileLibraryView: React.FC<FileLibraryViewProps> = ({ onFileOpen, on
     };
 
     const handleDeleteBrowserFile = async (id: string) => {
-        if (!confirm('Weet u zeker dat u dit bestand wilt verwijderen?')) return;
+        const confirmed = await dialogConfirm('Bestand verwijderen', 'Weet u zeker dat u dit bestand wilt verwijderen?');
+        if (!confirmed) return;
         
         const success = await storage.deleteFile(id);
         if (success) {
             loadBrowserFiles();
         } else {
-            alert('Kon bestand niet verwijderen');
+            await dialogAlert('Fout', 'Kon bestand niet verwijderen');
         }
     };
 
@@ -50,19 +52,19 @@ export const FileLibraryView: React.FC<FileLibraryViewProps> = ({ onFileOpen, on
         if (newId) {
             loadBrowserFiles();
         } else {
-            alert('Kon bestand niet dupliceren');
+            await dialogAlert('Fout', 'Kon bestand niet dupliceren');
         }
     };
 
     const handleRenameBrowserFile = async (file: EdsFileMetadata) => {
-        const newName = prompt('Nieuwe bestandsnaam:', file.filename.replace(/\.eds$/, ''));
+        const newName = await dialogPrompt('Bestand hernoemen', 'Nieuwe bestandsnaam:', file.filename.replace(/\.eds$/, ''));
         if (!newName || newName.trim() === '') return;
         
         const success = await storage.renameFile(file.id, newName.trim());
         if (success) {
             loadBrowserFiles();
         } else {
-            alert('Kon bestand niet hernoemen');
+            await dialogAlert('Fout', 'Kon bestand niet hernoemen');
         }
     };
 
@@ -77,7 +79,7 @@ export const FileLibraryView: React.FC<FileLibraryViewProps> = ({ onFileOpen, on
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Error exporting file:', error);
-            alert('Kon bestand niet exporteren');
+            await dialogAlert('Fout', 'Kon bestand niet exporteren');
         }
     };
 
@@ -88,9 +90,9 @@ export const FileLibraryView: React.FC<FileLibraryViewProps> = ({ onFileOpen, on
         const id = await storage.saveFile(filename, content, false);
         if (id) {
             loadBrowserFiles();
-            alert('Bestand opgeslagen in browser bibliotheek');
+            await dialogAlert('Succes', 'Bestand opgeslagen in browser bibliotheek');
         } else {
-            alert('Kon bestand niet opslaan');
+            await dialogAlert('Fout', 'Kon bestand niet opslaan');
         }
     };
 
@@ -98,7 +100,7 @@ export const FileLibraryView: React.FC<FileLibraryViewProps> = ({ onFileOpen, on
         try {
             // Check if File System Access API is supported
             if (!(window as any).showOpenFilePicker) {
-                alert('Uw browser ondersteunt deze functie niet. Gebruik Chrome, Edge of een andere moderne browser.');
+                await dialogAlert('Fout', 'Uw browser ondersteunt deze functie niet. Gebruik Chrome, Edge of een andere moderne browser.');
                 return;
             }
 

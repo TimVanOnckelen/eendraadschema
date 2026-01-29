@@ -27,6 +27,7 @@ export class Drukknop extends Electro_Item {
         this.props.is_afgeschermd = false; 
         this.props.is_halfwaterdicht = false; 
         this.props.heeft_verklikkerlampje = false;
+        this.props.is_draaischakelaar = false;
     }
 
   /**
@@ -44,6 +45,7 @@ export class Drukknop extends Electro_Item {
 
         output += "&nbsp;" + this.nrToHtml()
                +    "Type: " + this.selectPropToHTML('type_knop',["standaard","dimmer","rolluik"])
+               +  ", Draaischakelaar: " + this.checkboxPropToHTML('is_draaischakelaar')
                +  ", Verklikkerlampje: " + this.checkboxPropToHTML('heeft_verklikkerlampje')
                +  ", Halfwaterdicht: " + this.checkboxPropToHTML('is_halfwaterdicht')
                +  ", Afgeschermd: " + this.checkboxPropToHTML('is_afgeschermd')

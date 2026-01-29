@@ -7,6 +7,7 @@ import {
 } from "./FreeformShapeElement";
 import { WindowElement } from "./WindowElement";
 import { DoorElement } from "./DoorElement";
+import { dialogAlert } from "../utils/DialogHelpers";
 
 export type AdresLocation = "rechts" | "links" | "boven" | "onder";
 export type AdresType = "auto" | "manueel";
@@ -670,12 +671,12 @@ export class SituationPlanElement {
           callback();
         };
         image.onerror = () => {
-          alert("Het formaat van deze file wordt niet ondersteund.");
+          dialogAlert("Fout", "Het formaat van deze file wordt niet ondersteund.");
         };
       };
       reader.readAsDataURL(file); // Read the file as a data URL
     } else {
-      alert("Geen bestand geselecteerd");
+      dialogAlert("Fout", "Geen bestand geselecteerd");
     }
   }
 

@@ -36,6 +36,9 @@ const SimpleHierarchyView: React.FC = () => {
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
   
+  // Keyboard shortcuts dialog state
+  const [showKeysDialog, setShowKeysDialog] = useState(false);
+  
   // Column widths state (stored in localStorage)
   const [leftWidth, setLeftWidth] = useState(() => {
     const saved = localStorage.getItem('editor-left-width');
@@ -682,10 +685,65 @@ const SimpleHierarchyView: React.FC = () => {
   };
 
   // Zoom handlers
-  const handleZoomIn = () => setSvgZoom((z) => Math.min(z + 0.2, 3));
-  const handleZoomOut = () => setSvgZoom((z) => Math.max(z - 0.2, 0.5));
+  // Extended zoom range: 0.1x (10%) to 8x for large plans
+  const handleZoomIn = () => setSvgZoom((z) => Math.min(z * 1.2, 8));
+  const handleZoomOut = () => setSvgZoom((z) => Math.max(z / 1.2, 0.1));
   const handleZoomReset = () => {
     setSvgZoom(1);
+    setSvgPanX(0);
+    setSvgPanY(0);
+  };
+
+  // Fit to screen handler - calculates optimal zoom to show all content
+  const handleZoomFit = () => {
+    const edsDiv = document.getElementById('EDS');
+    const container = document.querySelector('.simple-svg-container') as HTMLElement;
+    
+    if (!edsDiv || !container) {
+      handleZoomReset();
+      return;
+    }
+
+    const svg = edsDiv.querySelector('svg') as SVGSVGElement;
+    if (!svg) {
+      handleZoomReset();
+      return;
+    }
+
+    // Get SVG dimensions
+    const bbox = svg.getBBox ? svg.getBBox() : null;
+    const viewBox = svg.getAttribute('viewBox');
+    
+    let svgWidth = 0;
+    let svgHeight = 0;
+
+    if (bbox) {
+      svgWidth = bbox.width;
+      svgHeight = bbox.height;
+    } else if (viewBox) {
+      const parts = viewBox.split(' ').map(Number);
+      svgWidth = parts[2];
+      svgHeight = parts[3];
+    } else {
+      svgWidth = svg.clientWidth || 1000;
+      svgHeight = svg.clientHeight || 1000;
+    }
+
+    // Get container dimensions (accounting for padding)
+    const containerWidth = container.clientWidth - 24; // 12px padding on each side
+    const containerHeight = container.clientHeight - 48; // More padding for controls
+
+    if (svgWidth === 0 || svgHeight === 0) {
+      handleZoomReset();
+      return;
+    }
+
+    // Calculate optimal zoom level
+    const zoomWidth = containerWidth / svgWidth;
+    const zoomHeight = containerHeight / svgHeight;
+    const optimalZoom = Math.max(0.1, Math.min(8, Math.min(zoomWidth, zoomHeight) * 0.95)); // 0.95 for margin
+
+    setSvgZoom(optimalZoom);
     setSvgPanX(0);
     setSvgPanY(0);
   };
@@ -706,6 +764,11 @@ const SimpleHierarchyView: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreen) {
         setIsFullscreen(false);
+      }
+      // Show keyboard shortcuts on "?"
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShowKeysDialog(true);
       }
     };
 
@@ -752,6 +815,30 @@ const SimpleHierarchyView: React.FC = () => {
       };
     }
   }, [isPanning, handlePanMove, handlePanEnd]);
+
+  // Wheel zoom handler (Ctrl+Scroll or just Scroll)
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Only zoom if Ctrl is held, or if the container has focus and no modifier keys are blocking
+    if (!e.ctrlKey && !e.metaKey) return; // Only with Ctrl+Scroll or Cmd+Scroll on Mac
+    
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Zoom with multiplicative factors for smoother experience
+    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1; // 10% per scroll
+    setSvgZoom((z) => Math.max(0.1, Math.min(8, z * zoomDelta)));
+  }, []);
+
+  // Setup wheel event listener on SVG container
+  useEffect(() => {
+    const edsDiv = document.getElementById('EDS');
+    if (edsDiv) {
+      edsDiv.addEventListener('wheel', handleWheel as any, { passive: false });
+      return () => {
+        edsDiv.removeEventListener('wheel', handleWheel as any);
+      };
+    }
+  }, [handleWheel]);
 
   // Apply zoom and pan transform to fullscreen SVG
   useEffect(() => {
@@ -1323,12 +1410,14 @@ const SimpleHierarchyView: React.FC = () => {
                 overflow: 'hidden',
                 position: 'relative'
               }}
+              onWheel={handleWheel}
             >
               {/* Zoom controls - positioned absolutely inside container */}
               <div className="svg-zoom-controls">
                 <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
                 <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit">−</button>
                 <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom">⊙</button>
+                <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan">⊡</button>
                 <button 
                   className="svg-zoom-btn" 
                   onClick={() => setHighlightEnabled(!highlightEnabled)}
@@ -1358,7 +1447,8 @@ const SimpleHierarchyView: React.FC = () => {
                   height: '100%',
                   cursor: isPanning ? 'grabbing' : 'grab',
                   transform: `translate(${svgPanX}px, ${svgPanY}px)`,
-                  transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                  transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                  transformOrigin: 'top left'
                 }}
                 dangerouslySetInnerHTML={{ __html: getSVGContent() }}
               />
@@ -1820,6 +1910,7 @@ const SimpleHierarchyView: React.FC = () => {
               <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
               <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit">−</button>
               <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom">⊙</button>
+              <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan">⊡</button>
               <button 
                 className="svg-zoom-btn" 
                 onClick={() => setHighlightEnabled(!highlightEnabled)}
@@ -1855,6 +1946,118 @@ const SimpleHierarchyView: React.FC = () => {
               }}
               dangerouslySetInnerHTML={{ __html: getSVGContent() }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Dialog */}
+      {showKeysDialog && (
+        <div 
+          className="keyboard-shortcuts-overlay"
+          onClick={(e) => {
+            if ((e.target as HTMLElement).classList.contains('keyboard-shortcuts-overlay')) {
+              setShowKeysDialog(false);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="keyboard-shortcuts-dialog"
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '600px',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
+              position: 'relative'
+            }}
+          >
+            <button
+              onClick={() => setShowKeysDialog(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+            >
+              ✕
+            </button>
+
+            <h2 style={{ marginTop: 0, marginBottom: '24px', fontSize: '24px' }}>⌨️ Sneltoetsen</h2>
+
+            <div style={{ display: 'grid', gap: '20px' }}>
+              {/* Eendraadschema shortcuts */}
+              <div>
+                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                  Eendraadschema
+                </h3>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Ctrl + Z</span>
+                    <span style={{ color: '#666' }}>Ongedaan maken</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Ctrl + Y</span>
+                    <span style={{ color: '#666' }}>Herhalen</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
+                    <span style={{ color: '#666' }}>Verwijder geselecteerd element</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
+                    <span style={{ fontWeight: 500 }}>?</span>
+                    <span style={{ color: '#666' }}>Toon dit scherm</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Situatieschema shortcuts */}
+              <div>
+                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                  Situatieschema
+                </h3>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Klik en sleep</span>
+                    <span style={{ color: '#666' }}>Symbolen toevoegen</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Shift + Klik</span>
+                    <span style={{ color: '#666' }}>Selecteer element</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
+                    <span style={{ color: '#666' }}>Verwijder geselecteerd element</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontWeight: 500 }}>Ctrl + Scroll</span>
+                    <span style={{ color: '#666' }}>Zoom in/uit</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
+                    <span style={{ fontWeight: 500 }}>?</span>
+                    <span style={{ color: '#666' }}>Toon dit scherm</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

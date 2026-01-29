@@ -12,6 +12,7 @@ import { DocumentationView } from './components/DocumentationView';
 import { ContactView } from './components/ContactView';
 import { FileLibraryView } from './components/FileLibraryView';
 import { FileLibraryStorage, EdsFileMetadata } from './storage/FileLibraryStorage';
+import { dialogAlert, dialogConfirm } from './utils/DialogHelpers';
 import '../css/all.css';
 
 const App: React.FC = () => {
@@ -61,8 +62,9 @@ const App: React.FC = () => {
   }, [structure]);
 
   // File operations
-  const handleNewFile = () => {
-    if (confirm('Weet u zeker dat u een nieuw schema wilt maken? Niet-opgeslagen wijzigingen gaan verloren.')) {
+  const handleNewFile = async () => {
+    const confirmed = await dialogConfirm('Nieuw schema', 'Weet u zeker dat u een nieuw schema wilt maken? Niet-opgeslagen wijzigingen gaan verloren.');
+    if (confirmed) {
       setCurrentView('start');
     }
   };
@@ -169,7 +171,7 @@ const App: React.FC = () => {
     console.log("React App initialized with all services");
   }, [session, appDocStorage, undostruct, fileAPIobj, simpleHierarchyView, setCurrentView, structure, reactInitialized]);
 
-  const handleRecoverAutosave = () => {
+  const handleRecoverAutosave = async () => {
     if (recoveryData && recoveryData.lastSavedStr && structure) {
       try {
         const EDStoStructure = (globalThis as any).EDStoStructure;
@@ -190,7 +192,7 @@ const App: React.FC = () => {
         }
       } catch (error) {
         console.error('Error recovering autosave:', error);
-        alert('Er is een fout opgetreden bij het herstellen van de autosave.');
+        await dialogAlert('Fout bij autosave', 'Er is een fout opgetreden bij het herstellen van de autosave.');
       }
     }
   };
@@ -212,7 +214,7 @@ const App: React.FC = () => {
     setCurrentView('editor');
   };
 
-  const handleFileOpen = (content: string, filename: string) => {
+  const handleFileOpen = async (content: string, filename: string) => {
     try {
       const EDStoStructure = (globalThis as any).EDStoStructure;
       if (EDStoStructure) {
@@ -231,7 +233,7 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Error opening file from library:', error);
-      alert('Er is een fout opgetreden bij het openen van het bestand.');
+      await dialogAlert('Fout bij openen', 'Er is een fout opgetreden bij het openen van het bestand.');
     }
   };
 

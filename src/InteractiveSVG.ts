@@ -7,6 +7,12 @@
  * - Double-click to add a child element
  */
 
+declare global {
+  interface Window {
+    deleteElementWithConfirm: (elementId: number) => void;
+  }
+}
+
 interface ContextMenuOption {
   label: string;
   icon?: string;
@@ -247,7 +253,7 @@ class InteractiveSVG {
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLMoveDown(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
                         <span>⬇️</span> Verplaats omlaag
                     </button>
-                    <button class="svg-prop-btn svg-prop-delete" onclick="event.stopPropagation(); if(confirm('Dit element en alle kinderen verwijderen?')) { HLDelete(${elementId}); document.getElementById('svg-properties-panel')?.remove(); }">
+                    <button class="svg-prop-btn svg-prop-delete" onclick="event.stopPropagation(); window.deleteElementWithConfirm(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
                         <span>🗑️</span> Verwijder
                     </button>
                 </div>
@@ -348,9 +354,7 @@ class InteractiveSVG {
         label: "Verwijder",
         icon: "🗑️",
         action: (id) => {
-          if (confirm("Dit element en alle kinderen verwijderen?")) {
-            gl.HLDelete(id);
-          }
+          window.deleteElementWithConfirm(id);
         },
       },
     ];

@@ -57,6 +57,7 @@ import { Print_Table } from "./print/Print_Table";
 import { SituationPlan } from "./sitplan/SituationPlan";
 import { SituationPlanView } from "./sitplan/SituationPlanView";
 import { MarkerList } from "./print/MarkerList";
+import { dialogAlert } from "./utils/DialogHelpers";
 
 /*****************************************************************************
   CLASS Hierarchical_List
@@ -613,7 +614,7 @@ export class Hierarchical_List {
       this.data[ordinal].parent = my_id;
       this.data[ordinal].indent = this.data[ordinal - 1].indent + 1;
     } else {
-      alert("Het maximum aantal kinderen van dit element is " + maxchilds);
+      dialogAlert("Fout", "Het maximum aantal kinderen van dit element is " + maxchilds);
     }
     this.reSort();
   }
