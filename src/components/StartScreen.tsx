@@ -70,306 +70,535 @@ export const StartScreen: React.FC<StartScreenProps> = ({
     <div style={{ 
       height: 'calc(100vh - var(--menu-height))', 
       overflow: 'auto',
-      background: 'var(--background)',
-      padding: '40px 20px'
+      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
+      padding: '0'
     }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Welcome Section */}
+      {/* Hero Section */}
+      <div style={{
+        background: 'linear-gradient(135deg, var(--primary-color) 0%, #1e40af 50%, #1e3a8a 100%)',
+        color: 'white',
+        padding: '80px 20px 60px 20px',
+        textAlign: 'center',
+        marginBottom: '60px',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Subtle overlay pattern */}
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '32px',
-          marginBottom: '32px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <h1 style={{ 
+            fontSize: '48px', 
+            fontWeight: '800',
+            margin: '0 0 16px 0',
+            letterSpacing: '-1px',
+            width: '100%',
+            textAlign: 'center',
+            wordBreak: 'break-word',
+            background: 'transparent',
+            color: 'white'
+          }}>
+            ⚡ Ééndraadschema
+          </h1>
+          <p style={{ 
+            fontSize: '18px', 
+            margin: '0 0 32px 0', 
+            lineHeight: '1.6',
+            opacity: 0.95,
+            maxWidth: '800px',
+            marginLeft: 'auto',
+            marginRight: 'auto'
+          }}>
+            Plan je huisinstallatie zelf - Gratis, makkelijk en gebruiksvriendelijk
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            fontSize: '14px',
+            opacity: 0.9
+          }}>
+            <span>✓ Ééndraadschema's</span>
+            <span>•</span>
+            <span>✓ Situatieschema's</span>
+            <span>•</span>
+            <span>✓ PDF Export</span>
+            <span>•</span>
+            <span>✓ Compatibel met eendraadschema.goethals-jacobs.be</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px 60px 20px' }}>
+        
+        {/* Quick Start Grid */}
+        <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '32px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '24px',
+          marginBottom: '60px'
         }}>
-          {/* Left: Welcome Text */}
-          <div>
-            <h1 style={{ 
-              fontSize: '32px', 
-              margin: '0 0 20px 0',
-              background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: '700'
+          {/* Card 1: Example 1 */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: '4px solid #10b981'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)';
+            e.currentTarget.style.boxShadow = '0 20px 25px rgba(16, 185, 129, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)';
+          }}>
+            {/* Image Container */}
+            <div style={{
+              background: '#f3f4f6',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '180px',
+              overflow: 'hidden'
             }}>
-              Welkom op ééndraadschema
-            </h1>
-            <p style={{ fontSize: '16px', margin: '0 0 16px 0', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              Deze gratis tool laat toe zowel ééndraadschema's als situatieschema's te tekenen, 
-              inclusief complexere schema's met bijvoorbeeld domotica. De schema's kunnen als PDF 
-              bestand worden geëxporteerd en geprint. Voor de experts kunnen schema's eveneens 
-              worden omgezet in SVG vectorformaat om in andere programma's verder te bewerken.
-            </p>
-            <p style={{ fontSize: '16px', margin: '0 0 16px 0', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              Kies één van onderstaande voorbeelden om van te starten of start van een leeg schema.
-            </p>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-              padding: '16px',
-              borderRadius: '8px',
-              borderLeft: '4px solid #f59e0b'
-            }}>
-              <p style={{ fontSize: '14px', margin: '0', lineHeight: '1.6', color: '#92400e' }}>
-                <strong>💡 Tip: </strong>Om de mogelijkheden van het programma te leren kennen is het vaak beter 
-                eerst een voorbeeldschema te bekijken alvorens van een leeg schema te vertrekken.
+              <img src="examples/example000.svg" style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Voorbeeld 1" />
+            </div>
+            
+            {/* Content */}
+            <div style={{ padding: '32px 24px 24px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                margin: '0 0 8px 0',
+                color: '#1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                📋 Voorbeeld 1
+                <span style={{ 
+                  background: '#d1fae5', 
+                  color: '#065f46', 
+                  fontSize: '11px', 
+                  fontWeight: '600',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  EENVOUDIG
+                </span>
+              </h3>
+              <p style={{ 
+                fontSize: '14px', 
+                color: '#6b7280', 
+                margin: '0 0 24px 0', 
+                flex: 1,
+                lineHeight: '1.6'
+              }}>
+                Perfecte startpunt voor beginners. Leer de basis met contactdozen en lichtpunten.
               </p>
+              <button 
+                onClick={() => handleLoadExample(0)}
+                style={{
+                  width: 'auto',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 6px rgba(16, 185, 129, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '0.9';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '1';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                }}
+              >
+                Open voorbeeld
+              </button>
             </div>
           </div>
 
-          {/* Right: Version Info */}
-          <div style={{ 
-            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-            padding: '24px',
-            borderRadius: '12px',
-            borderLeft: '4px solid var(--primary-color)'
+          {/* Card 2: Example 2 */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: '4px solid #f59e0b'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)';
+            e.currentTarget.style.boxShadow = '0 20px 25px rgba(245, 158, 11, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)';
           }}>
-            <h2 style={{ margin: '0 0 16px 0', color: 'var(--primary-color)', fontSize: '24px', fontWeight: '600' }}>
-              ✨ Nieuwe Versie - Eenvoudiger in Gebruik
-            </h2>
-            <p style={{ margin: '0 0 12px 0', lineHeight: '1.6', fontSize: '14px', color: '#1e3a8a' }}>
-              Deze versie biedt dezelfde krachtige functionaliteit als de originele 
-              versie van <strong>Ivan Goethals</strong>, maar is <strong>eenvoudiger in gebruik</strong>:
-            </p>
-            <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8', color: '#1e40af' }}>
-              <li><strong>Duidelijker menu</strong> - alles makkelijk terug te vinden</li>
-              <li><strong>Inklapbare lijsten</strong> - beter overzicht bij grote schema's</li>
-              <li><strong>Betere zoekfunctie</strong> - vind elementen sneller</li>
-              <li><strong>Visuele hulp</strong> - zie direct wat je selecteert</li>
-              <li><strong>Helderder scherm</strong> - alles beter leesbaar</li>
-              <li><strong>Sneller werken</strong> - vooral bij grote installaties</li>
-            </ul>
-            <p style={{ margin: '0', lineHeight: '1.6', fontSize: '13px', color: '#1e40af' }}>
-              🏗️ <strong>Originele versie:</strong> <a href="https://eendraadschema.goethals-jacobs.be" target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>eendraadschema.goethals-jacobs.be</a>
-            </p>
+            {/* Image Container */}
+            <div style={{
+              background: '#f3f4f6',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '180px',
+              overflow: 'hidden'
+            }}>
+              <img src="examples/example001.svg" style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Voorbeeld 2" />
+            </div>
+            
+            {/* Content */}
+            <div style={{ padding: '32px 24px 24px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                margin: '0 0 8px 0',
+                color: '#1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                📊 Voorbeeld 2
+                <span style={{ 
+                  background: '#fed7aa', 
+                  color: '#92400e', 
+                  fontSize: '11px', 
+                  fontWeight: '600',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  GEMIDDELD
+                </span>
+              </h3>
+              <p style={{ 
+                fontSize: '14px', 
+                color: '#6b7280', 
+                margin: '0 0 24px 0', 
+                flex: 1,
+                lineHeight: '1.6'
+              }}>
+                Leer geavanceerde functies met teleruptoren, verbruikers en gesplitste kringen.
+              </p>
+              <button 
+                onClick={() => handleLoadExample(1)}
+                style={{
+                  width: 'auto',
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 6px rgba(245, 158, 11, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '0.9';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '1';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                }}
+              >
+                Open voorbeeld
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: New Schema */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: '4px solid #8b5cf6'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)';
+            e.currentTarget.style.boxShadow = '0 20px 25px rgba(139, 92, 246, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)';
+          }}>
+            {/* Image Container */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '180px',
+              overflow: 'hidden'
+            }}>
+              <div style={{ fontSize: '80px' }}>🛠️</div>
+            </div>
+            
+            {/* Content */}
+            <div style={{ padding: '32px 24px 24px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                margin: '0 0 8px 0',
+                color: '#1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                ✨ Nieuw schema
+              </h3>
+              <p style={{ 
+                fontSize: '14px', 
+                color: '#6b7280', 
+                margin: '0 0 24px 0', 
+                flex: 1,
+                lineHeight: '1.6'
+              }}>
+                Start met een leeg canvas en bouw uw eigen elektrotechnisch schema op.
+              </p>
+              <button 
+                onClick={handleNewSchema}
+                style={{
+                  width: 'auto',
+                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 6px rgba(139, 92, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '0.9';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '1';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                }}
+              >
+                Nieuw schema starten
+              </button>
+            </div>
+          </div>
+
+          {/* Card 4: Open File */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: '4px solid #06b6d4'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-8px)';
+            e.currentTarget.style.boxShadow = '0 20px 25px rgba(6, 182, 212, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.05)';
+          }}>
+            {/* Image Container */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '180px',
+              overflow: 'hidden'
+            }}>
+              <div style={{ fontSize: '80px' }}>📂</div>
+            </div>
+            
+            {/* Content */}
+            <div style={{ padding: '32px 24px 24px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                margin: '0 0 8px 0',
+                color: '#1f2937',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                📁 Bestand openen
+              </h3>
+              <p style={{ 
+                fontSize: '14px', 
+                color: '#6b7280', 
+                margin: '0 0 24px 0', 
+                flex: 1,
+                lineHeight: '1.6'
+              }}>
+                Open een eerder opgeslagen EDS-bestand van uw computer.
+              </p>
+              <button 
+                onClick={handleLoadFile}
+                style={{
+                  width: 'auto',
+                  background: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 6px rgba(6, 182, 212, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '0.9';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.02)';
+                }}
+                onMouseOut={(e) => {
+                  e.stopPropagation();
+                  (e.currentTarget as HTMLElement).style.opacity = '1';
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                }}
+              >
+                Bestand kiezen
+              </button>
+            </div>
           </div>
         </div>
 
         <div id="autoSaveRecover"></div>
 
-        {/* Options Grid */}
+        {/* Info Section */}
         <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '40px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '40px',
           marginBottom: '40px'
         }}>
-          {/* Option 1: Example 1 */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
-              📋 Voorbeeld 1
-            </h3>
-            <img src="examples/example000.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Example 1" />
-            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
-              Eenvoudig schema, enkel contactdozen en lichtpunten.
-            </p>
-            <button 
-              onClick={() => handleLoadExample(0)}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '0.9';
-              }}
-              onMouseOut={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              Start met dit voorbeeld
-            </button>
+          {/* Features */}
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 20px 0', color: '#1f2937' }}>
+              ✨ Functies
+            </h2>
+            <ul style={{ 
+              margin: '0', 
+              padding: '0',
+              listStyle: 'none'
+            }}>
+              {[
+                'Ééndraadschema\'s en situatieschema\'s',
+                'Domotica en geavanceerde installaties',
+                'PDF export en printen',
+                'SVG vectorformaat',
+                'Auto-opslaan',
+                'Ongedaan maken/Herhalen'
+              ].map((feature, i) => (
+                <li key={i} style={{
+                  padding: '10px 0',
+                  borderBottom: i < 5 ? '1px solid #e5e7eb' : 'none',
+                  fontSize: '14px',
+                  color: '#4b5563',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{ color: 'var(--primary-color)', fontSize: '16px' }}>✓</span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Option 2: Example 2 */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
-              📊 Voorbeeld 2
-            </h3>
-            <img src="examples/example001.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Example 2" />
-            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
-              Iets complexer schema met teleruptoren, verbruikers achter contactdozen en gesplitste kringen.
-            </p>
-            <button 
-              onClick={() => handleLoadExample(1)}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '0.9';
-              }}
-              onMouseOut={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              Start met dit voorbeeld
-            </button>
+          {/* Tips */}
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 20px 0', color: '#1f2937' }}>
+              💡 Tips
+            </h2>
+            <div style={{
+              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+              padding: '16px',
+              borderRadius: '8px',
+              borderLeft: '4px solid #f59e0b',
+              marginBottom: '16px'
+            }}>
+              <p style={{ margin: '0', fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
+                <strong>Start met voorbeelden:</strong> De voorbeelden laten zien hoe je het programma gebruikt. Dit is veel sneller dan van nul beginnen.
+              </p>
+            </div>
+
           </div>
 
-          {/* Option 3: New Schema */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
-              ➕ Leeg schema
-            </h3>
-            <img src="examples/gear.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="New Schema" />
-            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
-              Start met een leeg schema en bouw uw eigen installatie op.
+          {/* About */}
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 20px 0', color: '#1f2937' }}>
+              ℹ️ Over deze versie
+            </h2>
+            <p style={{ 
+              margin: '0 0 12px 0', 
+              fontSize: '14px', 
+              color: '#6b7280',
+              lineHeight: '1.6'
+            }}>
+              Deze versie is gebaseerd op het originele werk van <strong>Ivan Goethals</strong> en is verbeterd voor gebruiksgemak en prestaties.
             </p>
-            <button 
-              onClick={handleNewSchema}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '0.9';
-              }}
-              onMouseOut={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              Start nieuw schema
-            </button>
-          </div>
-
-          {/* Option 4: Open File */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-          }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: '600', color: 'var(--primary-color)' }}>
-              📂 Openen
-            </h3>
-            <img src="examples/import_icon.svg" style={{ width: '100%', height: '200px', objectFit: 'contain', marginBottom: '16px' }} alt="Import" />
-            <p style={{ fontSize: '14px', textAlign: 'center', color: 'var(--text-secondary)', margin: '0 0 20px 0', flex: '1' }}>
-              Open een schema dat u eerder heeft opgeslagen op uw computer (EDS-bestand).
+            <p style={{ 
+              margin: '0', 
+              fontSize: '13px', 
+              color: '#9ca3af'
+            }}>
+              🏗️ <a href="https://eendraadschema.goethals-jacobs.be" target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>Originele versie</a>
             </p>
-            <button 
-              onClick={handleLoadFile}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
-                color: 'white',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '0.9';
-              }}
-              onMouseOut={(e) => {
-                e.stopPropagation();
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              Bestand openen
-            </button>
           </div>
         </div>
       </div>

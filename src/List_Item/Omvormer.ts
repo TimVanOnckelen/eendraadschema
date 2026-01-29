@@ -17,6 +17,7 @@ export class Omvormer extends Electro_Item {
         this.props.adres = "";
         this.props.inkring = false;
         this.props.micro = false;
+        this.props.type_omvormer = "AC/DC";
     }
 
     allowedChilds() : Array<string> { // returns an array with the type-names of allowed childs
@@ -53,6 +54,7 @@ export class Omvormer extends Electro_Item {
             output += "Micro: " + this.checkboxPropToHTML('micro') + ", ";
         }
         
+        output += "Type omvormer: " + this.selectPropToHTML('type_omvormer',["AC/DC","DC/AC","AC/AC","DC/DC"]) + ", ";
         output += "Tekst: " + this.stringPropToHTML('tekst',10) + ", ";
         output += "Adres/tekst: " + this.stringPropToHTML('adres',5);
 

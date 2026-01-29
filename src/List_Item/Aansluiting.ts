@@ -53,6 +53,7 @@ export class Aansluiting extends Electro_Item {
         this.props.fase = '';
         this.props.normaalGesloten = false;
         this.props.newPage = false;
+        this.props.is_draaischakelaar = false;
     }
 
     allowedChilds() : Array<string> { // returns an array with the type-names of allowed childs
@@ -143,6 +144,7 @@ export class Aansluiting extends Electro_Item {
             case "contact":
             case "zekeringscheider":
                 output += ", Normaal Gesloten: " + this.checkboxPropToHTML('normaalGesloten');
+                output += ", Draaischakelaar: " + this.checkboxPropToHTML('is_draaischakelaar');
                 break;
 
         }

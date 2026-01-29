@@ -17,6 +17,7 @@ import {
 } from "./constants/examples";
 import { trimString } from "./general";
 import { reset_all } from "./utils/structureUtils";
+import { dialogConfirm } from "./utils/DialogHelpers";
 import "../css/all.css";
 
 // Import and register global functions
@@ -191,4 +192,12 @@ export function redoClicked() {
 if (typeof window !== "undefined") {
   globalThis.undoClicked = undoClicked;
   globalThis.redoClicked = redoClicked;
+  
+  // Add delete element with confirmation dialog
+  globalThis.deleteElementWithConfirm = async (elementId: number) => {
+    const confirmed = await dialogConfirm('Element verwijderen', 'Dit element en alle kinderen verwijderen?');
+    if (confirmed && globalThis.HLDelete) {
+      globalThis.HLDelete(elementId);
+    }
+  };
 }

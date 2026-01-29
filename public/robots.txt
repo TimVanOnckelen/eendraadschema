@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /private/
+
+Sitemap: https://eendraadschema.nl/sitemap.xml
+
+# Crawl delay to be respectful to servers
+Crawl-delay: 1

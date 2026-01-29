@@ -613,7 +613,8 @@ export class Hierarchical_List {
       this.data[ordinal].parent = my_id;
       this.data[ordinal].indent = this.data[ordinal - 1].indent + 1;
     } else {
-      alert("Het maximum aantal kinderen van dit element is " + maxchilds);
+      const { dialogAlert } = require("./utils/DialogHelpers");
+      dialogAlert("Fout", "Het maximum aantal kinderen van dit element is " + maxchilds);
     }
     this.reSort();
   }

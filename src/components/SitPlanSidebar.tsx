@@ -26,6 +26,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   const [width, setWidth] = useState<number>(0);
   const [height, setHeight] = useState<number>(0);
   const [rotation, setRotation] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Excluded types for symbol rendering
   const excludedTypes = [
@@ -205,172 +206,286 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
       </div>;
     }
 
-    const items: React.ReactElement[] = [];
     const visited = new Set<number>();
+    const itemsByKring: Map<string, any[]> = new Map();
     
-    const collectItems = (list: any, depth: number = 0): any[] => {
-      if (depth > 20) return [];
+    // Simple: just iterate through all items in structure.data and group them
+    if (structure?.data && Array.isArray(structure.data)) {
+      // Find all Kring items first
+      const kringen = new Map<number, { name: string; item: any }>();
       
-      // Handle both array and Hierarchical_List object
-      let dataArray: any[];
-      if (Array.isArray(list)) {
-        dataArray = list;
-      } else if (list?.data && Array.isArray(list.data)) {
-        dataArray = list.data;
-      } else {
-        return [];
+      for (const item of structure.data) {
+        if (!item) continue;
+        const type = item.getType?.() || '';
+        if (type === 'Kring') {
+          let kringName = 'Kring';
+          try {
+            kringName = item.getReadableAdres?.() || 'Kring';
+          } catch (e) {
+            // ignore
+          }
+          kringen.set(item.id, { name: kringName, item });
+          console.log(`[SitPlanSidebar] Found Kring ${item.id}: "${kringName}"`);
+        }
       }
       
-      const collected: any[] = [];
-      for (const item of dataArray) {
+      // Now iterate through all items and group them
+      for (const item of structure.data) {
         if (!item || visited.has(item.id)) continue;
         visited.add(item.id);
         
         const type = item.getType?.() || '';
         
-        // Skip excluded types, attributes, and items that can't be added
-        if (excludedTypes.includes(type) || item.isAttribuut?.()) continue;
+        // Skip excluded types and attributes
+        if (excludedTypes.includes(type) || item.isAttribuut?.()) {
+          console.log(`[SitPlanSidebar] Skipping excluded type: ${type}`);
+          continue;
+        }
         
         const maxElements = item.maxSituationPlanElements?.();
         const currentCount = structure.sitplan?.countByElectroItemId?.(item.id) || 0;
         const canAdd = maxElements === null || currentCount < maxElements;
         
-        if (!canAdd) continue;
-        
-        collected.push(item);
-        
-        // Process children recursively
-        if (item.Parent_Item) {
-          collected.push(...collectItems(item.Parent_Item, depth + 1));
+        if (!canAdd) {
+          console.log(`[SitPlanSidebar] Cannot add ${item.id} (${type}): max=${maxElements}, current=${currentCount}`);
+          continue;
         }
+        
+        // Find which group this item belongs to - based on address prefix (letters and numbers)
+        let groupName = 'Overige';
+        let adresText = '';
+        
+        try {
+          adresText = item.getReadableAdres?.() || '';
+        } catch (e) {
+          // ignore
+        }
+        
+        if (!adresText && item.props?.adres) {
+          adresText = item.props.adres;
+        }
+        
+        // Extract the prefix (everything at the start that is letters/numbers before a dot or space)
+        if (adresText) {
+          const match = adresText.match(/^([A-Za-z0-9]+)/);
+          if (match && match[1]) {
+            groupName = match[1].toUpperCase();
+          }
+        }
+        
+        if (!itemsByKring.has(groupName)) {
+          itemsByKring.set(groupName, []);
+        }
+        itemsByKring.get(groupName)!.push(item);
+        console.log(`[SitPlanSidebar] Item ${item.id} (${type}) address="${adresText}" -> group: "${groupName}"`);
       }
+    }
+
+    // Render grouped items
+    const items: React.ReactElement[] = [];
+    
+    // Sort kringen alphabetically
+    const sortedKringen = Array.from(itemsByKring.keys()).sort();
+    
+    for (const kringName of sortedKringen) {
+      const kringItems = itemsByKring.get(kringName) || [];
       
-      return collected;
-    };
-    
-    const allItems = collectItems(structure.data);
-    
-    for (const item of allItems) {
-      try {
-        const type = item.getType?.() || 'Onbekend';
+      // Filter items based on search term
+      const filteredItems = kringItems.filter(item => {
+        if (!searchTerm) return true;
+        const searchLower = searchTerm.toLowerCase();
+        const type = (item.getType?.() || '').toLowerCase();
         let adres = '';
         try {
-          adres = item.getReadableAdres?.() || '';
+          adres = (item.getReadableAdres?.() || '').toLowerCase();
         } catch (e) {
-          // Ignore
+          // ignore
         }
-        
         let tekst = '';
         try {
           if (item.props?.adres && typeof item.props.adres === 'string') {
-            tekst = item.props.adres.trim();
+            tekst = item.props.adres.toLowerCase();
           }
         } catch (e) {
-          // Ignore
+          // ignore
         }
         
-        // Get SVG
-        let svgContent = '';
-        try {
-          const svgElement = item.toSVG?.(true, false);
-          if (svgElement?.data) {
-            svgContent = svgElement.data;
-          }
-        } catch (e) {
-          console.warn(`Error getting SVG for item ${item.id}:`, e);
-        }
-        
-        items.push(
-          <div
-            key={item.id}
-            draggable
-            data-electroitem-id={item.id}
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = 'copy';
-              e.dataTransfer.setData('text/plain', item.id.toString());
-            }}
-            onDragEnd={(e) => {
-              // Drag ended
-            }}
-            style={{
-              padding: '8px',
-              marginBottom: '4px',
-              backgroundColor: '#f9f9f9',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
-              cursor: 'grab',
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e8f4ff';
-              e.currentTarget.style.borderColor = '#0078d4';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9f9f9';
-              e.currentTarget.style.borderColor = '#e0e0e0';
-            }}
-            title="Sleep naar het canvas om toe te voegen"
-          >
-            {svgContent && (
-              <div style={{
-                flexShrink: 0,
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 60 60"
-                  xmlns="http://www.w3.org/2000/svg"
-                  dangerouslySetInnerHTML={{ __html: svgContent }}
-                />
-              </div>
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontWeight: 500,
-                color: '#333',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {type}
-              </div>
-              {adres && (
-                <div style={{
-                  fontSize: '10px',
-                  color: '#666',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {adres}
-                </div>
-              )}
-              {tekst && (
-                <div style={{
-                  fontSize: '9px',
-                  color: '#888',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontStyle: 'italic',
-                }}>
-                  "{tekst}"
-                </div>
-              )}
-            </div>
+        return type.includes(searchLower) || adres.includes(searchLower) || tekst.includes(searchLower);
+      });
+      
+      // Only show group if it has matching items
+      if (filteredItems.length === 0) continue;
+      
+      items.push(
+        <div key={`kring-${kringName}`} style={{ marginBottom: '12px' }}>
+          <div style={{
+            padding: '8px 8px',
+            backgroundColor: '#e3f2fd',
+            borderLeft: '3px solid #1565c0',
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#0d47a1',
+            marginBottom: '6px',
+            cursor: 'default',
+          }}>
+            {kringName}
           </div>
-        );
-      } catch (error) {
-        console.error(`Error rendering item ${item.id}:`, error);
-      }
+          
+          {filteredItems.map((item) => {
+            try {
+              const type = item.getType?.() || 'Onbekend';
+              let adres = '';
+              try {
+                adres = item.getReadableAdres?.() || '';
+              } catch (e) {
+                // Ignore
+              }
+              
+              let tekst = '';
+              try {
+                if (item.props?.adres && typeof item.props.adres === 'string') {
+                  tekst = item.props.adres.trim();
+                }
+              } catch (e) {
+                // Ignore
+              }
+              
+              // Get SVG - try multiple times to ensure it renders
+              let svgContent = '';
+              try {
+                const svgElement = item.toSVG?.(true, false);
+                if (svgElement?.data) {
+                  svgContent = svgElement.data;
+                } else if (typeof svgElement === 'string') {
+                  svgContent = svgElement;
+                }
+              } catch (e) {
+                console.warn(`Error getting SVG for item ${item.id}:`, e);
+              }
+              
+              return (
+                <div
+                  key={item.id}
+                  draggable
+                  data-electroitem-id={item.id}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('text/plain', item.id.toString());
+                  }}
+                  style={{
+                    padding: '8px',
+                    marginBottom: '4px',
+                    backgroundColor: '#f9f9f9',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '4px',
+                    cursor: 'grab',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e8f4ff';
+                    e.currentTarget.style.borderColor = '#0078d4';
+                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9f9f9';
+                    e.currentTarget.style.borderColor = '#e0e0e0';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="Sleep naar het canvas om toe te voegen"
+                >
+                  {svgContent ? (
+                    <div style={{
+                      flexShrink: 0,
+                      width: '40px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'white',
+                      borderRadius: '3px',
+                      border: '1px solid #e0e0e0',
+                      overflow: 'hidden',
+                      padding: '2px',
+                    }}>
+                      <svg
+                        viewBox="0 0 60 60"
+                        xmlns="http://www.w3.org/2000/svg"
+                        dangerouslySetInnerHTML={{ __html: svgContent }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          overflow: 'hidden',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          display: 'block',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{
+                      flexShrink: 0,
+                      width: '40px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: '3px',
+                      border: '1px solid #ddd',
+                      color: '#999',
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                    }}>
+                      —
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 500,
+                      color: '#333',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {type}
+                    </div>
+                    {adres && (
+                      <div style={{
+                        fontSize: '10px',
+                        color: '#666',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {adres}
+                      </div>
+                    )}
+                    {tekst && (
+                      <div style={{
+                        fontSize: '9px',
+                        color: '#888',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontStyle: 'italic',
+                      }}>
+                        "{tekst}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            } catch (error) {
+              console.error(`Error rendering item ${item.id}:`, error);
+              return null;
+            }
+          })}
+        </div>
+      );
     }
 
     return items;
@@ -399,6 +514,21 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
           <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#666' }}>
             Sleep symbolen naar het canvas
           </p>
+          <input
+            type="text"
+            placeholder="Zoeken..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              marginTop: '10px',
+              padding: '8px',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              fontSize: '13px',
+              boxSizing: 'border-box',
+            }}
+          />
         </div>
         <div style={{
           flex: 1,

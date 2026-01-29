@@ -670,12 +670,14 @@ export class SituationPlanElement {
           callback();
         };
         image.onerror = () => {
-          alert("Het formaat van deze file wordt niet ondersteund.");
+          const { dialogAlert } = require("../utils/DialogHelpers");
+          dialogAlert("Fout", "Het formaat van deze file wordt niet ondersteund.");
         };
       };
       reader.readAsDataURL(file); // Read the file as a data URL
     } else {
-      alert("Geen bestand geselecteerd");
+      const { dialogAlert } = require("../utils/DialogHelpers");
+      dialogAlert("Fout", "Geen bestand geselecteerd");
     }
   }
 

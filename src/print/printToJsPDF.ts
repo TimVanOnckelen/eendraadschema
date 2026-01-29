@@ -132,12 +132,15 @@ export function printPDF(
         try {
           png = canvas.toDataURL("image/png");
         } catch (e) {
+          const { dialogAlert } = require("../utils/DialogHelpers");
           if (img.complete) {
-            alert(
+            dialogAlert(
+              "Fout bij genereren PDF",
               "Er is een element in het situatieschema dat verwijst naar een andere website en dit veroorzaakt een security-error in deze browser. Dit kan bijvoorbeeld gebeuren indien u een plattegrond gemaakt heeft met online tools zoals draw.io. Probeer uw plattegrond op te slaan in een ander formaat. Indien het probleem blijft aanhouden, contacteer ons dan via het contactformulier."
             );
           } else {
-            alert(
+            dialogAlert(
+              "Fout bij genereren PDF",
               "Het genereren van de PDF is om onduidelijke redenen vastgelopen. Contacteer ons via het contactformulier."
             );
           }

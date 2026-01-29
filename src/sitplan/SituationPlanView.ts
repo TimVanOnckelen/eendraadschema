@@ -41,6 +41,15 @@ export class SituationPlanView {
   private canvas: HTMLElement = null;
   private paper: HTMLElement = null;
 
+  // Public getters for checking if DOM refs are still valid
+  public get canvasRef(): HTMLElement {
+    return this.canvas;
+  }
+
+  public get paperRef(): HTMLElement {
+    return this.paper;
+  }
+
   public layerManager: LayerManager | null = null;
 
   public contextMenu: ContextMenu = null;
@@ -2105,7 +2114,8 @@ export class SituationPlanView {
         this.bringToFront(options.undoStore); // Deze slaat ook automatisch undo informatie op dus we moeten geen globalThis.undostruct.store() meer doen.
       }
     } else {
-      alert("Geen geldig ID ingegeven!");
+      const { dialogAlert } = require("../utils/DialogHelpers");
+      dialogAlert("Fout", "Geen geldig ID ingegeven!");
     }
   };
 
