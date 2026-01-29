@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { dialogAlert } from "../utils/DialogHelpers";
 
 type PrintTable = {
   papersize: string;
@@ -132,7 +133,6 @@ export function printPDF(
         try {
           png = canvas.toDataURL("image/png");
         } catch (e) {
-          const { dialogAlert } = require("../utils/DialogHelpers");
           if (img.complete) {
             dialogAlert(
               "Fout bij genereren PDF",

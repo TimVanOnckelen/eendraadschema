@@ -7,6 +7,12 @@
  * - Double-click to add a child element
  */
 
+declare global {
+  interface Window {
+    deleteElementWithConfirm: (elementId: number) => void;
+  }
+}
+
 interface ContextMenuOption {
   label: string;
   icon?: string;

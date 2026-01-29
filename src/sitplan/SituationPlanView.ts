@@ -16,6 +16,7 @@ import { AskLegacySchakelaar } from "../importExport/AskLegacySchakelaar";
 import { WallType } from "./WallElement";
 import { FreeformShapeType } from "./FreeformShapeElement";
 import { LayerManager } from "./LayerManager";
+import { dialogAlert } from "../utils/DialogHelpers";
 
 enum MovableType {
   Movable,
@@ -2114,7 +2115,6 @@ export class SituationPlanView {
         this.bringToFront(options.undoStore); // Deze slaat ook automatisch undo informatie op dus we moeten geen globalThis.undostruct.store() meer doen.
       }
     } else {
-      const { dialogAlert } = require("../utils/DialogHelpers");
       dialogAlert("Fout", "Geen geldig ID ingegeven!");
     }
   };
