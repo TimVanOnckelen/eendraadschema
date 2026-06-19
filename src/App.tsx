@@ -13,7 +13,11 @@ import { ContactView } from './components/ContactView';
 import { FileLibraryView } from './components/FileLibraryView';
 import { FileLibraryStorage, EdsFileMetadata } from './storage/FileLibraryStorage';
 import { dialogAlert, dialogConfirm } from './utils/DialogHelpers';
+import { initTheme } from './utils/theme';
 import '../css/all.css';
+
+// Initialize theme as early as possible to avoid a flash of the wrong theme
+initTheme();
 
 const App: React.FC = () => {
   const { 
@@ -265,23 +269,24 @@ const App: React.FC = () => {
           zIndex: 10000
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--surface)',
+            color: 'var(--text-primary)',
             padding: '24px',
             borderRadius: '8px',
             maxWidth: '500px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
           }}>
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', color: '#333' }}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', color: 'var(--text-primary)' }}>
               Automatisch opgeslagen bestand gevonden
             </h2>
-            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#666' }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
               Er is een automatisch opgeslagen versie gevonden van:
             </p>
-            <p style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '500', color: '#333' }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>
               <strong>Bestand:</strong> {recoveryData.lastSavedInfo?.filename || 'Onbekend'}<br/>
               <strong>Opgeslagen op:</strong> {recoveryData.lastSavedInfo?.currentTimeStamp || 'Onbekend'}
             </p>
-            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666' }}>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
               Wilt u deze versie herstellen?
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -289,10 +294,10 @@ const App: React.FC = () => {
                 onClick={handleDiscardAutosave}
                 style={{
                   padding: '8px 16px',
-                  border: '1px solid #dee2e6',
+                  border: '1px solid var(--border)',
                   borderRadius: '4px',
-                  backgroundColor: 'white',
-                  color: '#495057',
+                  backgroundColor: 'var(--background)',
+                  color: 'var(--text-primary)',
                   cursor: 'pointer',
                   fontSize: '14px'
                 }}
@@ -305,7 +310,7 @@ const App: React.FC = () => {
                   padding: '8px 16px',
                   border: 'none',
                   borderRadius: '4px',
-                  backgroundColor: '#0d6efd',
+                  backgroundColor: 'var(--primary-color)',
                   color: 'white',
                   cursor: 'pointer',
                   fontSize: '14px',

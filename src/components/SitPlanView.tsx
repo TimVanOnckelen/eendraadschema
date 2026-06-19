@@ -1241,7 +1241,8 @@ export const SitPlanView: React.FC = () => {
           <div 
             className="keyboard-shortcuts-dialog"
             style={{
-              backgroundColor: 'white',
+              backgroundColor: 'var(--surface)',
+              color: 'var(--text-primary)',
               borderRadius: '12px',
               padding: '32px',
               maxWidth: '600px',
@@ -1261,7 +1262,7 @@ export const SitPlanView: React.FC = () => {
                 border: 'none',
                 fontSize: '24px',
                 cursor: 'pointer',
-                color: '#666'
+                color: 'var(--text-secondary)'
               }}
             >
               ✕
@@ -1272,46 +1273,46 @@ export const SitPlanView: React.FC = () => {
             <div style={{ display: 'grid', gap: '20px' }}>
               {/* Situatieschema shortcuts */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: 'var(--text-primary)' }}>
                   Situatieschema
                 </h3>
                 <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontWeight: 500 }}>Klik en sleep</span>
-                    <span style={{ color: '#666' }}>Symbolen toevoegen</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Symbolen toevoegen</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontWeight: 500 }}>Shift + Klik</span>
-                    <span style={{ color: '#666' }}>Selecteer element</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Selecteer element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
-                    <span style={{ color: '#666' }}>Verwijder geselecteerd element</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Verwijder geselecteerd element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontWeight: 500 }}>Ctrl + Scroll</span>
-                    <span style={{ color: '#666' }}>Zoom in/uit</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Zoom in/uit</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
                     <span style={{ fontWeight: 500 }}>?</span>
-                    <span style={{ color: '#666' }}>Toon dit scherm</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Toon dit scherm</span>
                   </div>
                 </div>
               </div>
 
               {/* General tips */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: 'var(--text-primary)' }}>
                   Tips
                 </h3>
                 <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontWeight: 500 }}>Sleep symbolen</span>
-                    <span style={{ color: '#666' }}>van sidebar naar scherm</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>van sidebar naar scherm</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
                     <span style={{ fontWeight: 500 }}>Zoeken</span>
-                    <span style={{ color: '#666' }}>in de linkerzijbalk</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>in de linkerzijbalk</span>
                   </div>
                 </div>
               </div>

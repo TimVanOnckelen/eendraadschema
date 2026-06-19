@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp, AppView } from '../AppContext';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
+import { getTheme, toggleTheme, Theme } from '../utils/theme';
 
 export interface SubMenuItem {
   name: string;
@@ -23,6 +24,7 @@ interface TopMenuProps {
 export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
   const { currentView, setCurrentView } = useApp();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+  const [theme, setTheme] = useState<Theme>(getTheme);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close submenu when clicking outside
@@ -53,6 +55,10 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
     }
     action();
     setOpenSubmenu(null);
+  };
+
+  const handleThemeToggle = () => {
+    setTheme(toggleTheme());
   };
 
   return (
@@ -95,16 +101,35 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{
           padding: '4px 10px',
-          backgroundColor: 'white',
-          border: '1px solid #dee2e6',
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: '4px',
           fontSize: '13px',
-          color: '#495057',
+          color: 'var(--text-primary)',
           fontWeight: 500,
           userSelect: 'none'
         }}>
           📄 {currentFilename || 'Zonder titel'}
         </div>
+        <button
+          onClick={handleThemeToggle}
+          title={theme === 'dark' ? 'Lichte modus' : 'Donkere modus'}
+          style={{
+            background: 'rgba(255, 255, 255, 0.15)',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 10px',
+            cursor: 'pointer',
+            color: 'white',
+            fontSize: '16px',
+            lineHeight: 1,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
         <AutoSaveIndicator autoSaver={globalThis.autoSaver} />
       </div>
     </div>
