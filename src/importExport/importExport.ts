@@ -3,6 +3,30 @@ import { SituationPlan } from "../sitplan/SituationPlan";
 import { Electro_Item } from "../List_Item/Electro_Item";
 import * as pako from "pako";
 
+/**
+ * Helper that returns a filename with the requested extension.
+ * Existing .eds/.json extensions are swapped; otherwise the extension is appended.
+ */
+function getFilenameWithExtension(
+  filename: string,
+  format: "eds" | "json"
+): string {
+  if (!filename || filename.trim() === "") {
+    return format === "json" ? "eendraadschema.json" : "eendraadschema.eds";
+  }
+
+  const lower = filename.toLowerCase();
+  if (format === "json") {
+    if (lower.endsWith(".json")) return filename;
+    if (lower.endsWith(".eds")) return filename.slice(0, -4) + ".json";
+    return filename + ".json";
+  } else {
+    if (lower.endsWith(".eds")) return filename;
+    if (lower.endsWith(".json")) return filename.slice(0, -5) + ".eds";
+    return filename + ".eds";
+  }
+}
+
 export class importExportUsingFileAPI {
   saveNeeded: boolean;
   fileHandle: any;
@@ -45,8 +69,11 @@ export class importExportUsingFileAPI {
     [this.fileHandle] = await (window as any).showOpenFilePicker({
       types: [
         {
-          description: "Eendraadschema (.eds)",
-          accept: { "application/eds": [".eds"] },
+          description: "Eendraadschema (.eds, .json)",
+          accept: {
+            "application/eds": [".eds"],
+            "application/json": [".json"],
+          },
         },
       ],
     });
@@ -64,13 +91,23 @@ export class importExportUsingFileAPI {
     return contents;
   }
 
-  async saveAs(content: string) {
+  async saveAs(content: string, format: "eds" | "json" = "eds") {
+    const description =
+      format === "json" ? "JSON (.json)" : "Eendraadschema (.eds)";
+    const mimeType =
+      format === "json" ? "application/json" : "application/eds";
+    const extension = format === "json" ? ".json" : ".eds";
+    const suggestedName = getFilenameWithExtension(
+      globalThis.structure.properties.filename,
+      format
+    );
+
     const options = {
-      suggestedName: globalThis.structure.properties.filename,
+      suggestedName: suggestedName,
       types: [
         {
-          description: "Eendraadschema (.eds)",
-          accept: { "application/eds": [".eds"] },
+          description: description,
+          accept: { [mimeType]: [extension] },
         },
       ],
       startIn: "documents", // Suggests the Documents folder
@@ -259,10 +296,14 @@ function upgrade_version(mystructure, version) {
 }
 
 /**
- * Exporteert de huidige structuur naar een bestand in het EDS-formaat.
+ * Exporteert de huidige structuur naar een bestand.
  * @param {boolean} saveAs - Indien true, wordt de gebruiker gevraagd waar het bestand moet worden opgeslagen; anders wordt het bestand opgeslagen onder de bekende bestandsnaam.
+ * @param {"eds" | "json"} format - Het gewenste bestandsformaat. Standaard EDS.
  */
-globalThis.exportjson = (saveAs: boolean = true) => {
+globalThis.exportjson = (
+  saveAs: boolean = true,
+  format: "eds" | "json" = "eds"
+) => {
   // Indien de boolean false is en de file API is geïnstalleerd, wordt een normale opslag uitgevoerd (bekende bestandsnaam)
 
   /**
@@ -282,49 +323,71 @@ globalThis.exportjson = (saveAs: boolean = true) => {
     return btoa(binaryString);
   }
 
-  var filename: string;
-
-  /* We gebruiken de Pako-bibliotheek om de data te entropycoderen
-   * Einddata leest "EDSXXX0000" met XXX een versie en daarna een 64base-encodering van de gedecomprimeerde uitvoer van Pako
-   * filename = "eendraadschema.eds";
-   */
-  filename = globalThis.structure.properties.filename;
+  var filename: string = getFilenameWithExtension(
+    globalThis.structure.properties.filename,
+    format
+  );
 
   let origtext: string = globalThis.structure.toJsonObject(true);
   let text: string = "";
 
-  // Comprimeer de uitvoerstructuur en bied deze aan als download aan de gebruiker. We zijn momenteel bij versie 004
-  try {
-    if (globalThis.structure.properties.disableEDSCompression == true)
-      throw new Error("Compression is disabled");
-    let encoder = new TextEncoder();
-    let pako_inflated = new Uint8Array(encoder.encode(origtext));
-    let pako_deflated = new Uint8Array(pako.deflate(pako_inflated));
-    text = "EDS0040000" + uint8ArrayToBase64(pako_deflated);
-  } catch (error) {
-    console.log(
-      "Terugvallen naar TXT-uitvoer vanwege compressiefout: " + error
-    );
-    text = "TXT0040000" + origtext;
-  } finally {
-    if ((window as any).showOpenFilePicker) {
-      // Gebruik fileAPI
-      if (globalThis.fileAPIobj.filename == null && saveAs == false)
-        saveAs = true; // Default to SaveAs if we have no file name
-      if (saveAs) {
-        globalThis.fileAPIobj.saveAs(text).then(() => {
-          globalThis.autoSaver.saveManually("TXT0040000" + origtext);
-        });
-      } else {
-        globalThis.fileAPIobj.save(text).then(() => {
-          globalThis.autoSaver.saveManually("TXT0040000" + origtext);
-        });
-      }
-    } else {
-      // legacy
-      download_by_blob(text, filename, "data:text/eds;charset=utf-8");
-      globalThis.autoSaver.saveManually("TXT0040000" + origtext); // Needs to be as TXT to be able to check with last autosave
+  if (format === "json") {
+    // Plain JSON: direct, leesbare uitvoer. Niet ondersteund door oudere app-versies.
+    text = origtext;
+  } else {
+    /* We gebruiken de Pako-bibliotheek om de data te entropycoderen
+     * Einddata leest "EDSXXX0000" met XXX een versie en daarna een 64base-encodering van de gedecomprimeerde uitvoer van Pako
+     * filename = "eendraadschema.eds";
+     */
+    // Comprimeer de uitvoerstructuur en bied deze aan als download aan de gebruiker. We zijn momenteel bij versie 004
+    try {
+      if (globalThis.structure.properties.disableEDSCompression == true)
+        throw new Error("Compression is disabled");
+      let encoder = new TextEncoder();
+      let pako_inflated = new Uint8Array(encoder.encode(origtext));
+      let pako_deflated = new Uint8Array(pako.deflate(pako_inflated));
+      text = "EDS0040000" + uint8ArrayToBase64(pako_deflated);
+    } catch (error) {
+      console.log(
+        "Terugvallen naar TXT-uitvoer vanwege compressiefout: " + error
+      );
+      text = "TXT0040000" + origtext;
     }
+  }
+
+  // Als we naar een reeds geopend bestand schrijven maar het formaat is gewijzigd,
+  // moeten we Opslaan als forceren zodat de juiste extensie gebruikt wordt.
+  if (
+    !saveAs &&
+    globalThis.fileAPIobj.fileHandle &&
+    globalThis.fileAPIobj.fileHandle.name
+  ) {
+    const currentName = globalThis.fileAPIobj.fileHandle.name.toLowerCase();
+    const expectedExt = format === "json" ? ".json" : ".eds";
+    if (!currentName.endsWith(expectedExt)) {
+      saveAs = true;
+    }
+  }
+
+  if ((window as any).showOpenFilePicker) {
+    // Gebruik fileAPI
+    if (globalThis.fileAPIobj.filename == null && saveAs == false)
+      saveAs = true; // Default to SaveAs if we have no file name
+    if (saveAs) {
+      globalThis.fileAPIobj.saveAs(text, format).then(() => {
+        globalThis.autoSaver.saveManually("TXT0040000" + origtext);
+      });
+    } else {
+      globalThis.fileAPIobj.save(text).then(() => {
+        globalThis.autoSaver.saveManually("TXT0040000" + origtext);
+      });
+    }
+  } else {
+    // legacy
+    const mimeType =
+      format === "json" ? "application/json" : "data:text/eds;charset=utf-8";
+    download_by_blob(text, filename, mimeType);
+    globalThis.autoSaver.saveManually("TXT0040000" + origtext); // Needs to be as TXT to be able to check with last autosave
   }
 
   globalThis.propUpload(text);
@@ -509,6 +572,17 @@ export function loadFromText(text: string, version: number, redraw = true) {
 function EDStoJson(mystring: string) {
   let text: string = "";
   let version: number;
+
+  /* Plain JSON files (introduced after version 4) start with '{' after optional
+   * BOM/whitespace. They contain the raw structure and are always treated as
+   * the current version.
+   */
+  const trimmed = mystring.replace(/^\uFEFF/, "").trim();
+  if (trimmed.charAt(0) === "{") {
+    text = trimmed;
+    version = 4;
+    return { text: text, version: version };
+  }
 
   /* If first 3 bytes read "EDS", it is an entropy coded file
    * The first 3 bytes are EDS, the next 3 bytes indicate the version

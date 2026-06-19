@@ -34,6 +34,22 @@
   --warning-color: #d97706;
 }
 
+[data-theme="dark"] {
+  --primary-color: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --primary-light: #60a5fa;
+  --secondary-color: #22d3ee;
+  --accent-color: #0ea5e9;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --hover-bg: #334155;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+}
+
 /* DOCUMENT */
 
 * {
@@ -130,6 +146,10 @@ td[contenteditable="true"] {
   z-index: 1000;
 }
 
+[data-theme="dark"] #topmenu {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
 ul#minitabs {
   display: flex;
   height: 100%;
@@ -184,7 +204,7 @@ ul#minitabs a:hover {
   position: absolute;
   top: 100%;
   left: 0;
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   list-style: none;
@@ -193,6 +213,10 @@ ul#minitabs a:hover {
   min-width: 200px;
   z-index: 1001;
   animation: submenuFadeIn 0.15s ease;
+}
+
+[data-theme="dark"] .submenu {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 @keyframes submenuFadeIn {
@@ -262,11 +286,11 @@ ul#minitabs a:hover {
   justify-content: space-between;
   padding: 0 16px;
   display: flex;
-  background: white;
+  background: var(--surface);
   align-items: center;
   width: 100%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -295,7 +319,7 @@ ul#minitabs a:hover {
   margin: 0;
   text-align: center;
   cursor: pointer;
-  color: #333;
+  color: var(--text-primary);
   border-radius: 8px;
   padding: 8px 12px;
   transition: all 0.2s ease;
@@ -306,7 +330,7 @@ ul#minitabs a:hover {
 }
 
 .icon:hover {
-  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  background: var(--hover-bg);
   transform: translateY(-1px);
 }
 
@@ -323,7 +347,7 @@ ul#minitabs a:hover {
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .icon-button {
@@ -338,7 +362,7 @@ ul#minitabs a:hover {
 }
 
 .icon-button:hover {
-  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  background: var(--hover-bg);
 }
 
 .box {
@@ -407,7 +431,7 @@ ul#minitabs a:hover {
   right: 0;
   bottom: 0;
   overflow: auto; /* Add scrollbars if content overflows */
-  background-color: #ffffff; /* Optional: Background color for visibility */
+  background-color: var(--background); /* Optional: Background color for visibility */
   padding: 12px 8px 8px 8px; /* Padding to create the empty border effect */
 }
 
@@ -419,7 +443,7 @@ ul#minitabs a:hover {
   right: 0;
   bottom: 0;
   overflow: hidden;
-  background-color: #ffffff; /* Optional: Background color for visibility */
+  background-color: var(--background); /* Optional: Background color for visibility */
   padding: 0x; /* Padding to create the empty border effect */
   display: flex;
   flex-direction: row; /* Ensure columns are side by side */
@@ -433,7 +457,7 @@ ul#minitabs a:hover {
   right: 0;
   bottom: 0;
   overflow: none;
-  background-color: #ffffff; /* Optional: Background color for visibility */
+  background-color: var(--background); /* Optional: Background color for visibility */
   padding: 0; /* Padding to create the empty border effect */
   flex-direction: row; /* Ensure columns are side by side */
 }
@@ -453,7 +477,7 @@ ul#minitabs a:hover {
   right: 0;
   bottom: 0;
   overflow: auto; /* Add scrollbars if content overflows */
-  background-color: #ffffff; /* Optional: Background color for visibility */
+  background-color: var(--background); /* Optional: Background color for visibility */
   padding: 0; /* Padding to create the empty border effect */
   flex-direction: row; /* Ensure columns are side by side */
 }
@@ -481,12 +505,12 @@ ul#minitabs a:hover {
 
 #left_col_inner {
   padding: 10px;
-  color: #000000;
+  color: var(--text-primary);
 }
 
 #right_col_inner {
   padding: 10px;
-  color: #000000;
+  color: var(--text-primary);
 }
 
 /* 3-kolommen layout */
@@ -531,7 +555,7 @@ ul#minitabs a:hover {
 #middle_col_3_inner,
 #right_col_3_inner {
   padding: 0;
-  color: #000000;
+  color: var(--text-primary);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -578,15 +602,15 @@ table.html_edit_table td:nth-child(2) {
 
 #AJAX_sent {
   padding: 0px;
-  color: #000000;
+  color: var(--text-primary);
 }
 #AJAX_received {
   padding: 0px;
-  color: #000000;
+  color: var(--text-primary);
 }
 #AJAX_draw {
   padding: 0px;
-  color: #000000;
+  color: var(--text-primary);
 }
 
 .onlypointer {
@@ -711,7 +735,8 @@ table {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: white;
+  background-color: var(--surface);
+  color: var(--text-primary);
   padding: 24px 32px 28px;
   border: none;
   border-radius: 12px;
@@ -723,18 +748,22 @@ table {
   overflow-y: auto;
 }
 
+[data-theme="dark"] .popup {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
 .popup h3 {
-  color: #333;
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 20px 0;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border);
 }
 
 .popup label {
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -742,18 +771,20 @@ table {
 .popup input[type="number"],
 .popup select {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
 .popup input[type="text"]:focus,
 .popup input[type="number"]:focus,
 .popup select:focus {
   outline: none;
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .rounded-button {
@@ -763,7 +794,7 @@ table {
   margin-right: 7px;
   padding: 10px 24px;
   cursor: pointer;
-  background-color: #0d6efd;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 6px;
@@ -775,10 +806,42 @@ table {
 }
 
 .rounded-button:hover {
-  background-color: #0b5ed7;
+  background-color: var(--primary-dark);
   transform: translateY(-1px);
 }
 
 .rounded-button:active {
   transform: translateY(0);
+}
+
+/* DARK MODE OVERRIDES */
+
+/* Invert EDS diagram strokes so black lines remain visible on dark surfaces */
+[data-theme="dark"] #EDS svg {
+  filter: invert(1);
+}
+
+/* Context menu dark mode */
+[data-theme="dark"] .context-menu {
+  background-color: var(--surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .context-menu-item:hover {
+  background-color: var(--hover-bg);
+}
+
+[data-theme="dark"] .context-menu-shortcut {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .context-menu-separator {
+  border-top-color: var(--border);
+}
+
+/* Select options */
+[data-theme="dark"] select option {
+  background-color: var(--surface);
+  color: var(--text-primary);
 }

@@ -4,6 +4,7 @@ import { useApp } from '../AppContext';
 const FilePage: React.FC = () => {
   const { structure, fileAPIobj } = useApp();
   const [disableCompression, setDisableCompression] = useState(false);
+  const [saveFormat, setSaveFormat] = useState<'eds' | 'json'>('eds');
 
   useEffect(() => {
     // Initialize checkbox state from structure properties
@@ -13,6 +14,16 @@ const FilePage: React.FC = () => {
       typeof structure.properties.disableEDSCompression !== 'undefined'
     ) {
       setDisableCompression(!!structure.properties.disableEDSCompression);
+    }
+
+    // Suggest the save format based on the currently open filename
+    if (structure && structure.properties && structure.properties.filename) {
+      const lower = structure.properties.filename.toLowerCase();
+      if (lower.endsWith('.json')) {
+        setSaveFormat('json');
+      } else {
+        setSaveFormat('eds');
+      }
     }
   }, [structure]);
 
@@ -28,7 +39,7 @@ const FilePage: React.FC = () => {
   const handleSave = async (saveAs: boolean) => {
     // Call the global exportjson function that's already implemented
     if (typeof globalThis.exportjson === 'function') {
-      globalThis.exportjson(saveAs);
+      globalThis.exportjson(saveAs, saveFormat);
     }
   };
 
@@ -287,7 +298,7 @@ const FilePage: React.FC = () => {
                   margin: 0,
                 }}
               >
-                Click op "openen" en selecteer een eerder opgeslagen EDS bestand.
+                Click op "openen" en selecteer een eerder opgeslagen EDS of JSON bestand.
               </p>
             </div>
           </div>
@@ -315,6 +326,50 @@ const FilePage: React.FC = () => {
             >
               💾 Opslaan
             </h2>
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '8px',
+                }}
+              >
+                Bestandsformaat:
+              </label>
+              <select
+                value={saveFormat}
+                onChange={(e) => setSaveFormat(e.target.value as 'eds' | 'json')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '14px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="eds">EDS - Eendraadschema (.eds)</option>
+                <option value="json">JSON - Platte tekst (.json)</option>
+              </select>
+            </div>
+            {saveFormat === 'json' && (
+              <div
+                style={{
+                  background: '#fef3c7',
+                  borderLeft: '4px solid #f59e0b',
+                  padding: '12px 16px',
+                  borderRadius: '6px',
+                  marginBottom: '16px',
+                }}
+              >
+                <strong style={{ color: '#92400e' }}>⚠️ Opgelet:</strong>
+                <span style={{ color: '#92400e' }}>
+                  {' '}
+                  JSON-bestanden worden niet ondersteund door oudere versies van deze app.
+                </span>
+              </div>
+            )}
             {renderSaveSection()}
             <label
               style={{

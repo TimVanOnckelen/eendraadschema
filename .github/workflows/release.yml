@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (leave empty to use package.json)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check if release tag already exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release tag $TAG already exists. Skipping release creation."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Will create release $TAG."
+          fi
+
+      - name: Generate release notes
+        if: steps.check_tag.outputs.exists == 'false'
+        id: notes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          {
+            echo "notes<<EOF"
+            echo "## Changes in this release"
+            echo ""
+            if [ -z "$LAST_TAG" ]; then
+              git log --pretty=format:"- %s" | head -n 100
+            else
+              git log "$LAST_TAG"..HEAD --pretty=format:"- %s"
+            fi
+            echo ""
+            echo ""
+            echo "[View full changelog](https://github.com/${{ github.repository }}/commits/main)"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.notes }}
+          generate_release_notes: false
