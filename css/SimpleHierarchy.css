@@ -30,6 +30,7 @@
   align-items: center;
   gap: 8px;
   background: var(--surface);
+  position: relative;
 }
 
 .simple-hierarchy-item:hover {
@@ -50,9 +51,34 @@
   cursor: grabbing;
 }
 
-.simple-hierarchy-item.drag-over {
+.simple-hierarchy-item.drag-over-before {
   border-top: 3px solid var(--primary-color);
   background: rgba(30, 64, 175, 0.1);
+}
+
+.simple-hierarchy-item.drag-over-after {
+  border-bottom: 3px solid var(--primary-color);
+  background: rgba(30, 64, 175, 0.1);
+}
+
+.simple-hierarchy-item.drag-over-child {
+  background: rgba(30, 64, 175, 0.15);
+  box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+.simple-hierarchy-item.drag-over-child::before {
+  content: '↳ Kind maken';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 /* Item icon/type indicator */
@@ -532,6 +558,58 @@
 
 .simple-property-input:hover {
   border-color: #667eea;
+}
+
+/* Parent selector in properties panel */
+.simple-parent-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--background);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.simple-parent-selector label {
+  display: inline-block;
+  min-width: 80px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.simple-parent-selector select {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+.simple-parent-selector select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
+}
+
+.simple-parent-selector select:hover:not(:focus) {
+  border-color: var(--text-secondary);
 }
 
 /* Select inputs */
@@ -1065,4 +1143,63 @@ select.simple-property-input {
 
 #EDS-fullscreen svg {
   transition: transform 0.1s ease;
+}
+
+/* Context menu for hierarchy items */
+.context-menu {
+  position: absolute;
+  display: none;
+  min-width: 180px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 999999999;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 6px 0;
+  animation: contextMenuFadeIn 0.1s ease;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-primary, #333333);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover {
+  background: var(--primary-color, #1e40af);
+  color: white;
+}
+
+.context-menu-item:hover .context-menu-shortcut {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.context-menu-shortcut {
+  margin-left: 20px;
+  color: var(--text-secondary, #888888);
+  font-size: 11px;
+}
+
+.context-menu-separator {
+  border: none;
+  border-top: 1px solid var(--border, #e0e0e0);
+  margin: 5px 0;
 }

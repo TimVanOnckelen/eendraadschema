@@ -79,17 +79,21 @@ const App: React.FC = () => {
     }
   };
 
+  const currentSaveFormat = (): 'eds' | 'json' => {
+    return currentFilename.toLowerCase().endsWith('.json') ? 'json' : 'eds';
+  };
+
   const handleSave = () => {
     const exportjson = (globalThis as any).exportjson;
     if (exportjson) {
-      exportjson(false); // Save to current file
+      exportjson(false, currentSaveFormat()); // Save to current file
     }
   };
 
   const handleSaveAs = () => {
     const exportjson = (globalThis as any).exportjson;
     if (exportjson) {
-      exportjson(true); // Save as new file
+      exportjson(true, currentSaveFormat()); // Save as new file
     }
   };
 
@@ -104,6 +108,10 @@ const App: React.FC = () => {
         { name: "Bibliotheek", icon: "📚", action: () => setCurrentView('library') },
         { name: "Opslaan", icon: "💾", action: handleSave },
         { name: "Opslaan als...", icon: "💾", action: handleSaveAs },
+        { name: "Opslaan als JSON...", icon: "📄", action: () => {
+          const exportjson = (globalThis as any).exportjson;
+          if (exportjson) exportjson(true, 'json');
+        }},
         ...(recentFiles.length > 0 ? [
           { name: "─────────", icon: "", action: () => {} }, // Divider
           { name: "Recente bestanden:", icon: "🕐", action: () => {} }, // Header

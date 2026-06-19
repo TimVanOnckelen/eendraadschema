@@ -59,7 +59,7 @@ function initializeFileInputs() {
     const importFile = document.createElement("input");
     importFile.id = "importfile";
     importFile.type = "file";
-    importFile.accept = ".eds";
+    importFile.accept = ".eds,.json";
     importFile.style.display = "none";
     importFile.setAttribute("onchange", "importjson(event)");
     document.body.appendChild(importFile);
@@ -67,7 +67,7 @@ function initializeFileInputs() {
     const appendFile = document.createElement("input");
     appendFile.id = "appendfile";
     appendFile.type = "file";
-    appendFile.accept = ".eds";
+    appendFile.accept = ".eds,.json";
     appendFile.style.display = "none";
     appendFile.setAttribute("onchange", "appendjson(event)");
     document.body.appendChild(appendFile);

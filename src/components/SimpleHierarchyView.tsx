@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { Hierarchical_List } from '../Hierarchical_List';
+import { ContextMenu } from '../sitplan/ContextMenu';
 
 /**
  * SimpleHierarchyView React Component
@@ -25,6 +26,7 @@ const SimpleHierarchyView: React.FC = () => {
   // Drag and drop state
   const [draggedItemId, setDraggedItemId] = useState<number | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | 'child' | null>(null);
   
   // Add element modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -38,7 +40,10 @@ const SimpleHierarchyView: React.FC = () => {
   
   // Keyboard shortcuts dialog state
   const [showKeysDialog, setShowKeysDialog] = useState(false);
-  
+
+  // Context menu instance
+  const contextMenuRef = useRef<ContextMenu | null>(null);
+
   // Column widths state (stored in localStorage)
   const [leftWidth, setLeftWidth] = useState(() => {
     const saved = localStorage.getItem('editor-left-width');
@@ -145,6 +150,20 @@ const SimpleHierarchyView: React.FC = () => {
       }
     };
   }, [refresh]);
+
+  // Initialize context menu instance
+  useEffect(() => {
+    contextMenuRef.current = new ContextMenu(document.body);
+    return () => {
+      if (contextMenuRef.current) {
+        const menuElement = (contextMenuRef.current as any).menuElement;
+        if (menuElement && menuElement.parentNode) {
+          menuElement.parentNode.removeChild(menuElement);
+        }
+      }
+      contextMenuRef.current = null;
+    };
+  }, []);
 
   // Get element list
   const getElementList = useCallback(() => {
@@ -294,6 +313,134 @@ const SimpleHierarchyView: React.FC = () => {
     }
 
     // Trigger re-render
+    refresh();
+  };
+
+  // Helper: check if candidate is a descendant of the given element
+  const isDescendantOf = useCallback((candidateId: number, ancestorId: number): boolean => {
+    if (!structure) return false;
+
+    for (let i = 0; i < structure.length; i++) {
+      if (!structure.active[i]) continue;
+      if (structure.data[i].parent === ancestorId && structure.id[i] === candidateId) {
+        return true;
+      }
+      if (structure.data[i].parent === ancestorId) {
+        if (isDescendantOf(candidateId, structure.id[i])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [structure]);
+
+  // Get label text for an element (used in parent dropdown)
+  const getElementLabel = useCallback((id: number): string => {
+    if (id === 0) return 'Hoofdniveau';
+    if (!structure) return `ID: ${id}`;
+
+    const item = structure.getElectroItemById(id);
+    if (!item) return `ID: ${id}`;
+
+    const type = item.getType ? item.getType() : 'Element';
+    const nr = item.props?.nr || '';
+    const naam = item.props?.naam || '';
+    return `${type}${nr ? ` #${nr}` : ''}${naam ? ` - ${naam}` : ''} (ID: ${id})`;
+  }, [structure]);
+
+  // Get current parent ID of selected element
+  const getSelectedParentId = useCallback((): number => {
+    if (!structure || selectedElementId === null) return 0;
+    const item = structure.getElectroItemById(selectedElementId);
+    return item ? item.parent : 0;
+  }, [structure, selectedElementId]);
+
+  // Get list of valid parent options for the selected element
+  const getParentOptions = useCallback((): { id: number; label: string }[] => {
+    if (!structure || selectedElementId === null) return [];
+
+    const selectedItem = structure.getElectroItemById(selectedElementId);
+    if (!selectedItem) return [];
+
+    const selectedType = selectedItem.getType();
+    const currentParentId = selectedItem.parent;
+
+    const options: { id: number; label: string }[] = [];
+
+    // Root option
+    const rootAllowed = ['Aansluiting', 'Zekering/differentieel', 'Kring'];
+    if (rootAllowed.includes(selectedType)) {
+      options.push({ id: 0, label: getElementLabel(0) });
+    }
+
+    // Other elements
+    for (let i = 0; i < structure.length; i++) {
+      if (!structure.active[i]) continue;
+
+      const candidateId = structure.id[i];
+      const candidateItem = structure.data[i] as any;
+
+      // Skip self
+      if (candidateId === selectedElementId) continue;
+
+      // Skip descendants of selected element (would create cycle)
+      if (isDescendantOf(candidateId, selectedElementId)) continue;
+
+      // Skip attributes
+      if (candidateItem.isAttribuut && candidateItem.isAttribuut()) continue;
+
+      // Check if candidate allows selected type as child
+      if (typeof candidateItem.allowedChilds !== 'function') continue;
+      const allowed = candidateItem.allowedChilds();
+      if (!allowed.includes(selectedType)) continue;
+
+      // Check max children (skip check for current parent as it's a no-op)
+      if (candidateId !== currentParentId) {
+        const numChilds = structure.getNumChilds(candidateId);
+        const maxChilds = structure.getMaxNumChilds(candidateId);
+        if (numChilds >= maxChilds) continue;
+      }
+
+      options.push({ id: candidateId, label: getElementLabel(candidateId) });
+    }
+
+    return options;
+  }, [structure, selectedElementId, getElementLabel, isDescendantOf]);
+
+  // Handle parent change from dropdown
+  const handleParentChange = (newParentId: number) => {
+    if (!structure || selectedElementId === null) return;
+
+    const selectedItem = structure.getElectroItemById(selectedElementId);
+    if (!selectedItem) return;
+
+    const currentParentId = selectedItem.parent;
+    if (newParentId === currentParentId) return;
+
+    const ordinal = structure.getOrdinalById(selectedElementId);
+    if (ordinal === null) return;
+
+    // Update parent
+    structure.data[ordinal].parent = newParentId;
+
+    // Update indent based on new parent's indent
+    if (newParentId === 0) {
+      structure.data[ordinal].indent = 0;
+    } else {
+      const parentOrdinal = structure.getOrdinalById(newParentId);
+      if (parentOrdinal !== null) {
+        structure.data[ordinal].indent = structure.data[parentOrdinal].indent + 1;
+      }
+    }
+
+    structure.reSort();
+    structure.reNumber();
+
+    // Store for undo
+    if ((globalThis as any).undostruct) {
+      (globalThis as any).undostruct.store();
+    }
+
     refresh();
   };
 
@@ -563,7 +710,7 @@ const SimpleHierarchyView: React.FC = () => {
   const handleDelete = (id?: number) => {
     const elementId = id || selectedElementId;
     if (!elementId) return;
-    
+
     if (confirm('Weet je zeker dat je dit element wilt verwijderen?')) {
       if (typeof (globalThis as any).HLDelete === 'function') {
         (globalThis as any).HLDelete(elementId);
@@ -573,12 +720,111 @@ const SimpleHierarchyView: React.FC = () => {
     }
   };
 
+  // Context menu handler for hierarchy items
+  const handleContextMenu = (e: React.MouseEvent, id: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!contextMenuRef.current || !structure) return;
+
+    const menu = contextMenuRef.current;
+    menu.clearMenu();
+
+    const el = getElementList().find((item) => item.id === id);
+    const isSelected = selectedElementId === id;
+
+    // Select action (only shown when not already selected)
+    if (!isSelected) {
+      menu.addMenuItem('Selecteer', () => {
+        selectElement(id);
+      });
+    }
+
+    // Insert actions
+    menu.addMenuItem('Voeg toe voor', () => {
+      setInsertionMode('insert-before');
+      setInsertionTargetId(id);
+      setShowAddModal(true);
+    });
+    menu.addMenuItem('Voeg toe na', () => {
+      setInsertionMode('insert-after');
+      setInsertionTargetId(id);
+      setShowAddModal(true);
+    });
+    menu.addMenuItem('Voeg kind toe', () => {
+      handleInsertChild(id);
+    });
+
+    menu.addLine();
+
+    // Move actions
+    menu.addMenuItem('Verplaats omhoog', () => {
+      selectElement(id);
+      handleMoveUp();
+    });
+    menu.addMenuItem('Verplaats omlaag', () => {
+      selectElement(id);
+      handleMoveDown();
+    });
+
+    menu.addLine();
+
+    // Clone / change type
+    menu.addMenuItem('Dupliceer', () => {
+      selectElement(id);
+      handleClone();
+    });
+    menu.addMenuItem('Wijzig type', () => {
+      selectElement(id);
+      setShowChangeTypeModal(true);
+    });
+
+    // Expand / collapse
+    if (el && el.hasChildren) {
+      menu.addLine();
+      if (collapsedElements.has(id)) {
+        menu.addMenuItem('Uitklappen', () => {
+          toggleCollapse(id);
+        });
+      } else {
+        menu.addMenuItem('Inklappen', () => {
+          toggleCollapse(id);
+        });
+      }
+    }
+
+    menu.addLine();
+
+    // Delete
+    menu.addMenuItem('Verwijder', () => {
+      handleDelete(id);
+    });
+
+    menu.show(e.nativeEvent);
+  };
+
+  // Close context menu when clicking elsewhere
+  useEffect(() => {
+    const handleClick = () => {
+      if (contextMenuRef.current) {
+        contextMenuRef.current.hide();
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    document.addEventListener('scroll', handleClick, true);
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('scroll', handleClick, true);
+    };
+  }, []);
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, id: number) => {
     setDraggedItemId(id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id.toString());
-    
+
     // Add a slight opacity to show it's being dragged
     (e.target as HTMLElement).style.opacity = '0.5';
   };
@@ -587,13 +833,155 @@ const SimpleHierarchyView: React.FC = () => {
     (e.target as HTMLElement).style.opacity = '1';
     setDraggedItemId(null);
     setDragOverItemId(null);
+    setDropPosition(null);
+  };
+
+  const getDropPositionFromEvent = (e: React.DragEvent, element: HTMLElement): 'before' | 'after' | 'child' => {
+    const rect = element.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    const height = rect.height;
+
+    // Top 30% -> insert before, bottom 30% -> insert after, middle 40% -> make child
+    if (relativeY < height * 0.3) return 'before';
+    if (relativeY > height * 0.7) return 'after';
+    return 'child';
+  };
+
+  const canBeChildOf = (childId: number, parentId: number): boolean => {
+    if (!structure || childId === parentId) return false;
+
+    // Prevent cycles
+    if (isDescendantOf(parentId, childId)) return false;
+
+    const parentItem = structure.getElectroItemById(parentId);
+    const childItem = structure.getElectroItemById(childId);
+    if (!parentItem || !childItem) return false;
+
+    // Check allowed child types
+    if (typeof (parentItem as any).allowedChilds !== 'function') return false;
+    const allowed = (parentItem as any).allowedChilds();
+    if (!allowed.includes(childItem.getType())) return false;
+
+    // Check max children (skip if the item is already a child of this parent)
+    if (childItem.parent !== parentId) {
+      const numChilds = structure.getNumChilds(parentId);
+      const maxChilds = structure.getMaxNumChilds(parentId);
+      if (numChilds >= maxChilds) return false;
+    }
+
+    return true;
+  };
+
+  const ensureSameParentAsTarget = (draggedId: number, targetId: number): boolean => {
+    if (!structure) return false;
+
+    const draggedItem = structure.getElectroItemById(draggedId);
+    const targetItem = structure.getElectroItemById(targetId);
+    if (!draggedItem || !targetItem) return false;
+
+    if (draggedItem.parent === targetItem.parent) return true;
+
+    const draggedOrdinal = structure.getOrdinalById(draggedId);
+    if (draggedOrdinal === null) return false;
+
+    const targetParentId = targetItem.parent;
+
+    // Update parent
+    structure.data[draggedOrdinal].parent = targetParentId;
+
+    // Update indent based on new parent's indent
+    if (targetParentId === 0) {
+      structure.data[draggedOrdinal].indent = 0;
+    } else {
+      const parentOrdinal = structure.getOrdinalById(targetParentId);
+      if (parentOrdinal !== null) {
+        structure.data[draggedOrdinal].indent = structure.data[parentOrdinal].indent + 1;
+      }
+    }
+
+    structure.reSort();
+    return true;
+  };
+
+  const moveItemBeforeTarget = (draggedId: number, targetId: number) => {
+    if (!structure) return;
+
+    if (!ensureSameParentAsTarget(draggedId, targetId)) return;
+
+    let currentOrdinal = structure.getOrdinalById(draggedId);
+    let targetOrdinal = structure.getOrdinalById(targetId);
+    if (currentOrdinal === null || targetOrdinal === null) return;
+
+    let safety = 0;
+    while (currentOrdinal > targetOrdinal && safety < 1000) {
+      if (typeof (globalThis as any).HLMoveUp === 'function') {
+        (globalThis as any).HLMoveUp(draggedId);
+      }
+      currentOrdinal = structure.getOrdinalById(draggedId);
+      targetOrdinal = structure.getOrdinalById(targetId);
+      if (currentOrdinal === null || targetOrdinal === null) return;
+      safety++;
+    }
+  };
+
+  const moveItemAfterTarget = (draggedId: number, targetId: number) => {
+    if (!structure) return;
+
+    if (!ensureSameParentAsTarget(draggedId, targetId)) return;
+
+    let currentOrdinal = structure.getOrdinalById(draggedId);
+    let targetOrdinal = structure.getOrdinalById(targetId);
+    if (currentOrdinal === null || targetOrdinal === null) return;
+
+    let safety = 0;
+    while (currentOrdinal < targetOrdinal && safety < 1000) {
+      if (typeof (globalThis as any).HLMoveDown === 'function') {
+        (globalThis as any).HLMoveDown(draggedId);
+      }
+      currentOrdinal = structure.getOrdinalById(draggedId);
+      targetOrdinal = structure.getOrdinalById(targetId);
+      if (currentOrdinal === null || targetOrdinal === null) return;
+      safety++;
+    }
+  };
+
+  const moveItemToChildOf = (draggedId: number, parentId: number) => {
+    if (!structure) return;
+
+    const ordinal = structure.getOrdinalById(draggedId);
+    if (ordinal === null) return;
+
+    // Update parent
+    structure.data[ordinal].parent = parentId;
+
+    // Update indent based on new parent's indent
+    if (parentId === 0) {
+      structure.data[ordinal].indent = 0;
+    } else {
+      const parentOrdinal = structure.getOrdinalById(parentId);
+      if (parentOrdinal !== null) {
+        structure.data[ordinal].indent = structure.data[parentOrdinal].indent + 1;
+      }
+    }
+
+    structure.reSort();
+    structure.reNumber();
   };
 
   const handleDragOver = (e: React.DragEvent, id: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    
+
     if (draggedItemId !== id) {
+      const position = getDropPositionFromEvent(e, e.currentTarget as HTMLElement);
+      if (position === 'child' && !canBeChildOf(draggedItemId!, id)) {
+        // If child drop is not allowed, fall back to before/after based on position
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const relativeY = e.clientY - rect.top;
+        setDropPosition(relativeY < rect.height / 2 ? 'before' : 'after');
+      } else {
+        setDropPosition(position);
+      }
       setDragOverItemId(id);
     }
   };
@@ -603,50 +991,47 @@ const SimpleHierarchyView: React.FC = () => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-    
+
     if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setDragOverItemId(null);
+      setDropPosition(null);
     }
   };
 
   const handleDrop = (e: React.DragEvent, targetId: number) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!draggedItemId || draggedItemId === targetId) {
       setDragOverItemId(null);
+      setDropPosition(null);
       return;
     }
 
     if (!structure) return;
 
-    // Find indices in the structure
-    const draggedIndex = structure.id.indexOf(draggedItemId);
-    const targetIndex = structure.id.indexOf(targetId);
+    const currentDropPosition = dropPosition || 'after';
 
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDragOverItemId(null);
-      return;
+    if (currentDropPosition === 'child' && canBeChildOf(draggedItemId, targetId)) {
+      moveItemToChildOf(draggedItemId, targetId);
+      // Expand the parent so the moved item becomes visible
+      setCollapsedElements((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(targetId);
+        return newSet;
+      });
+    } else if (currentDropPosition === 'before') {
+      moveItemBeforeTarget(draggedItemId, targetId);
+    } else {
+      moveItemAfterTarget(draggedItemId, targetId);
     }
 
-    // Use the move functions to reorder
-    // If moving down, we need to move multiple times
-    if (draggedIndex < targetIndex) {
-      for (let i = draggedIndex; i < targetIndex; i++) {
-        if (typeof (globalThis as any).HLMoveDown === 'function') {
-          (globalThis as any).HLMoveDown(draggedItemId);
-        }
-      }
-    } else {
-      // Moving up
-      for (let i = draggedIndex; i > targetIndex; i--) {
-        if (typeof (globalThis as any).HLMoveUp === 'function') {
-          (globalThis as any).HLMoveUp(draggedItemId);
-        }
-      }
+    if ((globalThis as any).undostruct) {
+      (globalThis as any).undostruct.store();
     }
 
     setDragOverItemId(null);
+    setDropPosition(null);
     setSelectedElementId(draggedItemId);
     refresh();
   };
@@ -1253,7 +1638,7 @@ const SimpleHierarchyView: React.FC = () => {
               {filteredElements.map((el) => (
                 <li
                   key={el.id}
-                  className={`simple-hierarchy-item ${selectedElementId === el.id ? 'selected' : ''} ${dragOverItemId === el.id ? 'drag-over' : ''} ${draggedItemId === el.id ? 'dragging' : ''}`}
+                  className={`simple-hierarchy-item ${selectedElementId === el.id ? 'selected' : ''} ${draggedItemId === el.id ? 'dragging' : ''} ${dragOverItemId === el.id && dropPosition === 'before' ? 'drag-over-before' : ''} ${dragOverItemId === el.id && dropPosition === 'after' ? 'drag-over-after' : ''} ${dragOverItemId === el.id && dropPosition === 'child' ? 'drag-over-child' : ''}`}
                   data-id={el.id}
                   data-level={el.level}
                   style={{ paddingLeft: `${el.level * 20 + 12}px` }}
@@ -1263,6 +1648,7 @@ const SimpleHierarchyView: React.FC = () => {
                   onDragOver={(e) => handleDragOver(e, el.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, el.id)}
+                  onContextMenu={(e) => handleContextMenu(e, el.id)}
                 >
                   {/* Collapse/Expand button for elements with children */}
                   {el.hasChildren && (
@@ -1525,6 +1911,24 @@ const SimpleHierarchyView: React.FC = () => {
                   >
                     🔄 Type wijzigen
                   </button>
+                </div>
+
+                {/* Parent selector */}
+                <div className="simple-parent-selector">
+                  <label htmlFor="parent-select">
+                    Bovenliggend
+                  </label>
+                  <select
+                    id="parent-select"
+                    value={getSelectedParentId()}
+                    onChange={(e) => handleParentChange(Number(e.target.value))}
+                  >
+                    {getParentOptions().map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div 
