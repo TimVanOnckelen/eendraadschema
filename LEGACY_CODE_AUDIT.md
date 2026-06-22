@@ -1,122 +1,160 @@
 # Legacy Code Audit - Eendraadschema React Migration
 
-**Datum:** 7 januari 2026  
-**Versie:** React 19 Migration  
-**Status:** In transitie naar volledig React
-
-## Overzicht
-
-Dit document geeft een volledig overzicht van alle legacy code die nog aanwezig is in de applicatie na de migratie naar React 19. De migratie is grotendeels voltooid, maar bepaalde delen van de applicatie gebruiken nog legacy DOM-manipulatie en niet-React patronen.
+**Date:** June 22, 2026  
+**Version:** 1.1.0  
+**Status:** Stable hybrid equilibrium
 
 ---
 
-## ✅ Volledig naar React gemigreerd
+## Overview
 
-### Components (volledig React)
+This document provides a complete overview of all legacy code still present in the application after the migration to React 19. Since the previous audit (January 7, 2026), the React layer has been significantly expanded with new features, but the deepest rendering core remains largely untouched.
 
-1. **StartScreen.tsx** - Startscherm met voorbeeldbestanden
-2. **TopMenu.tsx** - Hoofdmenu navigatie
-3. **ContactView.tsx** - Contact/info pagina
-4. **DocumentationView.tsx** - Documentatie pagina (geen legacy dependencies)
-5. **EditorView.tsx** - Wrapper voor SimpleHierarchyView
-6. **AutoSaveIndicator.tsx** - Visuele save status indicator
-7. **App.tsx** - Hoofdcomponent met routing
-8. **AppContext.tsx** - React Context voor state management
+The application is in a **stable hybrid equilibrium**: the application shell, menus, dialogs, and new features are modern React, while the complex SVG/situation plan/print pipelines are deliberately kept as legacy classes.
 
 ---
 
-## ⚠️ Hybrid: React wrapper met legacy functionaliteit
+## Changes Since January 7, 2026
 
-### 1. SimpleHierarchyView.tsx (Grote component: ~2000 lijnen)
+Since the previous audit, **24 commits** have been made. The most important changes:
 
-**Status:** React component die legacy code oproept
+1. **Dark mode support** (`src/utils/theme.ts`)
+2. **New React components:**
+   - `FileLibraryView.tsx` - Browser library for EDS/JSON files (IndexedDB)
+   - `SitPlanSidebar.tsx` - Replaces the legacy `SituationPlanView_SideBar.ts`
+3. **JSON export format** alongside the existing EDS format
+4. **`dialogAlert`/`dialogConfirm` helpers** replace native `alert()`/`confirm()` in many places
+5. **`useSitPlan` hook** centralizes situation plan state management
+6. **New situation plan features:** freeform shapes, layer manager, improved wall/window/door rendering
+7. **`SitPlanView` ribbon** completely rewritten in React JSX
+8. **Build workflow** added for CI/CD
+
+---
+
+## ✅ Fully Migrated to React
+
+### Components (fully React)
+
+| # | Component | Lines | Notes |
+|---|-----------|-------|-------|
+| 1 | **App.tsx** | 355 | Main component with routing, menu, file recovery |
+| 2 | **AppContext.tsx** | 84 | React Context for state management |
+| 3 | **StartScreen.tsx** | 607 | Start screen with example files |
+| 4 | **TopMenu.tsx** | 137 | Main menu navigation with dark mode toggle |
+| 5 | **ContactView.tsx** | 62 | Contact/info page |
+| 6 | **DocumentationView.tsx** | 177 | Documentation page |
+| 7 | **EditorView.tsx** | 12 | Thin wrapper for SimpleHierarchyView |
+| 8 | **AutoSaveIndicator.tsx** | 121 | Visual save status indicator |
+| 9 | **FileLibraryView.tsx** | 247 | Browser library for file management |
+| 10 | **SitPlanSidebar.tsx** | 786 | React sidebar for situation plan properties |
+
+**Total:** 10 components, ~2,588 lines of React UI code.
+
+---
+
+## ⚠️ Hybrid: React Wrapper with Legacy Functionality
+
+### 1. SimpleHierarchyView.tsx (Large component: ~2,587 lines)
+
+**Status:** React component that calls legacy code
 
 **Legacy dependencies:**
 
-- Roept `globalThis.HLRedrawTree()` aan voor SVG hertekenen
-- Roept globale functies aan: `HLClone()`, `HLDelete()`, `HLMoveUp()`, `HLMoveDown()`
-- Gebruikt `Hierarchical_List` class met directe DOM manipulatie
-- Dependency op `globalThis.structure` voor state
+- Calls `globalThis.HLRedrawTree()` for SVG redraw
+- Calls global functions: `HLClone()`, `HLDelete()`, `HLMoveUp()`, `HLMoveDown()`
+- SVG rendering via `structure.toSVG()` and `dangerouslySetInnerHTML`
+- Direct SVG event handlers via `addEventListener` on rendered elements
+- Dependency on `globalThis.structure` for state synchronization
 
-**Specifieke legacy patronen:**
+**Specific legacy patterns:**
 
 ```typescript
-// Roept legacy globale functies aan
-globalThis.HLClone(id);
-globalThis.HLDelete(id);
-globalThis.HLMoveUp(id);
+// Calls legacy global functions
+(globalThis as any).HLClone(selectedElementId);
+(globalThis as any).HLDelete(elementId);
+(globalThis as any).HLMoveUp(selectedElementId);
 
-// Legacy state synchronisatie
+// Legacy state synchronization
 if ((globalThis as any).structure) {
   setStructure((globalThis as any).structure);
 }
 
-// Direct DOM manipulatie via legacy class
-structure.toHTML("edit");
+// SVG injection via dangerouslySetInnerHTML
+<div id="EDS" dangerouslySetInnerHTML={{ __html: getSVGContent() }} />
+
+// Direct DOM event handlers on SVG elements
+element.addEventListener('click', clickHandler);
+element.addEventListener('mouseenter', mouseEnterHandler);
 ```
 
-**Opmerkingen:**
+**Notes:**
 
-- Grootste component in de app (~2000 lijnen)
-- Mengt React state met globalThis.structure
-- Properties editor gebruikt React forms maar roept legacy update functies aan
-- SVG rendering volledig legacy (Hierarchical_List.toSVG())
+- Largest component in the app (~2,587 lines, grown since previous audit)
+- The properties editor and element list are fully React
+- Drag & drop for elements is implemented in React
+- SVG rendering remains fully legacy (`Hierarchical_List.toSVG()`)
 
-### 2. SitPlanView.tsx
+### 2. SitPlanView.tsx (~1,325 lines)
 
-**Status:** React component met legacy event handlers
+**Status:** React component with legacy canvas rendering
 
 **Legacy dependencies:**
 
-- Gebruikt `SituationPlanView` class voor alle rendering
-- Direct DOM manipulation in useEffect voor drag/drop
-- `handleDragOverLegacy` en `handleDropLegacy` event handlers
-- Dependency op `globalThis.structure.sitplanview`
-- Verborgen buttons voor legacy compatibiliteit
+- Uses `SituationPlanView` class for all canvas rendering (~3,381 lines of legacy)
+- Hidden legacy buttons for backward compatibility
+- `globalThis.undoClicked()` / `globalThis.redoClicked()` for undo/redo
+- Direct DOM queries for cleaning up old canvas elements
+- `structure.sitplanview` is directly manipulated
 
-**Specifieke legacy patronen:**
+**Specific legacy patterns:**
 
 ```typescript
-// Legacy event handlers met direct DOM toegang
-const handleDragOverLegacy = (e: DragEvent) => {
-  e.preventDefault();
-};
+// Hidden buttons for legacy code compatibility
+<div style={{ display: 'none' }}>
+  <button id="button_Add"></button>
+  <button id="button_Add_electroItem"></button>
+  <button id="button_Delete"></button>
+  <button id="button_zoomin"></button>
+  ...
+</div>
 
-paperRef.current.addEventListener("dragover", handleDragOverLegacy as any);
+// Global undo/redo functions
+(globalThis as any).undoClicked();
+(globalThis as any).redoClicked();
 
-// Legacy dialog check
-if (structure.properties.legacySchakelaars == null) {
-  const askLegacySchakelaar = new AskLegacySchakelaar();
-  askLegacySchakelaar.show();
-}
+// Legacy button clicks
+const button = document.getElementById('button_Add') as HTMLButtonElement;
+if (button) button.click();
+
+// Direct DOM cleanup
+const elements = document.querySelectorAll('[id^="SP_"]');
+elements.forEach((e) => e.remove());
 ```
 
-**Verborgen legacy buttons:**
+**What is modern:**
 
-```html
-<!-- Hidden buttons for legacy code compatibility -->
-<button id="btn_sitplan_edit" style="display:none"></button>
-<button id="btn_sitplan_undoedit" style="display:none"></button>
-```
+- The entire ribbon/toolbar is React JSX
+- Page selector, zoom controls, drawing mode toggles are React state
+- `useSitPlan` hook manages situation plan state
+- `SitPlanSidebar` is a separate React component
 
-### 3. FilePage.tsx
+### 3. FilePage.tsx (~470 lines)
 
-**Status:** React component die legacy functies oproept
+**Status:** React component that calls legacy functions
 
 **Legacy dependencies:**
 
-- Roept `globalThis.exportjson()` aan voor save functionaliteit
-- Roept `globalThis.loadClicked()` aan voor load functionaliteit
-- Roept `globalThis.importToAppendClicked()` aan voor merge
-- Roept `globalThis.HL_enterSettings()` aan voor settings
-- Gebruikt `globalThis.structure` voor state
+- Calls `globalThis.exportjson()` for save functionality
+- Calls `globalThis.loadClicked()` for load functionality
+- Calls `globalThis.importToAppendClicked()` for merge
+- Calls `globalThis.HL_enterSettings()` for name change in legacy mode
 
-**Specifieke legacy patronen:**
+**Specific legacy patterns:**
 
 ```typescript
 const handleSave = async (saveAs: boolean) => {
   if (typeof globalThis.exportjson === "function") {
-    globalThis.exportjson(saveAs);
+    globalThis.exportjson(saveAs, saveFormat);
   }
 };
 
@@ -127,24 +165,29 @@ const handleLoad = async () => {
 };
 ```
 
-### 4. PrintView.tsx
+**What is modern:**
 
-**Status:** Dunne React wrapper
+- Full React UI with modern styling
+- JSON/EDS format choice via React state
+- Compression checkbox via React state
+
+### 4. PrintView.tsx (~41 lines)
+
+**Status:** Thin React wrapper - unchanged legacy
 
 **Legacy dependencies:**
 
-- Roept `globalThis.printsvg()` aan die volledig legacy is
-- Rendering gebeurt in `#configsection` div via legacy code
-- Component returned `null`, legacy code doet alles
+- Calls `globalThis.printsvg()` which is fully legacy
+- Rendering happens in `#configsection` div via legacy code
+- Component returns `null`, legacy code does everything
 
-**Specifieke legacy patronen:**
+**Specific legacy patterns:**
 
 ```typescript
-// Component is slechts wrapper
 useEffect(() => {
   if (structure && globalThis.printsvg && !initialized.current) {
     initialized.current = true;
-    globalThis.printsvg(); // Volledige legacy functie
+    globalThis.printsvg(); // Fully legacy function
   }
 }, [structure]);
 
@@ -153,61 +196,38 @@ return null; // Legacy code renders into #configsection directly
 
 ---
 
-## 🔴 Volledig Legacy (geen React)
+## 🔴 Fully Legacy (no React)
 
-### Core Classes met DOM Manipulatie
+### Core Classes with DOM Manipulation
 
-#### 1. Hierarchical_List.ts
+#### 1. Hierarchical_List.ts (~1,623 lines)
 
-**Functionaliteit:** Kernclass voor schema data en rendering
+**Functionality:** Core class for schema data and rendering
 
-**Legacy patronen:**
+**Legacy patterns:**
 
-- `toHTML(mode)` - Genereert HTML strings
-- `toSVG()` - Genereert SVG strings
+- `toHTML(mode)` - Generates HTML strings
+- `toSVG()` - Generates SVG strings
 - `updateHTMLinner(id)` - Direct DOM update via `innerHTML`
 - `insertHTMLElement()` - Direct DOM insertion
 
-**Code voorbeelden:**
+**Impact:** High - central class used throughout the application
 
-```typescript
-updateHTMLinner(id: number) {
-  let div = document.getElementById('id_elem_'+id) as HTMLElement;
-  div.innerHTML = this.toHTMLinner(ordinal);
-}
+#### 2. SituationPlanView.ts (~3,381 lines)
 
-toHTML(mode: string): string {
-  // Genereert volledige HTML string
-  return outputstr;
-}
-```
+**Functionality:** All rendering and interaction for the situation plan
 
-**Impact:** Hoog - centrale class gebruikt door hele applicatie
+**Legacy patterns:**
 
-#### 2. SituationPlanView.ts (~1800 lijnen)
-
-**Functionaliteit:** Alle rendering en interactie voor situatieschema
-
-**Legacy patronen:**
-
-- `updateRibbon()` - Genereert HTML met `innerHTML`
-- `makeBox()` - Creëert DIV elements met DOM API
+- `updateRibbon()` - Generates HTML with `innerHTML` (partially replaced by React ribbon)
+- `makeBox()` - Creates DIV elements with DOM API
 - Direct event handlers via `onclick` attributes
-- `document.getElementById()` overal
+- `document.getElementById()` everywhere
+- Drag & drop, selection, layer manager via direct DOM
 
-**Code voorbeelden:**
+**Code examples:**
 
 ```typescript
-updateRibbon() {
-  let outputleft = `<div>...</div>`; // HTML strings
-  document.getElementById('ribbon')!.innerHTML = outputleft;
-
-  // Direct event binding
-  document.getElementById('id_sitplanpage')!.onchange = (event: Event) => {
-    this.selectPage(Number(target.value));
-  };
-}
-
 makeBox(element: SituationPlanElement): HTMLDivElement {
   let box = document.createElement('div');
   box.id = 'SP_' + element.id;
@@ -216,190 +236,163 @@ makeBox(element: SituationPlanElement): HTMLDivElement {
 }
 ```
 
-**Impact:** Zeer hoog - ~1800 lijnen legacy code
+**Impact:** Very high - ~3,381 lines of legacy code, grown since previous audit
 
-#### 3. Print_Table.ts
+#### 3. SimpleHierarchyView.ts (~23 lines)
 
-**Functionaliteit:** Print configuratie en pagina setup
+**Functionality:** Bridge class for backward compatibility
 
-**Legacy patronen:**
+**Legacy patterns:**
 
-- `insertHTMLposxTable()` - Genereert tables met `innerHTML`
+- Only a `setRefreshCallback` bridge remains
+- Formerly the full editor UI, now reduced to callback registration
+
+**Impact:** Low - almost completely replaced by React component
+
+### Print Functionality
+
+#### 4. print.ts (~313 lines)
+
+**Functionality:** Print preview and configuration
+
+**Legacy patterns:**
+
+- `printsvg()` function generates large HTML strings
+- Direct `innerHTML` in `configsection`
+- Uses `Print_Table.insertHTML*` methods
+
+**Impact:** High - entire print section is legacy
+
+#### 5. Print_Table.ts (~946 lines)
+
+**Functionality:** Print configuration and page setup
+
+**Legacy patterns:**
+
+- `insertHTMLposxTable()` - Generates tables with `innerHTML`
 - `insertHTMLcheckAutopage()` - Checkbox generation
 - `insertHTMLselectPageRange()` - Select boxes via `innerHTML`
 - Direct event handlers
 
-**Code voorbeelden:**
+**Impact:** High - used in print functionality
 
-```typescript
-insertHTMLposxTable(div: HTMLElement, redrawCallBack: RedrawCallBackFunction): void {
-  let outstr = '<table>...'; // HTML string generation
-  outstr += '<input id="input_start_' + pagenum + '"...>';
-  div.innerHTML = outstr;
+#### 6. printToJsPDF.ts (~514 lines)
 
-  // Later: manual event binding
-  (document.getElementById('input_start_' + pagenum) as HTMLInputElement)
-    .addEventListener('change', ...);
-}
-```
+**Functionality:** PDF generation
 
-**Impact:** Hoog - gebruikt in print functionaliteit
+**Legacy patterns:**
 
-### Utility Classes met DOM Manipulatie
+- Uses legacy `print_table` data
+- Generates status updates via `innerHTML`
+- No React dependency but uses legacy structures
 
-#### 4. InteractiveSVG.ts
+**Impact:** Medium - functions well as-is
 
-**Functionaliteit:** Interactieve SVG voor schema klikken
+### Utility Classes with DOM Manipulation
 
-**Legacy patronen:**
+#### 7. InteractiveSVG.ts (~430 lines)
 
-- `showPropertiesPanel()` - Creëert popup met `innerHTML`
+**Functionality:** Interactive SVG for schema clicking
+
+**Legacy patterns:**
+
+- `showPropertiesPanel()` - Creates popup with `innerHTML`
 - Inline onclick handlers in HTML strings
 - Direct DOM queries
 
-**Code voorbeelden:**
+**Impact:** Medium - used by legacy editor path
 
-```typescript
-showPropertiesPanel(elementId: number, x: number, y: number) {
-  panel.innerHTML = `
-    <div class="svg-properties-panel">
-      <button onclick="document.getElementById('svg-properties-panel')?.remove();">✕</button>
-      ...
-    </div>
-  `;
-  document.body.appendChild(panel);
-}
-```
+#### 8. Dialog.ts (~61 lines)
 
-#### 5. Dialog.ts
+**Functionality:** Modal dialogs
 
-**Functionaliteit:** Modal dialogen
+**Legacy patterns:**
 
-**Legacy patronen:**
+- Creates dialogs with DOM API
+- Uses `.innerHTML` for content
+- Promise-based but no React
 
-- Creëert dialogen met DOM API
-- Gebruikt `.innerHTML` voor content
-- Promise-based maar geen React
+**Impact:** Medium - used in dialogs throughout the app
 
-**Impact:** Gemiddeld - gebruikt in dialogen door hele app
+#### 9. HelperTip.ts (~88 lines)
 
-#### 6. HelperTip.ts
+**Functionality:** Tooltip hints for users
 
-**Functionaliteit:** Tooltip hints voor gebruikers
+**Legacy patterns:**
 
-**Legacy patronen:**
+- DOM creation with `createElement`
+- `.innerHTML` for content
+- LocalStorage for state
 
-- DOM creation met `createElement`
-- `.innerHTML` voor content
-- LocalStorage voor state
-
-**Impact:** Laag - alleen voor hints
-
-### Print Functionaliteit
-
-#### 7. print.ts
-
-**Functionaliteit:** Print preview en configuratie
-
-**Legacy patronen:**
-
-- Functie `printsvg()` genereert grote HTML strings
-- Direct `innerHTML` in `configsection`
-- Gebruikt `Print_Table.insertHTML*` methodes
-
-**Code voorbeelden:**
-
-```typescript
-export function printsvg() {
-  let strleft = "<table>..."; // Grote HTML strings
-  if (configsection != null) configsection.innerHTML = strleft;
-
-  // Roept legacy insert functies aan
-  globalThis.structure.print_table.insertHTMLposxTable(
-    document.getElementById("id_print_table") as HTMLElement,
-    printsvg
-  );
-}
-```
-
-**Impact:** Hoog - hele print sectie is legacy
-
-#### 8. printToJsPDF.ts
-
-**Functionaliteit:** PDF generatie
-
-**Legacy patronen:**
-
-- Gebruikt legacy `print_table` data
-- Genereert status updates via `innerHTML`
-- Geen React dependency maar gebruikt legacy structures
+**Impact:** Low - only for hints
 
 ### Situation Plan Popups
 
-#### 9. SituationPlanView_ElementPropertiesPopup.ts
+#### 10. SituationPlanView_ElementPropertiesPopup.ts
 
-**Legacy patronen:**
+**Legacy patterns:**
 
-- Creëert popup met `div.innerHTML`
+- Creates popup with `div.innerHTML`
 - Select boxes via `innerHTML`
 - Event handlers via DOM API
 
-#### 10. SituationPlanView_ChooseCustomElementPopup.ts
+#### 11. SituationPlanView_ChooseCustomElementPopup.ts
 
-**Legacy patronen:**
+**Legacy patterns:**
 
 - Popup via `div.innerHTML`
-- Genereert HTML strings
+- Generates HTML strings
 
-#### 11. SituationPlanView_MultiElementPropertiesPopup.ts
+#### 12. SituationPlanView_MultiElementPropertiesPopup.ts
 
-**Legacy patronen:**
+**Legacy patterns:**
 
 - Popup via `div.innerHTML`
 - Form elements in HTML strings
 
-#### 12. SituationPlanView_SideBar.ts
+#### 13. SituationPlanView_WallPropertiesPopup.ts
 
-**Legacy patronen:**
+**Legacy patterns:**
 
-- Genereert sidebar met `this.div.innerHTML = html`
-- Search input via `document.getElementById()`
-- Drag handlers op DOM elements
+- Popup via `div.innerHTML`
+- Wall properties via HTML strings
 
 ### Import/Export
 
-#### 13. importExport.ts
+#### 14. importExport.ts (~984 lines)
 
-**Functionaliteit:** File laden/opslaan
+**Functionality:** File load/save
 
-**Legacy patronen:**
+**Legacy patterns:**
 
-- Functie `showFilePage()` genereert HTML strings
-- Gebruikt FileReader API (niet legacy, maar mengt met DOM)
-- Globale functies zoals `exportjson()`
+- Global functions: `exportjson()`, `loadClicked()`, `importToAppendClicked()`
+- Direct DOM manipulation for file inputs
+- Mixes FileReader API with legacy globals
 
-**Code voorbeelden:**
+**Code examples:**
 
 ```typescript
-export function showFilePage() {
-  let strleft = `<table border="1px">...`; // HTML strings
-  // Later in code:
-  configsection.innerHTML = strleft;
+export function exportjson(saveas: boolean = true, format: 'eds' | 'json' = 'eds') {
+  // ... global file save logic
 }
 ```
 
-#### 14. AskLegacySchakelaar.ts
+**Impact:** High - central file I/O remains legacy
 
-**Functionaliteit:** Dialog voor legacy file migratie
+#### 15. AskLegacySchakelaar.ts (~137 lines)
 
-**Legacy patronen:**
+**Functionality:** Dialog for legacy file migration
 
-- Extends `Dialog` class (ook legacy)
-- Creëert HTML content als string
+**Legacy patterns:**
 
-### List Items met Legacy Key Conversion
+- Extends `Dialog` class (also legacy)
+- Creates HTML content as string
 
-Alle `List_Item/*.ts` classes hebben:
+**Impact:** Low - only during migration of old files
+
+### List Items with Legacy Key Conversion
+
+All `List_Item/*.ts` classes have:
 
 ```typescript
 convertLegacyKeys(mykeys: Array<[string,string,any]>) {
@@ -409,46 +402,76 @@ convertLegacyKeys(mykeys: Array<[string,string,any]>) {
 }
 ```
 
-**Betrokken files (~50+ classes):**
+**Involved files (~52 classes, ~6,576 lines):**
 
 - Aansluiting.ts, Aansluitpunt.ts, Aardingsonderbreker.ts
 - Batterij.ts, Bel.ts, Boiler.ts, Bord.ts
 - Contactdoos.ts, Diepvriezer.ts, Domotica.ts
 - EV_lader.ts, Ketel.ts, Kring.ts, Lichtpunt.ts
 - Motor.ts, Transformator.ts, Zekering.ts
-- En ~40 andere...
+- And ~40 others...
 
-**Impact:** Laag - alleen voor backward compatibility bij file import
-
----
-
-## 📊 Legacy Code Statistieken
-
-### Per Categorie
-
-| Categorie                   | Aantal Files | Geschatte Lijnen | Status           |
-| --------------------------- | ------------ | ---------------- | ---------------- |
-| **Volledig React**          | 8            | ~1500            | ✅ Compleet      |
-| **Hybrid (React + Legacy)** | 4            | ~3000            | ⚠️ Mixed         |
-| **Core Legacy Classes**     | 3            | ~4000            | 🔴 Legacy        |
-| **Print Functionaliteit**   | 3            | ~1500            | 🔴 Legacy        |
-| **Popups & UI Helpers**     | 6            | ~1000            | 🔴 Legacy        |
-| **Import/Export**           | 2            | ~800             | 🔴 Legacy        |
-| **List Items**              | 50+          | ~3000            | 🔴 Legacy (keys) |
-
-### Totaal Overzicht
-
-- **Totaal React:** ~30% van UI code
-- **Hybrid:** ~20% van UI code
-- **Volledig Legacy:** ~50% van codebase
+**Impact:** Low - only for backward compatibility during file import
 
 ---
 
-## 🎯 Belangrijkste Legacy Patronen
+## 🆕 New Modern Utilities (since previous audit)
+
+| File | Lines | Function |
+|------|-------|----------|
+| `src/utils/theme.ts` | 46 | Dark mode detection and application |
+| `src/utils/DialogHelpers.ts` | 109 | `dialogAlert`, `dialogConfirm`, `dialogPrompt` |
+| `src/utils/structureUtils.ts` | 95 | `buildNewStructure`, `reset_all` |
+| `src/utils/hierarchyFunctions.ts` | 212 | Global HL* functions as module |
+| `src/hooks/useSitPlan.ts` | 369 | React hook for situation plan state |
+| `src/storage/IndexedDBStorage.ts` | 105 | IndexedDB wrapper |
+| `src/storage/FileLibraryStorage.ts` | 321 | Browser file library |
+| `src/storage/MultiLevelStorage.ts` | 114 | localStorage with nested paths |
+
+**Total:** 8 files, ~1,371 lines of modern utility code.
+
+---
+
+## 📊 Legacy Code Statistics
+
+### Per Category
+
+| Category | Number of Files | Estimated Lines | Status |
+| -------- | --------------- | --------------- | ------ |
+| **Fully React** | 10 | ~2,588 | ✅ Complete |
+| **Hybrid (React + Legacy)** | 4 | ~4,423 | ⚠️ Mixed |
+| **Core Legacy Classes** | 15 | ~9,062 | 🔴 Legacy |
+| **Print Functionality** | 3 | ~1,773 | 🔴 Legacy |
+| **Popups & UI Helpers** | 7 | ~1,206 | 🔴 Legacy |
+| **Import/Export** | 2 | ~1,121 | 🔴 Legacy |
+| **List Items** | 52 | ~6,576 | 🔴 Legacy (keys) |
+| **New utilities/storage** | 8 | ~1,371 | ✅ Modern |
+
+### UI Layer Specifically (React vs Hybrid vs Legacy UI)
+
+Only UI-related code considered:
+
+| Type | Lines | Percentage |
+| ---- | ----- | ---------- |
+| Fully React UI | 2,588 | ~16% |
+| Hybrid UI | 4,423 | ~28% |
+| Legacy UI classes | 9,062 | ~56% |
+
+### Overall Codebase Summary
+
+- **Total src/ TypeScript files:** 118 (`.ts` + `.tsx`)
+- **React/hybrid UI code:** ~44% of UI code
+- **Fully Legacy UI code:** ~56% of UI code
+
+**Important nuance:** The percentages appear to shift toward more legacy because the **codebase has grown** with new legacy features (freeform shapes, layer manager, improved situation plan), while the React layer has also expanded. The absolute amount of React code is larger than in January 2026, but the legacy core has also grown.
+
+---
+
+## 🎯 Main Legacy Patterns
 
 ### 1. HTML String Generation
 
-**Probleem:** Hele UI wordt gegenereerd als strings
+**Problem:** Entire UI is generated as strings
 
 ```typescript
 // Anti-pattern
@@ -456,60 +479,66 @@ let html = '<div><button onclick="doSomething()">Click</button></div>';
 element.innerHTML = html;
 ```
 
-**Locaties:**
+**Locations:**
 
 - `Hierarchical_List.toHTML()`
-- `SituationPlanView.updateRibbon()`
-- `Print_Table.insertHTML*()` methodes
-- `importExport.showFilePage()`
+- `SituationPlanView.updateRibbon()` (partially deprecated)
+- `Print_Table.insertHTML*()` methods
+- `importExport.ts`
+- All situation plan popups
 
 ### 2. Global State via globalThis
 
-**Probleem:** Geen state management, alles via global object
+**Problem:** No state management, everything via global object
 
 ```typescript
 globalThis.structure = new Hierarchical_List();
 globalThis.HLRedrawTree();
+(globalThis as any).undoClicked();
 ```
 
-**Locaties:**
+**Locations:**
 
-- Overal waar `globalThis.structure` gebruikt wordt
-- Alle `HL*` globale functies
-- AutoSaver gebruikt globalThis voor save
+- Everywhere `globalThis.structure` is used
+- All `HL*` global functions
+- `globalThis.exportjson`, `globalThis.loadClicked`
+- `globalThis.undostruct`
 
 ### 3. Direct DOM Manipulation
 
-**Probleem:** Omzeilt React's virtual DOM
+**Problem:** Bypasses React's virtual DOM
 
 ```typescript
 document.getElementById("someid")!.innerHTML = content;
+document.querySelectorAll('[id^="SP_"]').forEach((e) => e.remove());
 ```
 
-**Locaties:**
+**Locations:**
 
-- `updateHTMLinner()` in Hierarchical_List
-- `makeBox()` in SituationPlanView
-- Alle popup classes
-- Print functionaliteit
+- `SimpleHierarchyView.tsx` (SVG injection, event handlers)
+- `SitPlanView.tsx` (canvas cleanup, hidden buttons)
+- `Hierarchical_List.updateHTMLinner()`
+- `SituationPlanView.makeBox()`
+- All popup classes
+- Print functionality
 
 ### 4. Inline Event Handlers
 
-**Probleem:** Event handlers in HTML strings
+**Problem:** Event handlers in HTML strings
 
 ```typescript
 html += '<button onclick="globalFunction()">Click</button>';
 ```
 
-**Locaties:**
+**Locations:**
 
 - InteractiveSVG popups
-- SituationPlanView ribbon
-- Print configuratie
+- SituationPlanView (legacy path)
+- Print configuration
 
 ### 5. String-based SVG Generation
 
-**Probleem:** SVG als strings in plaats van React components
+**Problem:** SVG as strings instead of React components
 
 ```typescript
 toSVG(): string {
@@ -517,148 +546,165 @@ toSVG(): string {
 }
 ```
 
-**Locaties:**
+**Locations:**
 
 - `Hierarchical_List.toSVG()`
 - `SVGelement.getSVG()`
 - Print SVG generation
+- `SimpleHierarchyView.tsx` via `dangerouslySetInnerHTML`
 
 ---
 
-## 🔧 Migratie Overwegingen
+## 🔧 Migration Considerations
 
-### Hoge Prioriteit (Hybrid → React)
+### High Priority (Hybrid → React)
 
-1. **SimpleHierarchyView voltooid migreren**
+1. **Rewrite PrintView**
 
-   - Herschrijf SVG rendering in React
-   - Vervang globale HL\* functies door component methods
-   - Verwijder globalThis.structure dependency
+   - Thinnest wrapper, biggest user impact
+   - Replace `print.ts` with React component
+   - Rewrite `Print_Table` logic
+   - React forms for configuration
 
-2. **SitPlanView event handlers**
+2. **Decouple SimpleHierarchyView SVG**
 
-   - Vervang direct DOM event listeners door React events
-   - Verwijder verborgen legacy buttons
-   - Migreer SituationPlanView.updateRibbon() naar React
+   - Replace `dangerouslySetInnerHTML` with React SVG components
+   - Keep `Hierarchical_List.toSVG()` as fallback
+   - Remove direct SVG event handlers
 
-3. **PrintView volledig opnieuw schrijven**
-   - Vervang print.ts door React component
-   - Herschrijf Print_Table logica
-   - React forms voor configuratie
+3. **Remove SitPlanView hidden buttons**
 
-### Middellange Termijn
+   - Replace button clicks with direct method calls on `SituationPlanView`
+   - Modernize undo/redo calls
 
-4. **Hierarchical_List refactor**
+### Medium Term
 
-   - Splits data model van rendering
-   - Data blijft in class, rendering naar React
-   - `toHTML()` en `toSVG()` verwijderen
+4. **Replace FilePage globals**
 
-5. **SituationPlanView gedeeltelijke migratie**
+   - Use direct imports instead of `globalThis.exportjson`
+   - Modernize file I/O helpers
 
-   - Ribbon naar React component
-   - Popups naar React modals
-   - Behoud core rendering logica (te complex)
+5. **Refactor Hierarchical_List**
 
-6. **Import/Export moderniseren**
-   - Vervang showFilePage() door React
-   - Behoud file logic, moderniseer UI
+   - Split data model from rendering
+   - Data stays in class, rendering moves to React
+   - `toHTML()` and `toSVG()` possibly kept for export
 
-### Lage Prioriteit
+6. **Partial SituationPlanView migration**
+
+   - Keep core canvas rendering (too complex)
+   - Popups to React modals
+   - Event handling to React events where possible
+
+### Low Priority
 
 7. **Legacy key conversion**
 
-   - Behouden voor backward compatibility
-   - Geen impact op nieuwe functionaliteit
+   - Keep for backward compatibility
+   - No impact on new functionality
 
 8. **Utility classes**
-   - Dialog → React modal component
-   - HelperTip → React tooltip component
+
+   - `Dialog` → React modal component
+   - `HelperTip` → React tooltip component
 
 ---
 
-## 🚫 Niet Migreren (Rationeel)
+## 🚫 Do Not Migrate (Rationale)
 
-### 1. Electro_Item en List_Item Classes
+### 1. Electro_Item and List_Item Classes
 
-**Reden:** Complexe business logica, geen UI
+**Reason:** Complex business logic, no UI
 
-Deze classes bevatten:
+These classes contain:
 
-- Elektrische berekeningen
-- AREI validatie regels
-- Data transformaties
-- Legacy key conversies (backward compatibility)
+- Electrical calculations
+- AREI validation rules
+- Data transformations
+- Legacy key conversions (backward compatibility)
 
-**Beslissing:** Behouden als TypeScript classes, geen React nodig
+**Decision:** Keep as TypeScript classes, no React needed
 
 ### 2. Core SVG Generation
 
-**Reden:** Zeer complexe SVG generatie logica
+**Reason:** Very complex SVG generation logic
 
-- `SVGelement.ts` - Complexe SVG rendering
-- `SVGSymbols.ts` - Symbool definities
-- Elektrische symbolen volgens AREI normen
+- `SVGelement.ts` - Complex SVG rendering
+- `SVGSymbols.ts` - Symbol definitions
+- Electrical symbols according to AREI standards
 
-**Beslissing:** Behouden, te veel risico om te refactoren
+**Decision:** Keep, too risky to refactor
 
-### 3. Print/PDF Generation
+### 3. Situation Plan Core Rendering
 
-**Reden:** Functioneert, heeft externe dependencies
+**Reason:** Very complex canvas interaction
 
-- jsPDF library integratie
-- Complexe PDF layout logica
-- Weinig UI, vooral berekeningen
+- `SituationPlanView.ts` - ~3,381 lines of direct DOM rendering
+- `SituationPlanElement.ts` - Element logic
+- `MouseDrag.ts`, `GeometricFunctions.ts` - Interaction logic
 
-**Beslissing:** Lage prioriteit, werkt zoals het is
+**Decision:** Only modernize the shell, keep core rendering
 
----
+### 4. Print/PDF Generation
 
-## 📝 Aanbevelingen
+**Reason:** Works, has external dependencies
 
-### Korte Termijn (1-2 maanden)
+- jsPDF library integration
+- Complex PDF layout logic
+- Little UI, mostly calculations
 
-1. ✅ **Voltooi SimpleHierarchyView migratie** (hoogste impact)
-2. ✅ **Moderniseer SitPlanView event handling**
-3. ✅ **Verwijder globalThis dependencies waar mogelijk**
-
-### Middellange Termijn (3-6 maanden)
-
-4. 🔄 **Splits Hierarchical_List**: data vs rendering
-5. 🔄 **Herschrijf Print UI** naar React
-6. 🔄 **Vervang Dialog/HelperTip** door React components
-
-### Lange Termijn (6+ maanden)
-
-7. 🔮 **Overweeg volledige SituationPlanView refactor**
-8. 🔮 **Evalueer SVG rendering alternatieven** (react-svg?)
-
-### Niet Plannen
-
-- ❌ Electro_Item classes herstructureren
-- ❌ SVG generatie logica herschrijven
-- ❌ Legacy key conversion verwijderen
+**Decision:** Low priority, works as-is
 
 ---
 
-## 🎓 Conclusie
+## 📝 Recommendations
 
-De applicatie is voor **~30% naar React gemigreerd** (UI laag). De grootste winsten zijn:
+### Short Term (1-2 months)
 
-- Modern component-based architecture
-- React state management voor UI
-- Type safety met TypeScript + React
+1. ✅ **Rewrite PrintView** - small wrapper, biggest impact
+2. ✅ **Remove SitPlanView hidden buttons** - replace with direct calls
+3. ✅ **Modernize FilePage globals** - use direct imports
 
-**Resterende legacy code** is voornamelijk:
+### Medium Term (3-6 months)
 
-- Core business logica (Hierarchical_List, Electro_Items) → Niet nodig om te migreren
-- Complexe rendering (SituationPlanView, SVG) → Hoog risico, lage ROI
-- Print functionaliteit → Lage prioriteit, werkt zoals het is
+4. 🔄 **Decouple SimpleHierarchyView SVG** - React SVG components
+5. 🔄 **Split Hierarchical_List**: data vs rendering
+6. 🔄 **Replace Dialog/HelperTip** with React components
 
-**Aanbeveling:** Focus op het voltooien van de hybrid components (SimpleHierarchyView, SitPlanView) en laat de core logica met rust. De huidige staat is functioneel en maintainable.
+### Long Term (6+ months)
+
+7. 🔮 **Consider full SituationPlanView refactor** (only if ROI is high enough)
+8. 🔮 **Evaluate SVG rendering alternatives** (react-svg?)
+
+### Not Planned
+
+- ❌ Restructure Electro_Item classes
+- ❌ Rewrite SVG generation logic
+- ❌ Remove legacy key conversion
+- ❌ Rewrite situation plan core rendering
 
 ---
 
-**Laatste update:** 7 januari 2026  
-**Auteur:** AI Audit Tool  
-**Versie:** 1.0
+## 🎓 Conclusion
+
+The application is in a **stable hybrid equilibrium**. The biggest wins since January 2026:
+
+- Modern application shell with routing and state management
+- New features fully in React (FileLibraryView, SitPlanSidebar, dark mode)
+- Improved user experience with `DialogHelpers` and theme support
+- SitPlanView ribbon fully React
+
+**Remaining legacy code** is mainly:
+
+- Core business logic (`Hierarchical_List`, `Electro_Items`) → No need to migrate
+- Complex rendering (`SituationPlanView`, SVG) → High risk, low ROI
+- Print functionality → Low priority, works as-is
+- Import/export globals → Medium term modernization
+
+**Recommendation:** Focus on finishing the remaining hybrid wrappers (PrintView, hidden buttons, globals) and leave the core logic alone. The current state is functional, maintainable, and scalable for new features.
+
+---
+
+**Last updated:** June 22, 2026  
+**Author:** AI Audit Tool  
+**Version:** 2.0

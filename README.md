@@ -142,26 +142,6 @@ Contributions are welcome! Please follow these steps:
 
 For contributions to the original vanilla TypeScript version, see [igoethal/eendraadschema](https://github.com/igoethal/eendraadschema).
 
-## Recommended GitHub Setup
-
-To get the most out of this project's automated workflows, the following GitHub configuration is recommended:
-
-**Branch protection on `master`:**
-- Require pull request reviews before merging
-- Require the **Build Check** status check to pass
-- Do not allow direct pushes — all changes go through PRs
-
-**Issue & PR templates** (`.github/` folder):
-- A bug report template that asks for steps to reproduce, expected vs actual behaviour, and browser/OS info
-- A feature request template asking for the use case and proposed solution
-- A pull request template with a checklist: description of the change, tested in browser, commits follow Conventional Commits
-
-**Labels** for triage:
-- `bug`, `enhancement`, `documentation`, `good first issue`, `breaking change`
-
-**Secrets:**
-- `GITHUB_TOKEN` is provided automatically — no extra secret is needed for semantic-release to publish releases and create changelogs
-
 ## License
 
 Licensed under the GNU General Public License v3.0 — see [LICENSE.md](LICENSE.md) for details.
