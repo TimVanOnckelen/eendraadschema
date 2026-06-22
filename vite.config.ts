@@ -27,10 +27,6 @@ export default defineConfig(({ command }) => ({
                 dest: ".",
               },
               {
-                src: "gif",
-                dest: ".",
-              },
-              {
                 src: "Documentation",
                 dest: ".",
               },

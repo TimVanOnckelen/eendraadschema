@@ -1,49 +1,52 @@
 # Eendraadschema
 
-> Modern electrical diagram design tool for Belgian AREI standards
+> Design and draw one-wire electrical diagrams for Belgian AREI legislation — entirely in the browser
 
+[![Build](https://github.com/TimVanOnckelen/eendraadschema/actions/workflows/build.yml/badge.svg)](https://github.com/TimVanOnckelen/eendraadschema/actions/workflows/build.yml)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](package.json)
 
 ![Eendraadschema Screenshot](img/screenshot1.png)
 
-## � Live Demo
+## Live Demo
 
 Try the application online: **[https://eendraadschema.xeweb.be](https://eendraadschema.xeweb.be)**
 
-## �📖 About
+## Table of Contents
 
-**Original Application:** Created by [Ivan Goethals](https://github.com/igoethal) (2019-2025)  
-**React 19 Refactor & UI Improvements:** [Tim Van Onckelen](https://github.com/TimVanOnckelen) (2026)
+- [About](#about)
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Technical Stack](#technical-stack)
+- [Versioning](#versioning)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
-This version is a modern refactor of the original eendraadschema application, migrated to React 19 with an improved user interface while maintaining all the original logic and functionality created by Ivan Goethals.
+## About
 
-- 🔗 [Original repository](https://github.com/igoethal/eendraadschema)
-- 🔗 [React version repository](https://github.com/TimVanOnckelen/eendraadschema)
+Eendraadschema is a browser-based tool for designing one-wire electrical diagrams as required by the **Belgian AREI legislation**. No installation, no server — open the app and start drawing.
 
-## 🎯 Purpose
+## Features
 
-Design and draw one-wire electrical diagrams as enforced by the **Belgian AREI legislation**. The application runs entirely in the browser and is built with TypeScript.
-
-## ✨ Features
-
-### 🎨 User Interface
+### User Interface
 
 - Modern React 19 component architecture
 - Ribbon-based interface with compact button layouts
+- Dark mode support
 - Responsive design with flexbox layouts
-- Improved visual consistency
 
-### ⚡ Schema Editor
+### Schema Editor
 
-- Full React implementation
-- Maintained all original electrical schema functionality
+- Full React implementation of the electrical schema editor
+- All original electrical schema functionality preserved
 - Improved rendering performance
 - Interactive SVG diagrams
 
-### 🗺️ Situation Plan (Situatieschema)
+### Situation Plan (Situatieschema)
 
 - Searchable SVG symbol library
 - Filter symbols by category
@@ -52,25 +55,25 @@ Design and draw one-wire electrical diagrams as enforced by the **Belgian AREI l
 - Multi-page management
 - Zoom controls (25%, 50%, 75%, 100%, 150%, 200%)
 
-### 💾 File Management
+### File Management
 
 - Auto-save every 5 seconds
 - IndexedDB-based local storage
 - Recovery dialog for unsaved changes
 - Visual save status indicator
-- Import/export .eds files
+- Import/export `.eds` and `.json` files
 - PDF export functionality
 
-### 📚 Documentation
+### Documentation
 
 - Integrated documentation viewer
 - PDF manuals included
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js (v18 or higher recommended)
+- Node.js 18 or higher
 - npm or yarn
 
 ### Installation
@@ -87,7 +90,7 @@ npm install
 npm run dev
 ```
 
-The application will open at `http://localhost:5173`
+The application opens at `http://localhost:5173`.
 
 ### Building for Production
 
@@ -95,78 +98,68 @@ The application will open at `http://localhost:5173`
 npm run build
 ```
 
-This creates a `dist` folder with the built application.
+Output is placed in the `dist/` folder.
 
-## 🛠️ Technical Stack
+## Technical Stack
 
-- **React 19** - Modern UI framework
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool and dev server
-- **IndexedDB** - Client-side storage
-- **jsPDF** - PDF generation
-- **Modern CSS** - Component-based styling
+| Tool | Purpose |
+|---|---|
+| React 19 | UI framework |
+| TypeScript 5.8 | Type-safe development |
+| Vite 6 | Build tool and dev server |
+| IndexedDB | Client-side storage |
+| jsPDF 4 | PDF generation |
+| pako | Compression |
 
-## 🔄 Migration Status
+## Versioning
 
-This application is in an active migration phase from vanilla TypeScript to React 19. Approximately **30%** of the UI layer has been migrated to React components, with the remaining code consisting of core business logic and complex rendering systems.
+This project uses **[Semantic Versioning](https://semver.org/)** (`MAJOR.MINOR.PATCH`) driven automatically by [semantic-release](https://semantic-release.gitbook.io/semantic-release/). Releases are created when commits land on `master` — no manual version bumps needed.
 
-📊 **Detailed Migration Report:** [LEGACY_CODE_AUDIT.md](./LEGACY_CODE_AUDIT.md)
+The version bump is determined by commit message prefixes:
 
-The audit document provides:
+| Prefix | Example | Result |
+|---|---|---|
+| `fix:` | `fix: correct voltage label on diagram` | Patch (`1.0.1`) |
+| `feat:` | `feat: add zoom to fit button` | Minor (`1.1.0`) |
+| `feat!:` or `BREAKING CHANGE:` | `feat!: redesign file format` | Major (`2.0.0`) |
 
-- Complete inventory of React vs legacy code
-- Detailed analysis of hybrid components
-- Migration priorities and recommendations
-- Technical debt assessment
+Prefixes like `docs:`, `chore:`, `refactor:`, `style:`, and `test:` do not trigger a release.
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome and appreciated!
+Contributions are welcome! Please follow these steps:
 
-### How to Contribute
+1. Open an issue first for any non-trivial change to align on the approach
+2. Fork the repository and create a branch from `master`
+3. Name your branch descriptively: `feat/zoom-to-fit`, `fix/pdf-export-crash`, etc.
+4. Write commits using the [Conventional Commits](https://www.conventionalcommits.org/) format — this is required for the automated release pipeline to work correctly (see [Versioning](#versioning))
+5. Open a Pull Request against `master` with a clear description of what changed and why
 
-1. 🍴 Fork the repository
-2. 🔨 Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. ✅ Commit your changes (`git commit -m 'Add amazing feature'`)
-4. 📤 Push to the branch (`git push origin feature/amazing-feature`)
-5. 🎉 Open a Pull Request
+**Guidelines:**
+- Keep pull requests focused — one feature or fix per PR
+- Follow the existing TypeScript conventions and component structure
+- Test your changes in the browser before opening a PR; CI only verifies the build passes
 
-### Guidelines
+For contributions to the original vanilla TypeScript version, see [igoethal/eendraadschema](https://github.com/igoethal/eendraadschema).
 
-- Please open an issue first for major changes to discuss the approach
-- Check [LEGACY_CODE_AUDIT.md](./LEGACY_CODE_AUDIT.md) to understand the current migration status
-- Follow the existing code style and conventions
-- Write clear commit messages
+## License
 
-### For the Original Version
-
-Contributions to the original vanilla TypeScript version: [igoethal/eendraadschema](https://github.com/igoethal/eendraadschema)
-
-## 📄 License
-
-This project is licensed under the GNU General Public License v3.0 - see [LICENSE.md](LICENSE.md) for details.
+Licensed under the GNU General Public License v3.0 — see [LICENSE.md](LICENSE.md) for details.
 
 **Copyright:**
 
-- Original Application: © 2019-2025 Ivan Goethals
-- React Refactor & UI Improvements: © 2025-2026 Tim Van Onckelen
+- Original eendraadschema: © Ivan Goethals
+- This version: © Tim Van Onckelen
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-All core functionality for drawing electrical diagrams according to Belgian AREI legislation was developed by **Ivan Goethals**. This React version is a modernization of the architecture and user interface, but the electrical schema logic remains completely the work of Ivan.
+This project would not exist without **[Ivan Goethals](https://github.com/igoethal)**, who designed and built the original eendraadschema application. The electrical schema logic, symbol library, and AREI compliance rules all originate from his work.
 
-## 💬 Support
+The original application is available at [igoethal/eendraadschema](https://github.com/igoethal/eendraadschema).
 
-- 🐛 [Report bugs](https://github.com/TimVanOnckelen/eendraadschema/issues)
-- 💡 [Request features](https://github.com/TimVanOnckelen/eendraadschema/issues)
-- 📧 Questions? Open an issue or discussion
+## Support
 
-## ⚠️ Note
+- [Report bugs](https://github.com/TimVanOnckelen/eendraadschema/issues)
+- [Request features](https://github.com/TimVanOnckelen/eendraadschema/issues)
+- Questions? Open an issue or start a discussion
 
-This is a hobby project maintained in free time. Commercial use is not planned to maintain the freedom to work on it as desired.
-
----
-
-**Made with ❤️ in Belgium**
-
-- Technical debt assessment
