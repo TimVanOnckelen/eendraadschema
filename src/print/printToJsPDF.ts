@@ -301,7 +301,7 @@ export function printPDF(
       doc.setFontSize(fontSize);
 
       doc.text(
-        "Getekend met https://eendraadschema.goethals-jacobs.be",
+        "Getekend met https://eendraadschema.xeweb.be",
         startx + 2, // Leave 2mm at the left of the drawn by text
         paperdetails.paperheight -
           paperdetails.paper_margin -
