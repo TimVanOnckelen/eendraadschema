@@ -12,6 +12,12 @@ export class ContextMenu {
         div.appendChild(this.menuElement);
     }
 
+    dispose(): void {
+        this.menuElement?.remove();
+        this.menuElement = null;
+        this.menuItems = [];
+    }
+
     /**
      * Wis alle menu-items.
      */

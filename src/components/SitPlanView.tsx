@@ -74,69 +74,29 @@ export const SitPlanView: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Listen for selection changes from the legacy system
+  // The mounted React view owns exactly one legacy renderer.
   useEffect(() => {
-    const handleSelectionChange = () => {
-      // Selection is handled by legacy code, we just need to refresh sidebar
-      // The sidebar will query the selection when it needs to display it
+    if (!structure || !canvasRef.current || !paperRef.current) return;
+    if (!structure.sitplan) structure.sitplan = new SituationPlan();
+    structure.sitplanview?.dispose();
+    const view = new SitPlanViewClass(canvasRef.current, paperRef.current, structure.sitplan);
+    structure.sitplanview = view;
+    let active = true;
+    const cleanup = () => {
+      active = false;
+      view.dispose();
+      if (structure.sitplanview === view) structure.sitplanview = null;
     };
-
-    window.addEventListener('sitplan-selection-change', handleSelectionChange as EventListener);
-    return () => {
-      window.removeEventListener('sitplan-selection-change', handleSelectionChange as EventListener);
-    };
-  }, []);
-
-  const updatePageInfo = () => {
-    // No longer needed - state is managed by the hook
-  };
-
-  // Initialize sitplan
-  useEffect(() => {
-    if (!structure) return;
-    
-    console.log('[SitPlanView] useEffect triggered, canvasRef.current:', !!canvasRef.current, 'paperRef.current:', !!paperRef.current);
-    
-    // Initialize sitplan if needed
-    if (!structure.sitplan) {
-      structure.sitplan = new SituationPlan();
-    }
-
-    // Always reinitialize if we don't have a sitplanview or if DOM refs changed
-    const shouldReinit = !structure.sitplanview || 
-                         !structure.sitplanview.canvasRef ||
-                         !structure.sitplanview.paperRef ||
-                         structure.sitplanview.canvasRef !== canvasRef.current ||
-                         structure.sitplanview.paperRef !== paperRef.current;
-    
-    if (shouldReinit) {
-      console.log('[SitPlanView] Reinitializing sitplanview');
-      
-      if (canvasRef.current && paperRef.current) {
-        // Remove any old elements with id starting with "SP_" to prevent orphans
-        const elements = document.querySelectorAll('[id^="SP_"]');
-        elements.forEach((e) => e.remove());
-        
-        // Create the SituationPlanView
-        structure.sitplanview = new SitPlanViewClass(
-          canvasRef.current,
-          paperRef.current,
-          structure.sitplan
-        );
-
-        console.log('[SitPlanView] Created new sitplanview, calling zoomToFit');
-        sitPlan.zoomToFit();
-      }
-    }
+    sitPlan.zoomToFit();
 
     // Check for legacy schakelaars
     if (structure.properties && structure.properties.legacySchakelaars == null) {
       if (structure.sitplan.heeftEenzameSchakelaars()) {
         const askLegacySchakelaar = new AskLegacySchakelaar();
         askLegacySchakelaar.show().then(() => {
-          sitPlan.redraw();
+          if (active) view.redraw();
         });
-        return;
+        return cleanup;
       } else {
         structure.properties.legacySchakelaars = false;
       }
@@ -161,14 +121,8 @@ export const SitPlanView: React.FC = () => {
       }
     }
 
-    // Cleanup: hide layer manager when leaving the sitplan view
-    return () => {
-      window.removeEventListener('sitplan-selection-change', () => {});
-      if (structure?.sitplanview?.layerManager) {
-        structure.sitplanview.layerManager.hide();
-      }
-    };
-  }, [structure, appDocStorage, canvasRef.current, paperRef.current]);
+    return cleanup;
+  }, [structure, appDocStorage]);
 
   // Drag and drop handlers for React events
   const handleDragOver = (e: React.DragEvent) => {
@@ -352,6 +306,14 @@ export const SitPlanView: React.FC = () => {
     sitPlan.updateElement(element);
     if (undostruct) {
       undostruct.store('updateElement');
+    }
+  };
+
+  const handleUpdateKringColor = (kringId: number, color: string | null) => {
+    structure?.sitplan?.setKringColor(kringId, color);
+    sitPlan.redraw();
+    if (undostruct) {
+      undostruct.store('updateKringColor');
     }
   };
 
@@ -1186,6 +1148,7 @@ export const SitPlanView: React.FC = () => {
           selectedElement={selectedElement}
           onClose={handleCloseSidebar}
           onUpdateElement={handleUpdateElement}
+          onUpdateKringColor={handleUpdateKringColor}
           structure={structure}
         />
         

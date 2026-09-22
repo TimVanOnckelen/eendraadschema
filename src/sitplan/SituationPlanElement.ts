@@ -13,6 +13,55 @@ export type AdresLocation = "rechts" | "links" | "boven" | "onder";
 export type AdresType = "auto" | "manueel";
 
 /**
+ * Maakt SVG-definitie-ID's uniek per symbool.
+ * Zonder namespace kan een <use> of url(#pattern) naar een ander symbool op de pagina wijzen.
+ */
+export function namespaceSituationPlanSvgIds(
+  svg: string,
+  namespace: string
+): string {
+  const prefix = `${namespace.replace(/[^a-z0-9_-]/gi, "_")}_`;
+  const ids = new Map<string, string>();
+
+  let namespacedSvg = svg.replace(
+    /\bid=(["'])([^"']+)\1/g,
+    (_match, quote: string, id: string) => {
+      const namespacedId = `${prefix}${id}`;
+      ids.set(id, namespacedId);
+      return `id=${quote}${namespacedId}${quote}`;
+    }
+  );
+
+  for (const [id, namespacedId] of ids) {
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    namespacedSvg = namespacedSvg.replace(
+      new RegExp(`#${escapedId}(?=[\\s)"'])`, "g"),
+      `#${namespacedId}`
+    );
+  }
+
+  return namespacedSvg;
+}
+
+/** Kleurt alle zwarte symbooldelen en laat witte/transparante delen intact. */
+export function colorizeSituationPlanSvg(svg: string, color: string): string {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return svg;
+
+  const coloredSvg = svg
+    .replace(
+      /(stroke|fill)\s*=\s*(["'])(?:black|#000(?:000)?|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))\2/gi,
+      `$1="${color}"`
+    )
+    .replace(
+      /(stroke|fill)\s*:\s*(?:black|#000(?:000)?|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))(?=\s*[;"'])/gi,
+      `$1:${color}`
+    );
+
+  // SVG-tekst zonder expliciete fill erft anders altijd zwart.
+  return `<g fill="${color}">${coloredSvg}</g>`;
+}
+
+/**
  * Class SituationPlanElement
  *
  * Deze class refereert naar de volgende globale variabelen:
@@ -406,6 +455,17 @@ export class SituationPlanElement {
     else return null;
   }
 
+  /** Geeft de stabiele kring-ID van dit elektrosymbool terug. */
+  getKringId(): number | null {
+    if (!this.isEendraadschemaSymbool()) return null;
+    return globalThis.structure.findKringId(this.electroItemId);
+  }
+
+  /** Geeft de ingestelde kringkleur van dit elektrosymbool terug. */
+  getKringColor(): string | null {
+    return globalThis.structure.sitplan?.getKringColor(this.getKringId()) ?? null;
+  }
+
   /**
    * updateElectroItemSVG
    *
@@ -513,6 +573,18 @@ export class SituationPlanElement {
   };
 
   /**
+   * Bereidt een elektrosymbool voor op weergave: unieke SVG-ID's en één kringkleur.
+   * Niet-elektrische SVG's blijven onaangeroerd.
+   */
+  private getRenderedSVG(): string {
+    if (!this.isEendraadschemaSymbool()) return this.svg;
+
+    const svg = namespaceSituationPlanSvgIds(this.svg, `sitplan_${this.id}`);
+    const color = this.getKringColor();
+    return color == null ? svg : colorizeSituationPlanSvg(svg, color);
+  }
+
+  /**
    * getScaledSVG
    *
    * @param positioned boolean : indien true wordt de SVG getransformeerd naar de correcte positie en rotatie
@@ -556,6 +628,7 @@ export class SituationPlanElement {
       }
     }
 
+    const renderedSvg = this.getRenderedSVG();
     let posinfo = "";
     let transform = "";
 
@@ -577,7 +650,7 @@ export class SituationPlanElement {
         this.sizex * this.scale
       }px" height="${this.sizey * this.scale}px" viewBox="0 0 ${this.sizex} ${
         this.sizey
-      }">${this.svg}</svg>
+      }">${renderedSvg}</svg>
                     </g>`;
     } else {
       // Indien we de SVG willen gebruiken in een innerHTML van een div element en dit element dan zelf positioneren en roteren
@@ -586,7 +659,7 @@ export class SituationPlanElement {
         this.sizex * this.scale
       }px" height="${this.sizey * this.scale}px" viewBox="0 0 ${this.sizex} ${
         this.sizey
-      }">${this.svg}</svg>`;
+      }">${renderedSvg}</svg>`;
     }
   }
 

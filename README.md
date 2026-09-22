@@ -69,11 +69,43 @@ Eendraadschema is a browser-based tool for designing one-wire electrical diagram
 - Integrated documentation viewer
 - PDF manuals included
 
+### WebMCP editing for Codex and ChatGPT
+
+The editor exposes its current eendraadschema document as WebMCP tools. This
+lets Codex or ChatGPT inspect and edit a schema through a supported browser
+session, without sending the document to an application server.
+
+The available tools are:
+
+| Tool | Purpose |
+|---|---|
+| `schema.get` | List active schema elements with ids, types, parents and labels |
+| `schema.get_element` | Read one element and all of its editable properties |
+| `schema.add_element` | Add a supported element at the root or under a parent |
+| `schema.update_element` | Change primitive properties on an existing element |
+| `schema.delete_element` | Delete an element and its children after explicit confirmation |
+
+In Codex or ChatGPT, open the app in the same WebMCP-enabled browser session
+and ask for a concrete operation, for example:
+
+> Find the element named `Keuken`, show its id and properties, then change its
+> address to `Keuken gelijkvloers`.
+
+The assistant should read the schema first, use the returned numeric id for an
+edit, and describe consequential changes before applying them. Deletion always
+requires `confirm: true`; an omitted or false confirmation is rejected by the
+editor.
+
+WebMCP is an experimental browser feature. Use a recent Chromium build with
+the WebMCP testing flag enabled (`chrome://flags/#enable-webmcp-testing`) and
+serve the app from a secure context (`https://` or local development). Browsers
+without WebMCP continue to work normally; the tools simply are not registered.
+
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18 or higher
+- Node.js 20 or higher
 - npm or yarn
 
 ### Installation
@@ -99,6 +131,35 @@ npm run build
 ```
 
 Output is placed in the `dist/` folder.
+
+### Google Drive configuration
+
+Google Drive integration uses Google Identity Services with the narrow
+`drive.file` OAuth scope. Browser code needs a public OAuth client ID, never a
+client secret.
+
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **Google Drive API**.
+3. Configure the OAuth consent screen.
+4. Create an **OAuth 2.0 Client ID** of type **Web application**.
+5. Add authorized JavaScript origins, for example:
+   - `http://localhost:5173`
+   - `https://drskunk.github.io`
+6. Copy `.env.example` to `.env.local` and set:
+
+```bash
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+```
+
+For GitHub Pages, add a repository **secret** named `VITE_GOOGLE_CLIENT_ID`
+under **Settings → Secrets and variables → Actions → Secrets**. The deployment
+workflow passes that secret to Vite during the build. The client ID is public in
+the built browser application; using a secret here only avoids putting it in
+repository configuration. The older repository variable `GOOGLE_CLIENT_ID` is
+also accepted as a fallback.
+
+Files remain in user's Drive. App requests access only to Drive files created
+or opened through app.
 
 ## Technical Stack
 
@@ -163,3 +224,7 @@ The original application is available at [igoethal/eendraadschema](https://githu
 - [Request features](https://github.com/TimVanOnckelen/eendraadschema/issues)
 - Questions? Open an issue or start a discussion
 
+
+## Checks
+
+Run `npm ci`, then `npm test` to build the production bundle.

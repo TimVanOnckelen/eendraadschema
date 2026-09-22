@@ -1,5 +1,8 @@
 import { Hierarchical_List } from "../Hierarchical_List";
 import { IndexedDBStorage } from "../storage/IndexedDBStorage";
+import {
+    markDocumentAutosaved,
+} from "../storage/DocumentState";
 
 /**
  * Klasse voor het automatisch en regelmatig opslaan van het huidige schema in IndexedDB
@@ -172,6 +175,7 @@ export class AutoSaver {
                     await this.saveToIndexedDB("TXT0040000" + this.getStructure().toJsonObject(true), true); // parameter true geeft aan dat het over een autosave gaat
                     this.lastSavedString = text;
                     this.lastSavedType = AutoSaver.SavedType.AUTOMATIC;
+                    markDocumentAutosaved();
                     //console.log('Autosave uitgevoerd op ' + new Date().toLocaleString());
                 } catch (error) {
                     console.error("Error saving to IndexedDB:", error);
@@ -293,8 +297,19 @@ export class AutoSaver {
             this.lastSavedType = AutoSaver.SavedType.NONE;
             return [null, null];
         }
-        
     }
-  
-}
 
+    async discardRecovery(): Promise<void> {
+        const db = new IndexedDBStorage("DB_EDS", "Store_EDS");
+        const results = await Promise.all([
+            db.delete("autoSave"),
+            db.delete("autoSaveInfo"),
+        ]);
+        if (results.some((result) => !result)) {
+            throw new Error("De automatische herstelkopie kon niet worden verwijderd.");
+        }
+        this.lastSavedString = null;
+        this.lastSavedType = AutoSaver.SavedType.NONE;
+        this.callbackAfterSave?.();
+    }
+}

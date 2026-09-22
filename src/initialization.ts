@@ -18,6 +18,7 @@ import {
 import { trimString } from "./general";
 import { reset_all } from "./utils/structureUtils";
 import { dialogConfirm } from "./utils/DialogHelpers";
+import { resetDocumentState } from "./storage/DocumentState";
 import "../css/all.css";
 
 // Import and register global functions
@@ -107,12 +108,13 @@ function openContactForm() {
 /**
  * Read settings and create new structure (legacy function)
  */
-function read_settings() {
+export function read_settings() {
   // Use default values since the settings form is not rendered in React migration
   const config = { ...CONF_DEFAULTS };
 
   (globalThis as any).fileAPIobj?.clear();
   reset_all(config);
+  resetDocumentState(false);
 }
 
 /**
@@ -160,7 +162,7 @@ async function checkAutoSaveRecovery(): Promise<{
   let lastSavedInfo: any = null;
 
   [lastSavedStr, lastSavedInfo] = await globalThis.autoSaver.loadLastSaved();
-  if (lastSavedStr != null) {
+  if (lastSavedStr != null && lastSavedInfo?.recovery === true) {
     recoveryAvailable = true;
   }
 

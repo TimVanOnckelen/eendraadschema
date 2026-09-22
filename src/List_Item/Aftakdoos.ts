@@ -57,6 +57,7 @@ export class Aftakdoos extends Electro_Item {
 
         // Eerst vragen we een tekening van alle kinderen
         mySVG = this.sourcelist.toSVG(this.id,"vertical");
+        const childrenHeight = mySVG.yup + mySVG.ydown;
 
         // Dan bepalen we de hoogte van het object
         // CHECK CONNECTORPOS
@@ -78,7 +79,14 @@ export class Aftakdoos extends Electro_Item {
         }
 
         // Nu zetten we detekening effectief op de goede plaats in het schema
-        mySVG.data = `<svg x="${50+connectorSpace}" y="0">${mySVG.data}</svg>`;
+        // Center the child branch on the aftakdoos connector. Without this,
+        // a child with extra text/height connects above the symbol center.
+        const firstConnector = mySVG.connectorPos.find((position) => position != null);
+        const childConnectorY = firstConnector == null
+            ? childrenHeight / 2
+            : childrenHeight - firstConnector;
+        const childOffset = height / 2 - childConnectorY;
+        mySVG.data = `<svg x="${50+connectorSpace}" y="${childOffset}">${mySVG.data}</svg>`;
 
         // Vervolgens tekenen we de module zelf
         mySVG.xleft = 1;
@@ -87,7 +95,7 @@ export class Aftakdoos extends Electro_Item {
         for (let i=0; i<mySVG.connectorPos.length; i++) {
             if (mySVG.connectorPos[i] == null) continue;
             let startpos = { x: 36, y: mySVG.yup };
-            let endpos = { x: 51+connectorSpace, y: height-mySVG.connectorPos[i] };
+            let endpos = { x: 51+connectorSpace, y: height-mySVG.connectorPos[i] + childOffset };
             let distance = Math.sqrt(Math.pow(endpos.x-startpos.x, 2) + Math.pow(endpos.y - startpos.y, 2));
             let startfraction = 15/distance;
             mySVG.data += `<line x1="${startpos.x+startfraction*(endpos.x-startpos.x)}" y1="${startpos.y+startfraction*(endpos.y-startpos.y)}" x2="${endpos.x}" y2="${endpos.y}" stroke="black" stroke-linecap="round"></line>`;

@@ -26,6 +26,7 @@ export class SituationPlan {
   public activePage: number = 1; // We houden deze bij in situationplan zodat ook wijzigingen van pagina's worden opgeslagen
   private numPages: number = 1;
   private elements: SituationPlanElement[] = [];
+  private kringColors: Record<string, string> = {};
 
   public defaults = {
     fontsize: 11,
@@ -39,6 +40,7 @@ export class SituationPlan {
    */
   dispose() {
     this.elements = [];
+    this.kringColors = {};
     this.numPages = 1;
     this.activePage = 1;
     this.defaults = {
@@ -55,6 +57,37 @@ export class SituationPlan {
 
   getElements(): SituationPlanElement[] {
     return this.elements;
+  }
+
+  /** Geeft de ingestelde symboolkleur van een kring terug via stabiele kring-ID. */
+  getKringColor(kringId: number | null): string | null {
+    if (kringId == null) return null;
+    return this.kringColors[String(kringId)] ?? null;
+  }
+
+  /**
+   * Stelt de kleur in voor alle symbolen van een kring.
+   * Een lege kleur herstelt de standaard zwarte weergave.
+   */
+  setKringColor(kringId: number, color: string | null): void {
+    const key = String(kringId);
+    if (color == null || color === "") {
+      delete this.kringColors[key];
+    } else if (/^#[0-9a-f]{6}$/i.test(color)) {
+      this.kringColors[key] = color.toLowerCase();
+    } else {
+      return;
+    }
+
+    for (const element of this.elements) {
+      const electroItemId = element.getElectroItemId();
+      if (
+        electroItemId != null &&
+        globalThis.structure.findKringId(electroItemId) === kringId
+      ) {
+        element.needsViewUpdate = true;
+      }
+    }
   }
 
   /**
@@ -436,6 +469,32 @@ export class SituationPlan {
       Object.assign(this.defaults, json.defaults);
     }
 
+    if (json.kringColors != null && typeof json.kringColors === "object") {
+      for (const [storedKey, color] of Object.entries(json.kringColors)) {
+        if (typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) {
+          continue;
+        }
+
+        // Nieuwe bestanden gebruiken kring-ID's. Migreer oudere naam-gebaseerde kleuren.
+        if (/^\d+$/.test(storedKey)) {
+          this.kringColors[storedKey] = color.toLowerCase();
+          continue;
+        }
+
+        for (const item of globalThis.structure?.data ?? []) {
+          const itemName = String(item?.props?.naam ?? "").trim();
+          const storedName = storedKey.trim();
+          if (
+            item?.getType?.() === "Kring" &&
+            (itemName === storedName ||
+              (storedName === "Zonder naam" && itemName === ""))
+          ) {
+            this.kringColors[String(item.id)] = color.toLowerCase();
+          }
+        }
+      }
+    }
+
     if (Array.isArray(json.elements)) {
       this.elements = json.elements.map((element: any) => {
         const newElement = new SituationPlanElement();
@@ -463,6 +522,7 @@ export class SituationPlan {
       numPages: this.numPages,
       activePage: this.activePage,
       defaults: this.defaults,
+      kringColors: this.kringColors,
       elements: elements,
     };
   }
@@ -538,7 +598,7 @@ export class SituationPlan {
           let str = element.getAdres();
           svgstr += `<text x="${element.labelposx}" y="${
             element.labelposy
-          }" font-size="${fontsize}" fill="black" text-anchor="middle" dominant-baseline="middle">${htmlspecialchars(
+          }" font-size="${fontsize}" fill="${element.getKringColor() ?? "black"}" text-anchor="middle" dominant-baseline="middle">${htmlspecialchars(
             str
           )}</text>`;
         }

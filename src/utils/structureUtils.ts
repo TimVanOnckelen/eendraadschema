@@ -67,7 +67,9 @@ export function buildNewStructure(
  */
 export function reset_all(config = CONF_DEFAULTS) {
   if (globalThis.structure != null) globalThis.structure.dispose();
-  globalThis.structure = new Hierarchical_List();
+  const nextStructure = new Hierarchical_List();
+  if (globalThis.replaceStructure) globalThis.replaceStructure(nextStructure);
+  else globalThis.structure = nextStructure;
   buildNewStructure(globalThis.structure, config);
   globalThis.undostruct.clear();
   globalThis.undostruct.store();

@@ -5,8 +5,9 @@ import { undoRedo } from './undoRedo';
 import { importExportUsingFileAPI } from './importExport/importExport';
 import { SimpleHierarchyView } from './SimpleHierarchyView';
 import { Hierarchical_List } from './Hierarchical_List';
+import { installWebMCPTools } from './webmcp';
 
-export type AppView = 'start' | 'file' | 'editor' | 'sitplan' | 'print' | 'documentation' | 'contact' | 'library';
+export type AppView = 'start' | 'file' | 'editor' | 'sitplan' | 'print' | 'documentation' | 'contact';
 
 interface AppContextType {
   session: Session;
@@ -36,22 +37,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     (window as any).simpleHierarchyView = simpleHierarchyView;
   }, [simpleHierarchyView]);
 
-  // Sync structure with globalThis.structure
+  React.useEffect(() => installWebMCPTools(), []);
+
+  // Legacy code replaces the document object in a few import/reset paths.
+  // Subscribe to those replacements once instead of polling every 100ms.
   React.useEffect(() => {
-    // Set initial globalThis.structure if it exists
     if ((globalThis as any).structure && !structure) {
       setStructure((globalThis as any).structure);
     }
-    
-    // Set up a polling mechanism to detect changes to globalThis.structure
-    const interval = setInterval(() => {
-      if ((globalThis as any).structure !== structure) {
-        setStructure((globalThis as any).structure);
+    const replaceStructure = (nextStructure: Hierarchical_List) => {
+      (globalThis as any).structure = nextStructure;
+      setStructure(nextStructure);
+    };
+    (globalThis as any).replaceStructure = replaceStructure;
+    return () => {
+      if ((globalThis as any).replaceStructure === replaceStructure) {
+        delete (globalThis as any).replaceStructure;
       }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [structure]);
+    };
+  }, []);
 
   // Also sync structure to globalThis when it changes in React
   React.useEffect(() => {

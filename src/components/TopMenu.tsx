@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp, AppView } from '../AppContext';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { getTheme, toggleTheme, Theme } from '../utils/theme';
+import {
+  getStorageBackend,
+  SaveDestination,
+} from '../storage/SaveDestination';
 
 export interface SubMenuItem {
   name: string;
@@ -19,9 +23,10 @@ export interface MenuItem {
 interface TopMenuProps {
   items: MenuItem[];
   currentFilename?: string;
+  saveDestination?: SaveDestination;
 }
 
-export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
+export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDestination }) => {
   const { currentView, setCurrentView } = useApp();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [theme, setTheme] = useState<Theme>(getTheme);
@@ -61,6 +66,11 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
     setTheme(toggleTheme());
   };
 
+  const destinationLabel = getStorageBackend(
+    saveDestination ?? 'local-file'
+  ).shortLabel;
+  const editingView = currentView === 'editor' || currentView === 'sitplan';
+
   return (
     <div id="topmenu" ref={menuRef} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
       <ul id="minitabs" style={{ margin: 0 }}>
@@ -99,6 +109,22 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
         ))}
       </ul>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          type="button"
+          title="Ongedaan maken (Ctrl/Cmd+Z)"
+          aria-label="Ongedaan maken"
+          disabled={!editingView}
+          onClick={() => globalThis.undoClicked?.()}
+          style={{ opacity: editingView ? 1 : 0.45 }}
+        >↶</button>
+        <button
+          type="button"
+          title="Herhalen (Ctrl/Cmd+Y)"
+          aria-label="Herhalen"
+          disabled={!editingView}
+          onClick={() => globalThis.redoClicked?.()}
+          style={{ opacity: editingView ? 1 : 0.45 }}
+        >↷</button>
         <div style={{
           padding: '4px 10px',
           backgroundColor: 'var(--surface)',
@@ -107,9 +133,15 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
           fontSize: '13px',
           color: 'var(--text-primary)',
           fontWeight: 500,
-          userSelect: 'none'
+          userSelect: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
-          📄 {currentFilename || 'Zonder titel'}
+          <span aria-label="Bestandsnaam">📄 {currentFilename || 'Zonder titel'}</span>
+          <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+            Opslaan naar: {destinationLabel}
+          </span>
         </div>
         <button
           onClick={handleThemeToggle}
@@ -130,7 +162,10 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename }) => {
         >
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <AutoSaveIndicator autoSaver={globalThis.autoSaver} />
+        <AutoSaveIndicator
+          autoSaver={globalThis.autoSaver}
+          savedLocation={destinationLabel}
+        />
       </div>
     </div>
   );

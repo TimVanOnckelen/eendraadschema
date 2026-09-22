@@ -154,13 +154,15 @@ export function useSitPlan(
 
   const zoomIn = useCallback(() => {
     if (!structure?.sitplanview) return;
-    const newZoom = Math.min(state.zoomFactor * 1.2, 5);
+    const currentZoom = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
+    const newZoom = Math.min(currentZoom * 1.2, 5);
     setZoomFactor(newZoom);
   }, [structure, state.zoomFactor, setZoomFactor]);
 
   const zoomOut = useCallback(() => {
     if (!structure?.sitplanview) return;
-    const newZoom = Math.max(state.zoomFactor / 1.2, 0.1);
+    const currentZoom = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
+    const newZoom = Math.max(currentZoom / 1.2, 0.1);
     setZoomFactor(newZoom);
   }, [structure, state.zoomFactor, setZoomFactor]);
 
@@ -336,8 +338,9 @@ export function useSitPlan(
       }
 
       const rect = paperRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / state.zoomFactor;
-      const y = (e.clientY - rect.top) / state.zoomFactor;
+      const zoomFactor = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
+      const x = (e.clientX - rect.left) / zoomFactor;
+      const y = (e.clientY - rect.top) / zoomFactor;
 
       return { x, y };
     },

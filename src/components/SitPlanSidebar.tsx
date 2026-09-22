@@ -7,10 +7,27 @@ import React, { useState, useEffect } from 'react';
 import { SituationPlanElement } from '../sitplan/SituationPlanElement';
 import { WallType } from '../sitplan/WallElement';
 
+const PRINTABLE_KRING_COLORS: Array<{ color: string | null; label: string }> = [
+  { color: null, label: 'Standaard (zwart)' },
+  { color: '#005a9c', label: 'Blauw' },
+  { color: '#b00020', label: 'Rood' },
+  { color: '#006b3c', label: 'Groen' },
+  { color: '#6a1b9a', label: 'Paars' },
+  { color: '#a34700', label: 'Oranje' },
+  { color: '#006064', label: 'Turkoois' },
+  { color: '#455a64', label: 'Leigrijs' },
+];
+
+interface KringOption {
+  id: number;
+  name: string;
+}
+
 interface SitPlanSidebarProps {
   selectedElement: SituationPlanElement | null;
   onClose: () => void;
   onUpdateElement: (element: SituationPlanElement) => void;
+  onUpdateKringColor: (kringId: number, color: string | null) => void;
   structure: any; // TODO: Type this properly
 }
 
@@ -18,6 +35,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   selectedElement,
   onClose,
   onUpdateElement,
+  onUpdateKringColor,
   structure,
 }) => {
   const [wallType, setWallType] = useState<WallType>('inner');
@@ -27,6 +45,12 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   const [height, setHeight] = useState<number>(0);
   const [rotation, setRotation] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [, setColorRevision] = useState<number>(0);
+  const [colorEditor, setColorEditor] = useState<{
+    kringId: number;
+    kringName: string;
+    draftColor: string | null;
+  } | null>(null);
 
   // Excluded types for symbol rendering
   const excludedTypes = [
@@ -198,6 +222,102 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
     }
   };
 
+  const getKringen = (): KringOption[] => {
+    const kringen: KringOption[] = [];
+
+    for (const [index, item] of (structure?.data || []).entries()) {
+      if (structure.active?.[index] === false) continue;
+      if (item?.getType?.() !== 'Kring') continue;
+      kringen.push({
+        id: item.id,
+        name: String(item.props?.naam || '').trim() || `Kring ${item.id}`,
+      });
+    }
+
+    return kringen.sort((a, b) =>
+      a.name.localeCompare(b.name) || a.id - b.id
+    );
+  };
+
+  const openKringColorEditor = (kring: KringOption) => {
+    setColorEditor({
+      kringId: kring.id,
+      kringName: kring.name,
+      draftColor: structure.sitplan?.getKringColor?.(kring.id) || null,
+    });
+  };
+
+  const confirmKringColor = () => {
+    if (!colorEditor) return;
+    onUpdateKringColor(colorEditor.kringId, colorEditor.draftColor);
+    setColorRevision((revision) => revision + 1);
+    setColorEditor(null);
+  };
+
+  const renderKringColorButton = (kring: KringOption) => {
+    const color = structure.sitplan?.getKringColor?.(kring.id) || '#000000';
+    return (
+      <button
+        type="button"
+        onClick={() => openKringColorEditor(kring)}
+        title={`Kleur voor kring ${kring.name}`}
+        aria-label={`Kleur voor kring ${kring.name}`}
+        style={{ width: '27px', height: '22px', padding: '2px', border: '1px solid #aaa', borderRadius: '3px', background: '#fff', cursor: 'pointer' }}
+      >
+        <span style={{ display: 'block', width: '100%', height: '100%', borderRadius: '1px', backgroundColor: color }} />
+      </button>
+    );
+  };
+
+  const renderColorEditor = () => {
+    if (!colorEditor) return null;
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Kleur voor kring ${colorEditor.kringName}`}
+        style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' }}
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setColorEditor(null);
+        }}
+      >
+        <div style={{ width: '330px', padding: '18px', borderRadius: '8px', background: '#fff', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#222' }}>Kleur voor kring {colorEditor.kringName}</h3>
+          <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>Kies een contrastrijke printkleur of een eigen kleur.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+            {PRINTABLE_KRING_COLORS.map((option) => {
+              const selected = colorEditor.draftColor === option.color;
+              return (
+                <button
+                  type="button"
+                  key={option.label}
+                  onClick={() => setColorEditor({ ...colorEditor, draftColor: option.color })}
+                  style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px', border: selected ? '2px solid #1565c0' : '1px solid #ccc', borderRadius: '4px', background: '#fff', cursor: 'pointer', fontSize: '11px', textAlign: 'left' }}
+                >
+                  <span style={{ width: '22px', height: '22px', flexShrink: 0, border: '1px solid #888', borderRadius: '3px', backgroundColor: option.color || '#000000' }} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', fontSize: '12px', color: '#444' }}>
+            Eigen kleur
+            <input
+              type="color"
+              value={colorEditor.draftColor || '#000000'}
+              onChange={(event) => setColorEditor({ ...colorEditor, draftColor: event.target.value })}
+            />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+            <button type="button" onClick={() => setColorEditor(null)} className="rounded-button">Annuleren</button>
+            <button type="button" onClick={confirmKringColor} className="rounded-button">Bevestigen</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Render symbols from the schema
   const renderSymbols = () => {
     if (!structure?.data) {
@@ -207,30 +327,14 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
     }
 
     const visited = new Set<number>();
-    const itemsByKring: Map<string, any[]> = new Map();
-    
-    // Simple: just iterate through all items in structure.data and group them
+    const itemsByKring = new Map<number, { kring: KringOption; items: any[] }>();
+
     if (structure?.data && Array.isArray(structure.data)) {
-      // Find all Kring items first
-      const kringen = new Map<number, { name: string; item: any }>();
-      
-      for (const item of structure.data) {
-        if (!item) continue;
-        const type = item.getType?.() || '';
-        if (type === 'Kring') {
-          let kringName = 'Kring';
-          try {
-            kringName = item.getReadableAdres?.() || 'Kring';
-          } catch (e) {
-            // ignore
-          }
-          kringen.set(item.id, { name: kringName, item });
-          console.log(`[SitPlanSidebar] Found Kring ${item.id}: "${kringName}"`);
-        }
-      }
-      
-      // Now iterate through all items and group them
-      for (const item of structure.data) {
+      const kringenById = new Map(getKringen().map((kring) => [kring.id, kring]));
+
+      // Iterate through all items and group them by stable kring-ID.
+      for (const [index, item] of structure.data.entries()) {
+        if (structure.active?.[index] === false) continue;
         if (!item || visited.has(item.id)) continue;
         visited.add(item.id);
         
@@ -251,44 +355,30 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
           continue;
         }
         
-        // Find which group this item belongs to - based on address prefix (letters and numbers)
-        let groupName = 'Overige';
-        let adresText = '';
-        
-        try {
-          adresText = item.getReadableAdres?.() || '';
-        } catch (e) {
-          // ignore
+        const kringId = structure.findKringId?.(item.id);
+        if (kringId == null) continue;
+
+        const kring = kringenById.get(kringId);
+        if (!kring) continue;
+
+        if (!itemsByKring.has(kringId)) {
+          itemsByKring.set(kringId, { kring, items: [] });
         }
-        
-        if (!adresText && item.props?.adres) {
-          adresText = item.props.adres;
-        }
-        
-        // Extract the prefix (everything at the start that is letters/numbers before a dot or space)
-        if (adresText) {
-          const match = adresText.match(/^([A-Za-z0-9]+)/);
-          if (match && match[1]) {
-            groupName = match[1].toUpperCase();
-          }
-        }
-        
-        if (!itemsByKring.has(groupName)) {
-          itemsByKring.set(groupName, []);
-        }
-        itemsByKring.get(groupName)!.push(item);
-        console.log(`[SitPlanSidebar] Item ${item.id} (${type}) address="${adresText}" -> group: "${groupName}"`);
+        itemsByKring.get(kringId)!.items.push(item);
       }
     }
 
     // Render grouped items
     const items: React.ReactElement[] = [];
     
-    // Sort kringen alphabetically
-    const sortedKringen = Array.from(itemsByKring.keys()).sort();
-    
-    for (const kringName of sortedKringen) {
-      const kringItems = itemsByKring.get(kringName) || [];
+    // Sort kringen alphabetically, but retain ID as identity.
+    const sortedKringen = Array.from(itemsByKring.values()).sort((a, b) =>
+      a.kring.name.localeCompare(b.kring.name) || a.kring.id - b.kring.id
+    );
+
+    for (const { kring, items: kringItems } of sortedKringen) {
+      const kringName = kring.name;
+      const kringId = kring.id;
       
       // Filter items based on search term
       const filteredItems = kringItems.filter(item => {
@@ -317,18 +407,23 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
       if (filteredItems.length === 0) continue;
       
       items.push(
-        <div key={`kring-${kringName}`} style={{ marginBottom: '12px' }}>
+        <div key={`kring-${kringId}`} style={{ marginBottom: '12px' }}>
           <div style={{
             padding: '8px 8px',
             backgroundColor: '#e3f2fd',
-            borderLeft: '3px solid #1565c0',
+            borderLeft: `3px solid ${structure.sitplan?.getKringColor?.(kringId) || '#1565c0'}`,
             fontSize: '11px',
             fontWeight: '600',
             color: '#0d47a1',
             marginBottom: '6px',
             cursor: 'default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
           }}>
-            {kringName}
+            <span>{kringName}</span>
+            {renderKringColorButton(kring)}
           </div>
           
           {filteredItems.map((item) => {
@@ -350,15 +445,13 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 // Ignore
               }
               
-              // Get SVG - try multiple times to ensure it renders
+              // Gebruik exact dezelfde renderer als canvas en export. Deze voegt ook
+              // lokale SVG-definities toe en voorkomt globale <use>/pattern-conflicten.
               let svgContent = '';
               try {
-                const svgElement = item.toSVG?.(true, false);
-                if (svgElement?.data) {
-                  svgContent = svgElement.data;
-                } else if (typeof svgElement === 'string') {
-                  svgContent = svgElement;
-                }
+                const previewElement = item.toSituationPlanElement?.();
+                previewElement?.setElectroItemId(item.id);
+                svgContent = previewElement?.getScaledSVG(false) || '';
               } catch (e) {
                 console.warn(`Error getting SVG for item ${item.id}:`, e);
               }
@@ -514,6 +607,26 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
           <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#666' }}>
             Sleep symbolen naar het canvas
           </p>
+          {getKringen().length > 0 && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#444', marginBottom: '5px' }}>
+                Kringkleuren
+              </div>
+              <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #dee2e6', borderRadius: '4px' }}>
+                {getKringen().map((kring) => (
+                  <div
+                    key={kring.id}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 7px', borderBottom: '1px solid #eee', fontSize: '11px' }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kring.name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      {renderKringColorButton(kring)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <input
             type="text"
             placeholder="Zoeken..."
@@ -537,6 +650,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
         }}>
           {renderSymbols()}
         </div>
+        {renderColorEditor()}
       </div>
     );
   }

@@ -102,4 +102,21 @@ export class IndexedDBStorage {
             return null;
         }
     }
+
+    async delete(key: string): Promise<boolean> {
+        try {
+            const db = await this.openDB();
+            if (!db) return false;
+
+            return new Promise((resolve) => {
+                const transaction = db.transaction(this.storeName, "readwrite");
+                const request = transaction.objectStore(this.storeName).delete(key);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => resolve(false);
+            });
+        } catch (error) {
+            console.error("Error deleting IndexedDB value:", error);
+            return false;
+        }
+    }
 }

@@ -816,9 +816,10 @@ table {
 
 /* DARK MODE OVERRIDES */
 
-/* Invert EDS diagram strokes so black lines remain visible on dark surfaces */
-[data-theme="dark"] #EDS svg {
-  filter: invert(1);
+/* Drawings retain their paper colors in either application theme. */
+#EDS, #EDS-fullscreen, #paper {
+  color: #000;
+  background-color: #fff;
 }
 
 /* Context menu dark mode */

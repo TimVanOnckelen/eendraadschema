@@ -3,13 +3,24 @@ import { MultiLevelStorage } from "./storage/MultiLevelStorage";
 import { importExportUsingFileAPI } from "./importExport/importExport";
 import { Hierarchical_List } from "./Hierarchical_List";
 import { AutoSaver } from "./importExport/AutoSaver";
+import type { AppView } from "./AppContext";
 
 declare global {
+  interface ImportMetaEnv {
+    readonly VITE_GOOGLE_CLIENT_ID?: string;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+
   interface GlobalThis {
     session: Session;
     appDocStorage: MultiLevelStorage<any>;
     undostruct: any;
     structure: Hierarchical_List;
+    replaceStructure?: (structure: Hierarchical_List) => void;
+    currentReactView?: AppView;
     autoSaver: AutoSaver;
     CONFIGPAGE_LEFT: string;
     CONFIGPAGE_RIGHT: string;
@@ -61,7 +72,12 @@ declare global {
     printsvg: () => void;
     showDocumentationPage: () => void;
     openContactForm: () => void;
-    loadClicked: () => void;
+    loadClicked: () => Promise<void>;
+    importToAppendClicked: () => void;
+    exportjson: (
+      saveAs?: boolean,
+      format?: "eds" | "json"
+    ) => void;
   }
 }
 

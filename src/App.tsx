@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp, AppView } from './AppContext';
 import { SimpleHierarchyView } from './SimpleHierarchyView';
 import { initializeReactApp } from './initialization';
@@ -10,10 +10,30 @@ import { SitPlanView } from './components/SitPlanView';
 import { PrintView } from './components/PrintView';
 import { DocumentationView } from './components/DocumentationView';
 import { ContactView } from './components/ContactView';
-import { FileLibraryView } from './components/FileLibraryView';
-import { FileLibraryStorage, EdsFileMetadata } from './storage/FileLibraryStorage';
-import { dialogAlert, dialogConfirm } from './utils/DialogHelpers';
+import { dialogAlert } from './utils/DialogHelpers';
 import { initTheme } from './utils/theme';
+import { googleDriveService } from './storage/GoogleDriveService';
+import {
+  getSaveDestination,
+  notifyDocumentStorageStateChanged,
+  onDocumentStorageStateChange,
+  onSaveDestinationChange,
+  setSaveDestination,
+  SaveDestination,
+} from './storage/SaveDestination';
+import {
+  currentStorageFormat,
+  downloadCopy,
+  openFromLocalFile,
+  saveToActiveBackend,
+} from './storage/StorageActions';
+import { EDStoStructure } from './importExport/importExport';
+import {
+  confirmDocumentReplacement,
+  getDocumentState,
+  markDocumentAutosaved,
+  markDocumentDirty,
+} from './storage/DocumentState';
 import '../css/all.css';
 
 // Initialize theme as early as possible to avoid a flash of the wrong theme
@@ -33,98 +53,136 @@ const App: React.FC = () => {
   const [reactInitialized, setReactInitialized] = useState(false);
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const [recoveryData, setRecoveryData] = useState<{lastSavedStr: string | null, lastSavedInfo: any} | null>(null);
-  const [recentFiles, setRecentFiles] = useState<EdsFileMetadata[]>([]);
   const [currentFilename, setCurrentFilename] = useState<string>('');
+  const [openDrivePickerOnMount, setOpenDrivePickerOnMount] = useState(false);
+  const saveInProgress = useRef(false);
+  const [saveDestination, setSaveDestinationState] = useState<SaveDestination>(
+    getSaveDestination
+  );
 
-  // Load recent files from library
+  // Sync the UI filename from the current structure without polling.
   useEffect(() => {
-    const loadRecentFiles = async () => {
-      const storage = new FileLibraryStorage();
-      const files = await storage.listFiles();
-      // Get the 5 most recent files (excluding autosaves)
-      const recent = files
-        .filter(f => !f.isAutoSave)
-        .sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime())
-        .slice(0, 5);
-      setRecentFiles(recent);
-    };
-    loadRecentFiles();
-  }, [currentView]); // Reload when view changes (in case files were added/removed)
-
-  // Update current filename when structure changes
-  useEffect(() => {
-    const updateFilename = () => {
-      if (structure && structure.properties) {
-        setCurrentFilename(structure.properties.filename || '');
-      }
-    };
-    updateFilename();
-    
-    // Poll for filename changes every 500ms
-    const interval = setInterval(updateFilename, 500);
-    return () => clearInterval(interval);
+    const nextFilename = structure?.properties?.filename || '';
+    setCurrentFilename((previousFilename) => (
+      previousFilename === nextFilename ? previousFilename : nextFilename
+    ));
   }, [structure]);
 
+  useEffect(() => {
+    const unsubscribeDestination = onSaveDestinationChange(
+      setSaveDestinationState
+    );
+    const unsubscribeDocumentState = onDocumentStorageStateChange(() => {
+      setCurrentFilename(globalThis.structure?.properties?.filename || '');
+    });
+    return () => {
+      unsubscribeDestination();
+      unsubscribeDocumentState();
+    };
+  }, []);
+
+  useEffect(() => {
+    globalThis.currentReactView = currentView;
+  }, [currentView]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!getDocumentState().dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // File operations
-  const handleNewFile = async () => {
-    const confirmed = await dialogConfirm('Nieuw schema', 'Weet u zeker dat u een nieuw schema wilt maken? Niet-opgeslagen wijzigingen gaan verloren.');
-    if (confirmed) {
-      setCurrentView('start');
-    }
+  const clearDocumentBindings = () => {
+    fileAPIobj.clear();
+    googleDriveService.clearCurrentFile();
+    notifyDocumentStorageStateChanged();
   };
 
-  const handleOpenFile = async () => {
-    // Use the global loadClicked function which handles both modern and legacy file APIs
-    const loadClicked = (globalThis as any).loadClicked;
-    if (loadClicked) {
-      await loadClicked();
-      // Switch to editor view after loading
+  const handleNewFile = async () => {
+    const confirmed = await confirmDocumentReplacement(
+      'een nieuw schema starten'
+    );
+    if (confirmed) {
+      clearDocumentBindings();
+      globalThis.read_settings?.();
       setCurrentView('editor');
     }
   };
 
+  const handleOpenFile = async () => {
+    if (!(await confirmDocumentReplacement('een ander bestand openen'))) {
+      return;
+    }
+    try {
+      await openFromLocalFile();
+      setCurrentView('editor');
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') {
+        console.error('Lokaal bestand openen is mislukt:', error);
+        await dialogAlert(
+          'Bestand openen mislukt',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+  };
+
+  const handleOpenFromDrive = () => {
+    setOpenDrivePickerOnMount(true);
+    setCurrentView('file');
+  };
+
+  const handleFileSettings = () => {
+    setCurrentView('file');
+  };
+
   const currentSaveFormat = (): 'eds' | 'json' => {
-    return currentFilename.toLowerCase().endsWith('.json') ? 'json' : 'eds';
+    return currentStorageFormat();
   };
 
-  const handleSave = () => {
-    const exportjson = (globalThis as any).exportjson;
-    if (exportjson) {
-      exportjson(false, currentSaveFormat()); // Save to current file
+  const saveWithDestination = async (
+    saveAs: boolean,
+    format: 'eds' | 'json' = currentSaveFormat()
+  ) => {
+    if (saveInProgress.current) return;
+    saveInProgress.current = true;
+    try {
+      await saveToActiveBackend(format, saveAs);
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') {
+        console.error('Opslaan is mislukt:', error);
+        await dialogAlert(
+          'Opslaan mislukt',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    } finally {
+      saveInProgress.current = false;
     }
   };
 
-  const handleSaveAs = () => {
-    const exportjson = (globalThis as any).exportjson;
-    if (exportjson) {
-      exportjson(true, currentSaveFormat()); // Save as new file
-    }
-  };
+  const handleSave = () => saveWithDestination(false);
+  const handleSaveAs = () => saveWithDestination(true);
 
-  // Define menu items with submenu
   const menuItems: MenuItem[] = [
-    { 
-      name: "Bestand", 
+    {
+      name: "Bestand",
       icon: "📁",
       subMenu: [
         { name: "Nieuw", icon: "➕", action: handleNewFile },
-        { name: "Openen...", icon: "📂", action: handleOpenFile },
-        { name: "Bibliotheek", icon: "📚", action: () => setCurrentView('library') },
+        { name: "Openen vanaf computer...", icon: "💻", action: handleOpenFile },
+        ...(googleDriveService.isConfigured() ? [{ name: "Openen vanuit Google Drive...", icon: "☁️", action: handleOpenFromDrive }] : []),
+        { name: "Opslaglocatie en bestanden...", icon: "⚙️", action: handleFileSettings },
+        { name: "─────────", icon: "", action: () => {} },
         { name: "Opslaan", icon: "💾", action: handleSave },
-        { name: "Opslaan als...", icon: "💾", action: handleSaveAs },
-        { name: "Opslaan als JSON...", icon: "📄", action: () => {
-          const exportjson = (globalThis as any).exportjson;
-          if (exportjson) exportjson(true, 'json');
-        }},
-        ...(recentFiles.length > 0 ? [
-          { name: "─────────", icon: "", action: () => {} }, // Divider
-          { name: "Recente bestanden:", icon: "🕐", action: () => {} }, // Header
-          ...recentFiles.map(file => ({
-            name: `  ${file.filename}`,
-            icon: "📄",
-            action: () => handleFileOpen(file.content, file.filename)
-          }))
-        ] : [])
+        { name: "Opslaan als...", icon: "📁", action: handleSaveAs },
+        { name: "─────────", icon: "", action: () => {} },
+        { name: "EDS-kopie downloaden", icon: "⬇️", action: () => downloadCopy('eds') },
+        { name: "JSON-kopie downloaden", icon: "⬇️", action: () => downloadCopy('json') }
       ]
     },
     { name: "Eéndraadschema", icon: "⚡", view: "editor" },
@@ -169,7 +227,6 @@ const App: React.FC = () => {
       const viewMap: { [key: string]: AppView } = {
         'Nieuw': 'start',
         'Bestand': 'file',
-        'Bibliotheek': 'library',
         'Eéndraadschema': 'editor',
         'Situatieschema': 'sitplan',
         'Print': 'print',
@@ -183,13 +240,31 @@ const App: React.FC = () => {
     console.log("React App initialized with all services");
   }, [session, appDocStorage, undostruct, fileAPIobj, simpleHierarchyView, setCurrentView, structure, reactInitialized]);
 
+  useEffect(() => {
+    const handleUndoRedo = (event: KeyboardEvent) => {
+      if (currentView !== 'editor' && currentView !== 'sitplan') return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (event.key.toLowerCase() === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        globalThis.undoClicked?.();
+      } else if (event.key.toLowerCase() === 'y' || (event.key.toLowerCase() === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        globalThis.redoClicked?.();
+      }
+    };
+    document.addEventListener('keydown', handleUndoRedo);
+    return () => document.removeEventListener('keydown', handleUndoRedo);
+  }, [currentView]);
+
   const handleRecoverAutosave = async () => {
     if (recoveryData && recoveryData.lastSavedStr && structure) {
       try {
-        const EDStoStructure = (globalThis as any).EDStoStructure;
-        if (EDStoStructure) {
-          // Load the autosaved structure
-          EDStoStructure(recoveryData.lastSavedStr, true, false);
+        clearDocumentBindings();
+        EDStoStructure(recoveryData.lastSavedStr, true, false);
+        markDocumentDirty();
+        markDocumentAutosaved();
           
           // Close the dialog
           setShowRecoveryDialog(false);
@@ -198,10 +273,7 @@ const App: React.FC = () => {
           // Switch to editor view
           setCurrentView('editor');
           
-          console.log('Autosave recovered successfully');
-        } else {
-          console.error('EDStoStructure function not found');
-        }
+        console.log('Autosave recovered successfully');
       } catch (error) {
         console.error('Error recovering autosave:', error);
         await dialogAlert('Fout bij autosave', 'Er is een fout opgetreden bij het herstellen van de autosave.');
@@ -209,50 +281,37 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDiscardAutosave = () => {
-    setShowRecoveryDialog(false);
-    setRecoveryData(null);
+  const handleDiscardAutosave = async () => {
+    try {
+      await globalThis.autoSaver?.discardRecovery();
+      setShowRecoveryDialog(false);
+      setRecoveryData(null);
+    } catch (error) {
+      console.error('Autosave discard failed:', error);
+      await dialogAlert(
+        'Herstelkopie verwijderen mislukt',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   };
 
   const handleExampleSelect = (exampleNumber: number) => {
+    clearDocumentBindings();
+    markDocumentDirty();
     setCurrentView('editor');
   };
 
   const handleNewSchema = () => {
-    setCurrentView('start');
-  };
-
-  const handleLoadFile = () => {
+    clearDocumentBindings();
     setCurrentView('editor');
   };
 
-  const handleFileOpen = async (content: string, filename: string) => {
-    try {
-      const EDStoStructure = (globalThis as any).EDStoStructure;
-      if (EDStoStructure) {
-        // Clear any existing file handle to prevent save from overwriting filesystem file
-        if ((globalThis as any).fileAPIobj) {
-          (globalThis as any).fileAPIobj.fileHandle = null;
-          (globalThis as any).fileAPIobj.filename = null;
-        }
-        
-        EDStoStructure(content, true, false);
-        if (structure) {
-          structure.properties.filename = filename;
-          setCurrentFilename(filename);
-        }
-        setCurrentView('editor');
-      }
-    } catch (error) {
-      console.error('Error opening file from library:', error);
-      await dialogAlert('Fout bij openen', 'Er is een fout opgetreden bij het openen van het bestand.');
-    }
-  };
+  const handleLoadFile = () => void handleOpenFile();
 
   // Always render with menu
   return (
     <>
-      <TopMenu items={menuItems} currentFilename={currentFilename} />
+      <TopMenu items={menuItems} currentFilename={currentFilename} saveDestination={saveDestination} />
       
       {/* Recovery Dialog */}
       {showRecoveryDialog && recoveryData && (
@@ -331,11 +390,9 @@ const App: React.FC = () => {
           onLoadFile={handleLoadFile}
         />
       ) : currentView === 'file' ? (
-        <FilePage />
-      ) : currentView === 'library' ? (
-        <FileLibraryView 
-          onFileOpen={handleFileOpen}
-          onBack={() => setCurrentView('start')}
+        <FilePage
+          openDrivePickerOnMount={openDrivePickerOnMount}
+          onDrivePickerOpened={() => setOpenDrivePickerOnMount(false)}
         />
       ) : currentView === 'editor' ? (
         <EditorView />

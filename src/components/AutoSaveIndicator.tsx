@@ -4,15 +4,26 @@
 
 import React, { useEffect, useState } from 'react';
 import { AutoSaver } from '../importExport/AutoSaver';
+import {
+  getDocumentState,
+  onDocumentStateChange,
+} from '../storage/DocumentState';
 
 interface AutoSaveIndicatorProps {
   autoSaver?: AutoSaver;
+  savedLocation?: string;
 }
 
-export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver }) => {
+export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
+  autoSaver,
+  savedLocation,
+}) => {
   const [lastSaveType, setLastSaveType] = useState<string>(AutoSaver.SavedType.NONE);
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [documentState, setDocumentState] = useState(getDocumentState);
+  const [, setTick] = useState(0);
+
+  useEffect(() => onDocumentStateChange(setDocumentState), []);
 
   useEffect(() => {
     if (!autoSaver) return;
@@ -22,7 +33,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
       const savedType = autoSaver.getSavedType();
       setLastSaveType(savedType);
       setLastSaveTime(new Date());
-      setHasUnsavedChanges(autoSaver.hasChangesSinceLastManualSave());
+      setDocumentState(getDocumentState());
     };
 
     autoSaver.setCallbackAfterSave(updateStatus);
@@ -30,10 +41,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
     // Initial status check
     updateStatus();
 
-    // Check every second for changes
-    const interval = setInterval(() => {
-      setHasUnsavedChanges(autoSaver.hasChangesSinceLastManualSave());
-    }, 1000);
+    const interval = setInterval(() => setTick((value) => value + 1), 1000);
 
     return () => {
       clearInterval(interval);
@@ -43,9 +51,12 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
   if (!autoSaver) return null;
 
   const getStatusIcon = () => {
-    if (lastSaveType === AutoSaver.SavedType.NONE) {
+    if (
+      lastSaveType === AutoSaver.SavedType.NONE &&
+      !documentState.autosaveAvailable
+    ) {
       return '○'; // No save yet
-    } else if (hasUnsavedChanges) {
+    } else if (documentState.dirty) {
       return '◐'; // Unsaved changes (automatic save)
     } else {
       return '●'; // Saved (manual save)
@@ -53,9 +64,12 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
   };
 
   const getStatusColor = () => {
-    if (lastSaveType === AutoSaver.SavedType.NONE) {
+    if (
+      lastSaveType === AutoSaver.SavedType.NONE &&
+      !documentState.autosaveAvailable
+    ) {
       return '#6c757d'; // Gray
-    } else if (hasUnsavedChanges) {
+    } else if (documentState.dirty) {
       return '#ffc107'; // Yellow/warning
     } else {
       return '#28a745'; // Green
@@ -63,12 +77,17 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
   };
 
   const getStatusText = () => {
-    if (lastSaveType === AutoSaver.SavedType.NONE) {
+    if (
+      lastSaveType === AutoSaver.SavedType.NONE &&
+      !documentState.autosaveAvailable
+    ) {
       return 'Nog niet opgeslagen';
-    } else if (hasUnsavedChanges) {
-      return 'Automatisch opgeslagen';
+    } else if (documentState.dirty && documentState.autosaveAvailable) {
+      return 'Niet opgeslagen · herstelkopie beschikbaar';
+    } else if (documentState.dirty) {
+      return 'Niet opgeslagen';
     } else {
-      return 'Opgeslagen';
+      return savedLocation ? `Opgeslagen in ${savedLocation}` : 'Opgeslagen';
     }
   };
 
@@ -97,11 +116,11 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
         alignItems: 'center',
         gap: '6px',
         padding: '4px 10px',
-        backgroundColor: 'white',
-        border: '1px solid #dee2e6',
+        backgroundColor: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: '4px',
         fontSize: '12px',
-        color: '#495057',
+        color: 'var(--text-primary)',
         whiteSpace: 'nowrap',
         userSelect: 'none'
       }}
@@ -112,7 +131,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({ autoSaver 
       </span>
       <span>{getStatusText()}</span>
       {lastSaveTime && (
-        <span style={{ fontSize: '11px', color: '#6c757d' }}>
+        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
           ({getTimeAgo()})
         </span>
       )}

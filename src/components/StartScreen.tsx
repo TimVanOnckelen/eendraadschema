@@ -2,6 +2,12 @@ import React from 'react';
 import { EDStoStructure } from '../importExport/importExport';
 import { useApp } from '../AppContext';
 import { EXAMPLE0, EXAMPLE1 } from '../constants/examples';
+import {
+  confirmDocumentReplacement,
+  markDocumentDirty,
+} from '../storage/DocumentState';
+import { read_settings } from '../initialization';
+import { dialogAlert } from '../utils/DialogHelpers';
 
 interface StartScreenProps {
   onExampleSelect: (exampleNumber: number) => void;
@@ -16,54 +22,45 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   const { setStructure } = useApp();
 
-  const handleLoadExample = (nr: number) => {
+  const handleLoadExample = async (nr: number) => {
     try {
+      if (!(await confirmDocumentReplacement('dit voorbeeld openen'))) return;
       switch (nr) {
         case 0:
           EDStoStructure(EXAMPLE0);
-          (globalThis as any).fileAPIobj.clear();
           break;
         case 1:
           EDStoStructure(EXAMPLE1);
-          (globalThis as any).fileAPIobj.clear();
           break;
       }
       // Manually sync the structure to React state
       if ((globalThis as any).structure) {
         setStructure((globalThis as any).structure);
       }
+      markDocumentDirty();
       onExampleSelect(nr);
     } catch (error) {
       console.error(`Failed to load example ${nr}:`, error);
-      alert(`Failed to load example ${nr + 1}. The example data may be corrupted. Please try another example or create a new schema.`);
+      await dialogAlert(
+        'Voorbeeld openen mislukt',
+        `Voorbeeld ${nr + 1} kon niet worden geopend. Probeer een ander voorbeeld of maak een nieuw schema.`
+      );
     }
   };
 
-  const handleNewSchema = () => {
+  const handleNewSchema = async () => {
+    if (!(await confirmDocumentReplacement('een nieuw schema starten'))) return;
     // Call read_settings to create a new empty structure
-    if ((globalThis as any).read_settings) {
-      (globalThis as any).read_settings();
-    }
+    read_settings();
     // Manually sync the structure to React state
     if ((globalThis as any).structure) {
       setStructure((globalThis as any).structure);
     }
-    // Navigate to editor
-    onExampleSelect(2); // Use onExampleSelect to go to editor
+    onNewSchema();
   };
 
   const handleLoadFile = async () => {
-    // Trigger the file input click
-    if ((globalThis as any).loadClicked) {
-      await (globalThis as any).loadClicked();
-      // Manually sync the structure to React state after loading
-      setTimeout(() => {
-        if ((globalThis as any).structure) {
-          setStructure((globalThis as any).structure);
-        }
-      }, 100);
-      onLoadFile();
-    }
+    onLoadFile();
   };
 
   return (

@@ -1077,6 +1077,30 @@ export class Hierarchical_List {
   }
 
   /**
+   * Geeft de stabiele ID van de dichtstbijzijnde kring waartoe een element behoort.
+   * Kringkleuren gebruiken deze ID zodat hernoemen of dubbele namen geen kleuren verwisselt.
+   */
+  findKringId(my_id: number): number | null {
+    let ordinal = this.getOrdinalById(my_id);
+    const visited = new Set<number>();
+
+    while (ordinal != null) {
+      const item = this.data[ordinal] as Electro_Item;
+      if (item.getType() === "Kring") return item.id;
+
+      const parentId = item.parent;
+      if (parentId == null || parentId === 0 || visited.has(parentId)) {
+        return null;
+      }
+
+      visited.add(parentId);
+      ordinal = this.getOrdinalById(parentId);
+    }
+
+    return null;
+  }
+
+  /**
    * Deze functie zorgt ervoor dat alle kringen een unieke naam krijgen.
    * Indien autoKringNaam is ingesteld op "auto", dan wordt de naam automatisch gegenereerd.
    * De namen worden gegenereerd in de volgorde van het alfabet, beginnend met "A", "B", ..., "Z", "AA", "AB", ..., "ZZ", "AAA", "AAB", ..., enzovoort.
@@ -1235,7 +1259,10 @@ export class Hierarchical_List {
 
     // Nu gaan we doorheen alle items en passen we de nummers aan indien nodig
     let lastNumbers: { [kring: string]: number } = {}; // Object to keep track of last numbers for each type
-    let itemsZonderNr: Array<string> = ["", "Bord", "Kring", "Splitsing"];
+    // These elements can sit in a circuit branch but do not own a visible
+    // circuit number. They must not consume the next automatic number or
+    // replace the last real number used by the branch.
+    let itemsZonderNr: Array<string> = ["", "Bord", "Kring", "Splitsing", "Aftakdoos", "Leiding"];
 
     for (let i = 0; i < this.length; i++) {
       if (!this.active[i]) continue;
@@ -1384,6 +1411,12 @@ export class Hierarchical_List {
 
           case "Kring":
             inSVG[elementCounter] = this.data[i].toSVG(); //Maak de tekening
+            break;
+
+          case "Leiding":
+            // Keep cable changes inline with the vertical branch. Leiding
+            // renders its own children above the vertical cable segment.
+            inSVG[elementCounter] = this.data[i].toSVG();
             break;
 
           case "Aansluiting":

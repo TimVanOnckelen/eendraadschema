@@ -20,6 +20,9 @@ export class HelperTip {
           return; // Do nothing if the tip was dismissed or already shown
         }
     
+        // Reserve the tip before rendering: effects may run again before dismissal.
+        this.storage.set(displayedInThisSessionKey, true, true);
+
         // Create the popup
         const popupOverlay = document.createElement('div');
         popupOverlay.id = 'popupOverlay';

@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useApp } from '../AppContext';
 import { Hierarchical_List } from '../Hierarchical_List';
+import { DiagramDrawing } from './DiagramDrawing';
 import { ContextMenu } from '../sitplan/ContextMenu';
+import { dialogAlert, dialogConfirm } from '../utils/DialogHelpers';
 
 /**
  * SimpleHierarchyView React Component
@@ -17,8 +19,27 @@ const SimpleHierarchyView: React.FC = () => {
   const [svgPanX, setSvgPanX] = useState(0);
   const [svgPanY, setSvgPanY] = useState(0);
   const [isPanning, setIsPanning] = useState(false);
-  const [panStartX, setPanStartX] = useState(0);
-  const [panStartY, setPanStartY] = useState(0);
+  const svgZoomRef = useRef(svgZoom);
+  const svgPanXRef = useRef(svgPanX);
+  const svgPanYRef = useRef(svgPanY);
+  const wheelGestureRef = useRef<{
+    container: HTMLElement;
+    x: number;
+    y: number;
+    startedAt: number;
+    delta: number;
+    zoom: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
+  const wheelFrameRef = useRef<number | null>(null);
+  useEffect(() => {
+    svgZoomRef.current = svgZoom;
+    svgPanXRef.current = svgPanX;
+    svgPanYRef.current = svgPanY;
+  }, [svgZoom, svgPanX, svgPanY]);
+  const panGesture = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  const suppressDrawingClick = useRef(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [highlightEnabled, setHighlightEnabled] = useState(true);
   const [collapsedElements, setCollapsedElements] = useState<Set<number>>(new Set());
@@ -129,7 +150,7 @@ const SimpleHierarchyView: React.FC = () => {
   }, [showAddModal]);
 
   // Re-render when structure changes
-  const [, forceUpdate] = useState({});
+  const [documentRevision, forceUpdate] = useState({});
   const refresh = useCallback(() => {
     // Sync globalThis.structure to React state to trigger re-render
     if ((globalThis as any).structure) {
@@ -253,14 +274,7 @@ const SimpleHierarchyView: React.FC = () => {
   const selectElement = (id: number) => {
     setSelectedElementId(id);
     
-    // Highlight in SVG
-    document.querySelectorAll('[data-element-id]').forEach((el) => {
-      el.classList.remove('svg-highlighted');
-    });
-    const svgElement = document.querySelector(`[data-element-id="${id}"]`);
-    if (svgElement) {
-      svgElement.classList.add('svg-highlighted');
-    }
+
   };
 
   // Toggle collapse/expand for an element
@@ -449,6 +463,36 @@ const SimpleHierarchyView: React.FC = () => {
     if (!structure) return;
     
     const targetId = insertionTargetId || selectedElementId;
+
+    if (electroType === 'Leiding') {
+      const parent = targetId ? structure.getElectroItemById(targetId) : null;
+      let current = parent;
+      let isWithinKring = false;
+      while (current) {
+        if (current.getType() === 'Kring') {
+          isWithinKring = true;
+          break;
+        }
+        current = current.getParent();
+      }
+      if (!parent || !isWithinKring) {
+        void dialogAlert(
+          'Kabelwissel toevoegen',
+          'Een kabelwissel moet binnen een Kring worden toegevoegd.'
+        );
+        return;
+      }
+      const newItem = structure.createItem(electroType);
+      structure.insertChildAfterId(newItem, targetId);
+      (globalThis as any).undostruct?.store();
+      setSelectedElementId(newItem.id);
+      refresh();
+      setShowAddModal(false);
+      setModalSearchTerm('');
+      setInsertionMode('add');
+      setInsertionTargetId(null);
+      return;
+    }
     
     if (insertionMode === 'insert-before' && targetId) {
       // Insert before the target element
@@ -539,6 +583,15 @@ const SimpleHierarchyView: React.FC = () => {
   const getAllowedTypesForInsertion = useCallback((): string[] => {
     if (!structure) return [];
 
+    const isWithinKring = (item: any): boolean => {
+      let current = item;
+      while (current) {
+        if (current.getType?.() === 'Kring') return true;
+        current = current.getParent?.() ?? null;
+      }
+      return false;
+    };
+
     const targetId = insertionTargetId || selectedElementId;
     
     if (insertionMode === 'insert-child') {
@@ -549,7 +602,7 @@ const SimpleHierarchyView: React.FC = () => {
         return [];
       }
       const allowed = electroItem.allowedChilds();
-      return allowed.filter((type: string) => type !== "" && type !== "---");
+      return allowed.filter((type: string) => type !== "" && type !== "---" && (type !== 'Leiding' || isWithinKring(electroItem)));
     } else if (insertionMode === 'insert-before' || insertionMode === 'insert-after') {
       // For insert-before/after, get allowed children of the parent
       if (!targetId) return [];
@@ -561,7 +614,7 @@ const SimpleHierarchyView: React.FC = () => {
         return ['Aansluiting', 'Zekering/differentieel', 'Kring'];
       }
       const allowed = parent.allowedChilds();
-      return allowed.filter((type: string) => type !== "" && type !== "---");
+      return allowed.filter((type: string) => type !== "" && type !== "---" && type !== 'Leiding');
     } else {
       // Default 'add' mode - get allowed children of selected element
       if (!selectedElementId) {
@@ -572,7 +625,7 @@ const SimpleHierarchyView: React.FC = () => {
         return [];
       }
       const allowed = electroItem.allowedChilds();
-      return allowed.filter((type: string) => type !== "" && type !== "---");
+      return allowed.filter((type: string) => type !== "" && type !== "---" && (type !== 'Leiding' || isWithinKring(electroItem)));
     }
   }, [insertionMode, insertionTargetId, selectedElementId, structure]);
 
@@ -660,6 +713,13 @@ const SimpleHierarchyView: React.FC = () => {
     ],
   };
 
+  const elementTypeLabel = (type: string) => type === 'Leiding' ? 'Kabelwissel (Leiding)' : type;
+  const matchesElementTypeSearch = (type: string, search: string) => {
+    const query = search.toLowerCase();
+    return type.toLowerCase().includes(query)
+      || (type === 'Leiding' && ('kabel kabelwissel leiding').includes(query));
+  };
+
 
   const handleInsertBefore = () => {
     if (selectedElementId) {
@@ -707,11 +767,11 @@ const SimpleHierarchyView: React.FC = () => {
     }
   };
 
-  const handleDelete = (id?: number) => {
+  const handleDelete = async (id?: number) => {
     const elementId = id || selectedElementId;
     if (!elementId) return;
 
-    if (confirm('Weet je zeker dat je dit element wilt verwijderen?')) {
+    if (await dialogConfirm('Element verwijderen', 'Weet u zeker dat u dit element wilt verwijderen?')) {
       if (typeof (globalThis as any).HLDelete === 'function') {
         (globalThis as any).HLDelete(elementId);
         setSelectedElementId(null);
@@ -1074,63 +1134,28 @@ const SimpleHierarchyView: React.FC = () => {
   const handleZoomIn = () => setSvgZoom((z) => Math.min(z * 1.2, 8));
   const handleZoomOut = () => setSvgZoom((z) => Math.max(z / 1.2, 0.1));
   const handleZoomReset = () => {
+    svgZoomRef.current = 1;
+    svgPanXRef.current = 0;
+    svgPanYRef.current = 0;
     setSvgZoom(1);
     setSvgPanX(0);
     setSvgPanY(0);
   };
 
-  // Fit to screen handler - calculates optimal zoom to show all content
   const handleZoomFit = () => {
-    const edsDiv = document.getElementById('EDS');
-    const container = document.querySelector('.simple-svg-container') as HTMLElement;
-    
-    if (!edsDiv || !container) {
-      handleZoomReset();
-      return;
-    }
-
-    const svg = edsDiv.querySelector('svg') as SVGSVGElement;
-    if (!svg) {
-      handleZoomReset();
-      return;
-    }
-
-    // Get SVG dimensions
-    const bbox = svg.getBBox ? svg.getBBox() : null;
-    const viewBox = svg.getAttribute('viewBox');
-    
-    let svgWidth = 0;
-    let svgHeight = 0;
-
-    if (bbox) {
-      svgWidth = bbox.width;
-      svgHeight = bbox.height;
-    } else if (viewBox) {
-      const parts = viewBox.split(' ').map(Number);
-      svgWidth = parts[2];
-      svgHeight = parts[3];
-    } else {
-      svgWidth = svg.clientWidth || 1000;
-      svgHeight = svg.clientHeight || 1000;
-    }
-
-    // Get container dimensions (accounting for padding)
-    const containerWidth = container.clientWidth - 24; // 12px padding on each side
-    const containerHeight = container.clientHeight - 48; // More padding for controls
-
-    if (svgWidth === 0 || svgHeight === 0) {
-      handleZoomReset();
-      return;
-    }
-
-    // Calculate optimal zoom level
-    const zoomWidth = containerWidth / svgWidth;
-    const zoomHeight = containerHeight / svgHeight;
-    const optimalZoom = Math.max(0.1, Math.min(8, Math.min(zoomWidth, zoomHeight) * 0.95)); // 0.95 for margin
-
-    setSvgZoom(optimalZoom);
-    setSvgPanX(0);
-    setSvgPanY(0);
+    const drawing = document.getElementById(isFullscreen ? 'EDS-fullscreen' : 'EDS');
+    const svg = drawing?.querySelector('svg');
+    const container = drawing?.parentElement;
+    if (!svg || !container) return;
+    const width = svg.width.baseVal.value;
+    const height = svg.height.baseVal.value;
+    if (width <= 0 || height <= 0) return;
+    const zoom = Math.max(0.1, Math.min(8,
+      (container.clientWidth - 32) / width,
+      (container.clientHeight - 64) / height));
+    setSvgZoom(zoom);
+    setSvgPanX((container.clientWidth - width * zoom) / 2);
+    setSvgPanY((container.clientHeight - height * zoom) / 2);
   };
 
   // Fullscreen handler
@@ -1161,83 +1186,106 @@ const SimpleHierarchyView: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
 
-  // Pan handlers
-  const handlePanStart = (e: React.MouseEvent) => {
-    // Only start pan on middle mouse button or when space is held
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-      e.preventDefault();
-      setIsPanning(true);
-      setPanStartX(e.clientX - svgPanX);
-      setPanStartY(e.clientY - svgPanY);
+  // A plain click still selects a symbol; dragging pans the fixed viewport.
+  const handlePanStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as Element).closest('button') || (event.button !== 0 && event.button !== 1)) return;
+    suppressDrawingClick.current = false;
+    panGesture.current = {
+      pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+      panX: svgPanX, panY: svgPanY,
+    };
+    if (event.button === 1) event.preventDefault();
+  };
+
+  const handlePanMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const gesture = panGesture.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    if (!suppressDrawingClick.current && Math.hypot(dx, dy) < 4) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    suppressDrawingClick.current = true;
+    setIsPanning(true);
+    setSvgPanX(gesture.panX + dx);
+    setSvgPanY(gesture.panY + dy);
+  };
+
+  const handlePanEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (panGesture.current?.pointerId !== event.pointerId) return;
+    panGesture.current = null;
+    setIsPanning(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
 
-  const handlePanMove = useCallback((e: MouseEvent) => {
-    if (isPanning) {
-      e.preventDefault();
-      setSvgPanX(e.clientX - panStartX);
-      setSvgPanY(e.clientY - panStartY);
+  const handleDrawingClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (suppressDrawingClick.current && !(event.target as Element).closest('button')) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressDrawingClick.current = false;
     }
-  }, [isPanning, panStartX, panStartY]);
+  };
 
-  const handlePanEnd = useCallback(() => {
-    setIsPanning(false);
-  }, []);
-
-  // Setup pan event listeners
+  // Use a single non-passive listener on each fixed viewport, including fullscreen.
   useEffect(() => {
-    if (isPanning) {
-      document.addEventListener('mousemove', handlePanMove);
-      document.addEventListener('mouseup', handlePanEnd);
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      return () => {
-        document.removeEventListener('mousemove', handlePanMove);
-        document.removeEventListener('mouseup', handlePanEnd);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      };
-    }
-  }, [isPanning, handlePanMove, handlePanEnd]);
-
-  // Wheel zoom handler (Ctrl+Scroll or just Scroll)
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    // Only zoom if Ctrl is held, or if the container has focus and no modifier keys are blocking
-    if (!e.ctrlKey && !e.metaKey) return; // Only with Ctrl+Scroll or Cmd+Scroll on Mac
-    
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Zoom with multiplicative factors for smoother experience
-    const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1; // 10% per scroll
-    setSvgZoom((z) => Math.max(0.1, Math.min(8, z * zoomDelta)));
-  }, []);
-
-  // Setup wheel event listener on SVG container
-  useEffect(() => {
-    const edsDiv = document.getElementById('EDS');
-    if (edsDiv) {
-      edsDiv.addEventListener('wheel', handleWheel as any, { passive: false });
-      return () => {
-        edsDiv.removeEventListener('wheel', handleWheel as any);
-      };
-    }
-  }, [handleWheel]);
-
-  // Apply zoom and pan transform to fullscreen SVG
-  useEffect(() => {
-    if (isFullscreen) {
-      const fullscreenEDS = document.getElementById('EDS-fullscreen');
-      if (fullscreenEDS) {
-        const svgElement = fullscreenEDS.querySelector('svg');
-        if (svgElement) {
-          svgElement.style.transform = `translate(${svgPanX}px, ${svgPanY}px) scale(${svgZoom})`;
-          svgElement.style.transformOrigin = 'center center';
-        }
+    const containers = document.querySelectorAll<HTMLElement>('.simple-svg-container, .svg-fullscreen-container');
+    const handleWheel = (event: WheelEvent) => {
+      if ((event.target as Element).closest('button')) return;
+      event.preventDefault();
+      const container = event.currentTarget as HTMLElement;
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1);
+      const now = performance.now();
+      let gesture = wheelGestureRef.current;
+      if (!gesture || gesture.container !== container || now - gesture.startedAt > 140) {
+        gesture = {
+          container,
+          x,
+          y,
+          startedAt: now,
+          delta: 0,
+          zoom: svgZoomRef.current,
+          panX: svgPanXRef.current,
+          panY: svgPanYRef.current,
+        };
+        wheelGestureRef.current = gesture;
       }
-    }
-  }, [isFullscreen, svgZoom, svgPanX, svgPanY]);
+      gesture.startedAt = now;
+      gesture.delta += delta;
+
+      const zoom = Math.max(0.1, Math.min(8, gesture.zoom * Math.exp(-gesture.delta * 0.002)));
+      const ratio = zoom / gesture.zoom;
+      const panX = gesture.x - (gesture.x - gesture.panX) * ratio;
+      const panY = gesture.y - (gesture.y - gesture.panY) * ratio;
+      svgZoomRef.current = zoom;
+      svgPanXRef.current = panX;
+      svgPanYRef.current = panY;
+
+      // Trackpads emit a burst of wheel events. Commit one transform per
+      // animation frame so intermediate deltas never cause visible shaking.
+      if (wheelFrameRef.current === null) {
+        wheelFrameRef.current = window.requestAnimationFrame(() => {
+          wheelFrameRef.current = null;
+          setSvgPanX(svgPanXRef.current);
+          setSvgPanY(svgPanYRef.current);
+          setSvgZoom(svgZoomRef.current);
+        });
+      }
+    };
+    containers.forEach(container => container.addEventListener('wheel', handleWheel, { passive: false }));
+    return () => {
+      containers.forEach(container => container.removeEventListener('wheel', handleWheel));
+      if (wheelFrameRef.current !== null) {
+        window.cancelAnimationFrame(wheelFrameRef.current);
+        wheelFrameRef.current = null;
+      }
+      wheelGestureRef.current = null;
+    };
+  }, [isFullscreen]);
 
   // Get SVG content
   const getSVGContent = () => {
@@ -1246,32 +1294,6 @@ const SimpleHierarchyView: React.FC = () => {
     const svgData = structure.toSVG(0, 'horizontal').data;
     const flattenSVGfromString = (globalThis as any).flattenSVGfromString || ((str: string) => str);
     let svg = flattenSVGfromString(svgData, 10);
-    
-    // Extract original viewBox or width/height from SVG
-    const viewBoxMatch = svg.match(/viewBox="([^"]+)"/);
-    const widthMatch = svg.match(/width="([^"]+)"/);
-    const heightMatch = svg.match(/height="([^"]+)"/);
-    
-    let viewBox = '';
-    if (viewBoxMatch) {
-      const [x, y, w, h] = viewBoxMatch[1].split(' ').map(Number);
-      // Scale viewBox inversely to zoom (zoom in = smaller viewBox)
-      const scaledW = w / svgZoom;
-      const scaledH = h / svgZoom;
-      viewBox = `0 0 ${scaledW} ${scaledH}`;
-      svg = svg.replace(/viewBox="[^"]+"/, `viewBox="${viewBox}"`);
-    } else if (widthMatch && heightMatch) {
-      const w = parseFloat(widthMatch[1]);
-      const h = parseFloat(heightMatch[1]);
-      const scaledW = w / svgZoom;
-      const scaledH = h / svgZoom;
-      viewBox = `0 0 ${scaledW} ${scaledH}`;
-      svg = svg.replace(/<svg/, `<svg viewBox="${viewBox}"`);
-    }
-    
-    // Make SVG fill container
-    svg = svg.replace(/width="[^"]+"/, 'width="100%"');
-    svg = svg.replace(/height="[^"]+"/, 'height="100%"');
     
     // Add data-element-id attributes to make SVG interactive
     // The SVG uses id attributes like "svg_p1_0" where the last number is the element ID
@@ -1291,234 +1313,12 @@ const SimpleHierarchyView: React.FC = () => {
     return svg;
   };
 
-  // Attach SVG click handlers (React-native implementation)
-  useEffect(() => {
-    // Small delay to ensure SVG is fully rendered
-    const timer = setTimeout(() => {
-      const edsDiv = document.getElementById('EDS');
-      if (!edsDiv) {
-        console.log('EDS div not found');
-        return;
-      }
-
-      const svg = edsDiv.querySelector('svg');
-      if (!svg) {
-        console.log('SVG not found');
-        return;
-      }
-
-      // Find all elements with data-element-id attribute
-      const elements = svg.querySelectorAll('[data-element-id]');
-      console.log(`Found ${elements.length} clickable SVG elements`);
-      
-      // Filter to only get the "deepest" elements (not parent containers)
-      const leafElements = Array.from(elements).filter((element) => {
-        // Check if this element contains other elements with data-element-id
-        const childrenWithId = element.querySelectorAll('[data-element-id]');
-        // Only include if it has no children with data-element-id (it's a leaf)
-        return childrenWithId.length === 0;
-      });
-      console.log(`Found ${leafElements.length} leaf elements for hover`);
-      
-      const handleClick = (e: Event, elementId: number) => {
-        e.stopPropagation();
-        e.preventDefault();
-        
-        // Get the actual clicked element
-        const clickedElement = e.target as SVGElement;
-        console.log(`SVG element clicked: ${elementId}, element:`, clickedElement);
-        
-        setSelectedElementId(elementId);
-        
-        // Scroll to element in list
-        setTimeout(() => {
-          const listElement = document.querySelector(`.simple-hierarchy-item[data-id="${elementId}"]`);
-          if (listElement) {
-            listElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }
-        }, 50);
-      };
-
-      const handleMouseEnter = (e: Event, element: Element) => {
-        if (!highlightEnabled) return; // Skip if highlighting is disabled
-        e.stopPropagation(); // Prevent parent elements from getting hover effect
-        const svgElement = element as SVGElement;
-        
-        // Store original fill/stroke for restoration
-        (element as any).__originalFill = svgElement.getAttribute('fill') || svgElement.style.fill;
-        (element as any).__originalStroke = svgElement.getAttribute('stroke') || svgElement.style.stroke;
-        
-        // Apply red color
-        svgElement.style.fill = 'red';
-        svgElement.style.stroke = 'red';
-      };
-
-      const handleMouseLeave = (e: Event, element: Element) => {
-        if (!highlightEnabled) return; // Skip if highlighting is disabled
-        e.stopPropagation();
-        const svgElement = element as SVGElement;
-        
-        // Restore original colors
-        const originalFill = (element as any).__originalFill;
-        const originalStroke = (element as any).__originalStroke;
-        
-        if (originalFill) {
-          svgElement.style.fill = originalFill;
-        } else {
-          svgElement.style.fill = '';
-        }
-        
-        if (originalStroke) {
-          svgElement.style.stroke = originalStroke;
-        } else {
-          svgElement.style.stroke = '';
-        }
-      };
-
-      // Attach click and hover handlers only to leaf elements
-      leafElements.forEach((element) => {
-        const elementId = parseInt((element as SVGElement).getAttribute('data-element-id') || '0');
-        if (elementId === 0) return;
-
-        // All elements are clickable with pointer cursor
-        (element as SVGElement).style.cursor = 'pointer';
-        (element as SVGElement).style.transition = 'opacity 0.2s, filter 0.2s';
-        
-        // Add larger clickable area by wrapping element if it's not already a group
-        if (element.tagName !== 'g') {
-          try {
-            const bbox = (element as SVGGraphicsElement).getBBox();
-            const padding = 10; // Pixels of padding around element for easier clicking
-            
-            // Create invisible rect for larger click area
-            const clickArea = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            clickArea.setAttribute('x', String(bbox.x - padding));
-            clickArea.setAttribute('y', String(bbox.y - padding));
-            clickArea.setAttribute('width', String(bbox.width + padding * 2));
-            clickArea.setAttribute('height', String(bbox.height + padding * 2));
-            clickArea.setAttribute('fill', 'transparent');
-            clickArea.setAttribute('stroke', 'none');
-            clickArea.setAttribute('data-element-id', String(elementId));
-            clickArea.style.cursor = 'pointer';
-            clickArea.style.pointerEvents = 'all';
-            
-            // Insert click area before the element
-            element.parentNode?.insertBefore(clickArea, element);
-            
-            // Add click handler to click area too
-            const clickAreaHandler = (e: Event) => handleClick(e, elementId);
-            clickArea.addEventListener('click', clickAreaHandler);
-            (clickArea as any).__clickHandler = clickAreaHandler;
-          } catch (error) {
-            console.warn('Could not create click area for element', element, error);
-          }
-        }
-        
-        // Add click handler
-        const clickHandler = (e: Event) => handleClick(e, elementId);
-        element.addEventListener('click', clickHandler);
-        (element as any).__clickHandler = clickHandler;
-        
-        // Add hover handlers
-        const mouseEnterHandler = (e: Event) => handleMouseEnter(e, element);
-        const mouseLeaveHandler = (e: Event) => handleMouseLeave(e, element);
-        
-        element.addEventListener('mouseenter', mouseEnterHandler);
-        element.addEventListener('mouseleave', mouseLeaveHandler);
-        
-        // Store handlers for cleanup
-        (element as any).__mouseEnterHandler = mouseEnterHandler;
-        (element as any).__mouseLeaveHandler = mouseLeaveHandler;
-      });
-
-      // Highlight the currently selected element in purple
-      if (selectedElementId && highlightEnabled) {
-        const selectedElements = svg.querySelectorAll(`[data-element-id="${selectedElementId}"]`);
-        selectedElements.forEach((element) => {
-          const svgElement = element as SVGElement;
-          
-          // Create a semi-transparent purple overlay using a rectangle
-          const bbox = (element as any).getBBox?.();
-          if (bbox) {
-            // Remove any existing highlight
-            const existingHighlight = svg.querySelector(`#highlight-${selectedElementId}`);
-            if (existingHighlight) {
-              existingHighlight.remove();
-            }
-            
-            // Create highlight rectangle
-            const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            highlight.setAttribute('id', `highlight-${selectedElementId}`);
-            highlight.setAttribute('x', String(bbox.x - 2));
-            highlight.setAttribute('y', String(bbox.y - 2));
-            highlight.setAttribute('width', String(bbox.width + 4));
-            highlight.setAttribute('height', String(bbox.height + 4));
-            highlight.setAttribute('fill', '#667eea');
-            highlight.setAttribute('fill-opacity', '0.2');
-            highlight.setAttribute('stroke', '#667eea');
-            highlight.setAttribute('stroke-width', '2');
-            highlight.setAttribute('rx', '4');
-            highlight.style.pointerEvents = 'none';
-            
-            // Insert before the element to not block it
-            element.parentNode?.insertBefore(highlight, element);
-          }
-        });
-      }
-    }, 100);
-
-    // Cleanup
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [structure, selectedElementId, highlightEnabled]); // Re-attach when structure, selection, or highlight setting changes
-
-  // Attach event handlers to fullscreen SVG
-  useEffect(() => {
-    if (!isFullscreen || !structure) return;
-
-    const timer = setTimeout(() => {
-      const fullscreenEDS = document.getElementById('EDS-fullscreen');
-      if (!fullscreenEDS) return;
-
-      // Same logic as regular SVG
-      const allElements = fullscreenEDS.querySelectorAll('[data-element-id]');
-      const leafElements: Element[] = [];
-      
-      allElements.forEach((element) => {
-        const hasNestedElements = element.querySelectorAll('[data-element-id]').length > 0;
-        if (!hasNestedElements) {
-          leafElements.push(element);
-        }
-      });
-
-      const handleClick = (e: Event, elementId: number) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setSelectedElementId(elementId);
-        
-        const listElement = document.querySelector(`.simple-hierarchy-item[data-id="${elementId}"]`);
-        if (listElement) {
-          listElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      };
-
-      leafElements.forEach((element) => {
-        const elementId = parseInt((element as SVGElement).getAttribute('data-element-id') || '0');
-        if (elementId === 0) return;
-        
-        const clickHandler = (e: Event) => handleClick(e, elementId);
-        element.addEventListener('click', clickHandler);
-        (element as any).__clickHandler = clickHandler;
-        
-        element.setAttribute('style', (element.getAttribute('style') || '') + ';cursor:pointer;');
-      });
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isFullscreen, structure, selectedElementId]);
+  const svgMarkup = useMemo(getSVGContent, [structure, documentRevision]);
+  const handleDrawingSelect = useCallback((elementId: number) => {
+    setSelectedElementId(elementId);
+    document.querySelector(`.simple-hierarchy-item[data-id="${elementId}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   // Get selected element
   const selectedElement = selectedElementId && structure 
@@ -1780,7 +1580,7 @@ const SimpleHierarchyView: React.FC = () => {
           <div id="middle_col_3_inner" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <h3 style={{ margin: '0 0 12px 0', padding: '12px', background: '#f8f9fa', borderRadius: '8px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>📐 Tekening</span>
-              <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#666' }}>💡 Shift + klik en sleep om te pannen</span>
+              <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#666' }}>💡 Sleep om te pannen · scroll om te zoomen</span>
             </h3>
             
             <div 
@@ -1796,7 +1596,12 @@ const SimpleHierarchyView: React.FC = () => {
                 overflow: 'hidden',
                 position: 'relative'
               }}
-              onWheel={handleWheel}
+              onPointerDown={handlePanStart}
+              onPointerMove={handlePanMove}
+              onPointerUp={handlePanEnd}
+              onPointerCancel={handlePanEnd}
+              onLostPointerCapture={handlePanEnd}
+              onClickCapture={handleDrawingClick}
             >
               {/* Zoom controls - positioned absolutely inside container */}
               <div className="svg-zoom-controls">
@@ -1825,18 +1630,14 @@ const SimpleHierarchyView: React.FC = () => {
               </div>
 
               {/* EDS SVG content */}
-              <div 
-                id="EDS" 
-                onMouseDown={handlePanStart}
-                style={{ 
-                  width: '100%',
-                  height: '100%',
-                  cursor: isPanning ? 'grabbing' : 'grab',
-                  transform: `translate(${svgPanX}px, ${svgPanY}px)`,
-                  transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-                  transformOrigin: 'top left'
-                }}
-                dangerouslySetInnerHTML={{ __html: getSVGContent() }}
+              <DiagramDrawing
+                id="EDS"
+                markup={svgMarkup}
+                zoom={svgZoom} panX={svgPanX} panY={svgPanY}
+                panning={isPanning}
+                selectedId={selectedElementId}
+                highlightEnabled={highlightEnabled}
+                onSelect={handleDrawingSelect}
               />
             </div>
           </div>
@@ -1935,6 +1736,51 @@ const SimpleHierarchyView: React.FC = () => {
                   className="simple-properties-form"
                   dangerouslySetInnerHTML={{ __html: getElementPropertiesHTML() }}
                 />
+
+                {(selectedElement.getType() === 'Kring' || selectedElement.getType() === 'Leiding') && (
+                  <div className="simple-cable-properties">
+                    <h3>Kabel</h3>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedElement.props.kabel_is_aanwezig ?? true)}
+                        onChange={(e) => handlePropertyChange('kabel_is_aanwezig', e.target.checked, 'checkbox')}
+                      />{' '}
+                      Kabel aanwezig
+                    </label>
+                    {selectedElement.props.kabel_is_aanwezig !== false && (
+                      <>
+                        <label htmlFor="react-cable-type">Type</label>
+                        <input
+                          id="react-cable-type"
+                          type="text"
+                          value={selectedElement.props.type_kabel || ''}
+                          onChange={(e) => handlePropertyChange('type_kabel', e.target.value, 'text')}
+                        />
+                        <label htmlFor="react-cable-location">Plaatsing</label>
+                        <select
+                          id="react-cable-location"
+                          value={selectedElement.props.kabel_locatie || 'N/A'}
+                          onChange={(e) => handlePropertyChange('kabel_locatie', e.target.value, 'select-one')}
+                        >
+                          {['N/A', 'Ondergronds', 'Luchtleiding', 'In wand', 'Op wand'].map(location => (
+                            <option key={location} value={location}>{location}</option>
+                          ))}
+                        </select>
+                        {selectedElement.props.kabel_locatie !== 'Luchtleiding' && (
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(selectedElement.props.kabel_is_in_buis)}
+                              onChange={(e) => handlePropertyChange('kabel_is_in_buis', e.target.checked, 'checkbox')}
+                            />{' '}
+                            In buis
+                          </label>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <div className="simple-properties-actions">
                   <button className="simple-action-btn" onClick={handleInsertBefore}>
@@ -2107,7 +1953,7 @@ const SimpleHierarchyView: React.FC = () => {
             category,
             types: types.filter(type => 
               allowedTypes.includes(type) && 
-              (!modalSearchTerm || type.toLowerCase().includes(modalSearchTerm.toLowerCase()))
+              (!modalSearchTerm || matchesElementTypeSearch(type, modalSearchTerm))
             )
           }))
           .filter(({ types }) => types.length > 0);
@@ -2192,7 +2038,7 @@ const SimpleHierarchyView: React.FC = () => {
                             <div className="add-element-card-preview">
                               {getElementPreviewSVG(type)}
                             </div>
-                            <div className="add-element-card-name">{type}</div>
+                            <div className="add-element-card-name">{elementTypeLabel(type)}</div>
                           </div>
                         ))}
                       </div>
@@ -2213,7 +2059,7 @@ const SimpleHierarchyView: React.FC = () => {
             category,
             types: types.filter(type => 
               allowedTypes.includes(type) && 
-              (!modalSearchTerm || type.toLowerCase().includes(modalSearchTerm.toLowerCase()))
+              (!modalSearchTerm || matchesElementTypeSearch(type, modalSearchTerm))
             )
           }))
           .filter(({ types }) => types.length > 0);
@@ -2285,7 +2131,7 @@ const SimpleHierarchyView: React.FC = () => {
                             <div className="add-element-card-preview">
                               {getElementPreviewSVG(type)}
                             </div>
-                            <div className="add-element-card-name">{type}</div>
+                            <div className="add-element-card-name">{elementTypeLabel(type)}</div>
                           </div>
                         ))}
                       </div>
@@ -2308,7 +2154,12 @@ const SimpleHierarchyView: React.FC = () => {
             }
           }}
         >
-          <div className="svg-fullscreen-container">
+          <div className="svg-fullscreen-container" onPointerDown={handlePanStart}
+              onPointerMove={handlePanMove}
+              onPointerUp={handlePanEnd}
+              onPointerCancel={handlePanEnd}
+              onLostPointerCapture={handlePanEnd}
+              onClickCapture={handleDrawingClick}>
             {/* Fullscreen controls */}
             <div className="svg-fullscreen-controls">
               <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
@@ -2336,20 +2187,15 @@ const SimpleHierarchyView: React.FC = () => {
             </div>
 
             {/* Fullscreen SVG content */}
-            <div 
-              id="EDS-fullscreen" 
-              onMouseDown={handlePanStart}
-              style={{ 
-                width: '100%',
-                height: '100%',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: isPanning ? 'grabbing' : 'grab'
-              }}
-              dangerouslySetInnerHTML={{ __html: getSVGContent() }}
-            />
+              <DiagramDrawing
+                id="EDS-fullscreen"
+                markup={svgMarkup}
+                zoom={svgZoom} panX={svgPanX} panY={svgPanY}
+                panning={isPanning}
+                selectedId={selectedElementId}
+                highlightEnabled={highlightEnabled}
+                onSelect={handleDrawingSelect}
+              />
           </div>
         </div>
       )}

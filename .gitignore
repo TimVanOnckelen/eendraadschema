@@ -47,3 +47,7 @@ coverage/
 *.bak
 *.backup
 *~
+
+# Browser regression artifacts
+playwright-report/
+test-results/

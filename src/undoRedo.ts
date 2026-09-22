@@ -1,6 +1,7 @@
 import { loadFromText } from "./importExport/importExport";
 import { showSituationPlanPage } from "./sitplan/SituationPlanView";
 import { printsvg } from "./print/print";
+import { markDocumentDirty } from "./storage/DocumentState";
 
 class jsonStore {
   private maxSteps: number;
@@ -163,6 +164,7 @@ export class undoRedo {
     }
 
     this.replaceStringStoreBySVGs();
+    markDocumentDirty();
 
     // React components will update automatically
   }
@@ -176,7 +178,7 @@ export class undoRedo {
 
     let lastView = globalThis.structure.properties.currentView;
     let lastmode = globalThis.structure.mode;
-    if (text != null) loadFromText(text, 0, false);
+    if (text != null) loadFromText(text, 0, false, true);
 
     // We replace the references to the large string store by the actual SVGs
     this.replaceStringStoreBySVGs();
@@ -184,16 +186,9 @@ export class undoRedo {
     globalThis.structure.reSort();
 
     globalThis.structure.mode = lastmode;
-    if (globalThis.structure.properties.currentView != lastView)
-      globalThis.toggleAppView(
-        globalThis.structure.properties.currentView as
-          | "2col"
-          | "config"
-          | "draw"
-      );
-    switch (globalThis.structure.properties.currentView) {
-      case "draw":
-        // View switching handled by React now
+    globalThis.structure.properties.currentView = lastView;
+    switch (globalThis.currentReactView) {
+      case "sitplan":
         showSituationPlanPage();
 
         if (
@@ -218,15 +213,14 @@ export class undoRedo {
         }
 
         break;
-      case "2col":
-        // View switching handled by React now
+      case "editor":
         globalThis.HLRedrawTree();
         break;
-      case "config":
-        // View switching handled by React now
+      case "print":
         printsvg();
         break;
     }
+    markDocumentDirty();
   }
 
   undo() {
