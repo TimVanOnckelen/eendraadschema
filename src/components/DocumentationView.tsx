@@ -3,6 +3,41 @@
  */
 
 import React from 'react';
+import { Icon } from './Icon';
+import { IconName } from '../utils/icons';
+
+interface GuideCardProps {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  intro: string;
+  topics: string[];
+  onOpen: () => void;
+}
+
+const GuideCard: React.FC<GuideCardProps> = ({ icon, title, subtitle, intro, topics, onOpen }) => (
+  <section className="card">
+    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="doc-card-header">
+        <div className="doc-card-icon"><Icon name={icon} size={18} /></div>
+        <div>
+          <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
+          <p className="meta-text" style={{ margin: 0 }}>{subtitle}</p>
+        </div>
+      </div>
+      <p>{intro}</p>
+      <ul style={{ flexGrow: 1 }}>
+        {topics.map((topic) => <li key={topic}>{topic}</li>)}
+      </ul>
+      <div className="doc-card-footer">
+        <button className="btn btn-primary" onClick={onOpen}>
+          Handleiding openen
+          <Icon name="external-link" size={14} />
+        </button>
+      </div>
+    </div>
+  </section>
+);
 
 export const DocumentationView: React.FC = () => {
   const handleOpenNewSitPlanGuide = () => {
@@ -14,164 +49,58 @@ export const DocumentationView: React.FC = () => {
   };
 
   return (
-    <div style={{
-      padding: '20px',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        {/* Header */}
-        <div style={{
-          backgroundColor: '#d3d3d3',
-          padding: '15px',
-          textAlign: 'center',
-          fontWeight: 'bold',
-          fontSize: '18px'
-        }}>
-          Handleiding
+    <div className="page">
+      <div className="page-inner">
+        <header className="page-header">
+          <p className="page-eyebrow">Documentatie</p>
+          <h1 className="page-title">Handleidingen</h1>
+          <p className="page-subtitle">
+            Stapsgewijze uitleg over het tekenen van eéndraadschema's en situatieschema's.
+          </p>
+        </header>
+
+        <div className="grid grid-2">
+          <GuideCard
+            icon="schema"
+            title="Eéndraadschema"
+            subtitle="Volledige handleiding voor de editor"
+            intro="Complete uitleg over het maken van eéndraadschema's:"
+            topics={[
+              'Interface en driekolommen layout',
+              'Elementen toevoegen en beheren (kringen, verbruikers, etc.)',
+              'Beveiligingen en kabeldoorsnedes',
+              'Best practices en tips',
+            ]}
+            onOpen={handleOpenNewEdsGuide}
+          />
+          <GuideCard
+            icon="floorplan"
+            title="Situatieschema"
+            subtitle="Handleiding voor situatieschema's"
+            intro="Alles over het tekenen van situatieschema's (plattegronden):"
+            topics={[
+              'Muren tekenen (binnen- en buitenmuren met textuur)',
+              'Properties sidebar voor real-time aanpassingen',
+              'Layer manager voor organisatie',
+              'Alle sneltoetsen en functies',
+            ]}
+            onOpen={handleOpenNewSitPlanGuide}
+          />
         </div>
 
-
-
-        {/* Content */}
-        <div style={{
-          padding: '20px',
-          backgroundColor: 'white'
-        }}>
-          {/* Guides Section */}
-          <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#2c3e50' }}>
-            📚 Handleidingen
-          </h3>
-
-          {/* Guides Container - Side by Side */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-            gap: '20px',
-            marginBottom: '30px'
-          }}>
-            {/* EDS Guide Card */}
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#e7f3ff',
-              borderRadius: '8px',
-              border: '2px solid #0d6efd',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <button
-                onClick={handleOpenNewEdsGuide}
-                style={{
-                  fontSize: '14px',
-                  padding: '12px 20px',
-                  backgroundColor: '#198754',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  marginBottom: '15px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  whiteSpace: 'normal',
-                  lineHeight: '1.4'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#157347'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#198754'}
-              >
-                ⚡ Eéndraadschema
-              </button>
-              <h4 style={{ margin: '0 0 8px 0', color: '#0c5460' }}>
-                Volledige handleiding voor de editor
-              </h4>
-              <p style={{ margin: 0, lineHeight: '1.6', fontSize: '14px' }}>
-                Complete uitleg over het maken van eéndraadschema's:
-              </p>
-              <ul style={{ margin: '8px 0 0 20px', lineHeight: '1.6', fontSize: '14px', flexGrow: 1 }}>
-                <li>Interface en driekolommen layout</li>
-                <li>Elementen toevoegen en beheren (kringen, verbruikers, etc.)</li>
-                <li>Beveiligingen en kabeldoorsnedes</li>
-                <li>Best practices en tips</li>
-              </ul>
-            </div>
-
-            {/* Situatieschema Guide Card */}
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#e7f3ff',
-              borderRadius: '8px',
-              border: '2px solid #0d6efd',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <button
-                onClick={handleOpenNewSitPlanGuide}
-                style={{
-                  fontSize: '14px',
-                  padding: '12px 20px',
-                  backgroundColor: '#198754',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  marginBottom: '15px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  whiteSpace: 'normal',
-                  lineHeight: '1.4'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#157347'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#198754'}
-              >
-                🏠 Situatieschema
-              </button>
-              <h4 style={{ margin: '0 0 8px 0', color: '#0c5460' }}>
-                Handleiding voor situatieschema's
-              </h4>
-              <p style={{ margin: 0, lineHeight: '1.6', fontSize: '14px' }}>
-                Alles over het tekenen van situatieschema's (plattegronden):
-              </p>
-              <ul style={{ margin: '8px 0 0 20px', lineHeight: '1.6', fontSize: '14px', flexGrow: 1 }}>
-                <li>Muren tekenen (binnen- en buitenmuren met textuur)</li>
-                <li>Properties sidebar voor real-time aanpassingen</li>
-                <li>Layer manager voor organisatie</li>
-                <li>Alle sneltoetsen en functies</li>
-              </ul>
-            </div>
+        <section className="card page-section">
+          <div className="card-body">
+            <h3 className="card-title"><Icon name="info" />Over dit programma</h3>
+            <p>
+              Deze applicatie is een gratis tool om eéndraadschema's en situatieschema's voor elektrische installaties te maken
+              volgens de Belgische normen. Het programma is volledig browser-gebaseerd en vereist geen installatie.
+            </p>
+            <p>
+              Voor vragen, suggesties of het melden van bugs, kan u mailen naar <a href="mailto:tim@xeweb.be">tim@xeweb.be</a>
+            </p>
           </div>
-
-
-          <div style={{
-            height: '1px',
-            backgroundColor: '#dee2e6',
-            margin: '30px 0'
-          }}></div>
-        </div>
-      </div>
-
-      {/* Additional Info Section */}
-      <div style={{
-        marginTop: '30px',
-        padding: '20px',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '8px',
-        border: '1px solid #e9ecef'
-      }}>
-        <h3 style={{ marginTop: 0, color: '#495057' }}>Over dit programma</h3>
-        <p style={{ lineHeight: '1.6', color: '#666' }}>
-          Deze applicatie is een gratis tool om eéndraadschema's en situatieschema's voor elektrische installaties te maken
-          volgens de Belgische normen. Het programma is volledig browser-gebaseerd en vereist geen installatie.
-        </p>
-        <p style={{ lineHeight: '1.6', color: '#666', marginBottom: 0 }}>
-          Voor vragen, suggesties of het melden van bugs, kan u mailen naar tim@xeweb.be
-        </p>
+        </section>
       </div>
     </div>
   );
 };
-

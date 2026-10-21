@@ -29,7 +29,6 @@
   overflow-x: hidden;
   background-color: var(--surface);
   border-right: 1px solid var(--border);
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
 }
 
@@ -49,14 +48,196 @@
   width: 277mm; /* Useful drawing area on A4 landscape */
   height: 190mm; /* Useful drawing area on A4 landscape */
   background-color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.19);
-  border-radius: 5px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  border-radius: 2px;
   transform-origin: top left;
   margin: 0 auto;
 }
 
-[data-theme="dark"] #paper {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.4);
+/* Toolbar (ribbon) */
+#ribbon.tb {
+  flex-shrink: 0;
+  gap: 12px;
+  padding: 0 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.tb-group-row,
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tb-group-row {
+  gap: 6px;
+}
+
+.tb-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.tb-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0 6px 0 2px;
+  white-space: nowrap;
+}
+
+.tb-btn {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  border-radius: var(--radius);
+}
+
+.tb-btn .ui-icon {
+  color: var(--text-secondary);
+}
+
+.tb-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+
+.tb-btn:hover:not(:disabled) .ui-icon {
+  color: var(--text-primary);
+}
+
+.tb-btn.icon-only {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.tb-btn.active,
+.tb-btn.active:hover:not(:disabled) {
+  background: var(--primary-soft);
+  color: var(--primary-color);
+}
+
+.tb-btn.active .ui-icon {
+  color: var(--primary-color);
+}
+
+.tb-btn.danger:hover:not(:disabled),
+.tb-btn.danger:hover:not(:disabled) .ui-icon {
+  background: var(--danger-soft);
+  color: var(--danger-color);
+}
+
+.tb-btn .tb-caret {
+  margin-left: -2px;
+  opacity: 0.7;
+}
+
+.tb-select {
+  height: 30px;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+.tb-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.tb-menu {
+  position: fixed;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  z-index: 9999;
+  min-width: 190px;
+}
+
+.tb-menu-item {
+  width: 100%;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+}
+
+.tb-menu-item .ui-icon {
+  color: var(--text-secondary);
+}
+
+.tb-menu-item:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+
+.tb-menu-item.active {
+  color: var(--primary-color);
+}
+
+.tb-menu-check {
+  margin-left: auto;
+  color: var(--primary-color) !important;
+}
+
+.tb-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+/* Layer manager (src/sitplan/LayerManager.ts) */
+.layer-manager-btn,
+.layer-visibility-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.layer-manager-btn:hover:not(:disabled),
+.layer-visibility-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.layer-manager-btn .ui-icon,
+.layer-visibility-btn .ui-icon {
+  pointer-events: none;
 }
 
 /* Boxes (draggable elements) */
@@ -78,11 +259,11 @@
 }
 
 .box.selected {
-  border: calc(var(--selectPadding) * 1px) solid green;
+  border: calc(var(--selectPadding) * 1px) solid #1f56c2;
 }
 
 .box.selected[movable="false"] {
-  border: calc(var(--selectPadding) * 1px) solid red;
+  border: calc(var(--selectPadding) * 1px) solid #c0352b;
 }
 
 .box.hidden {
@@ -177,14 +358,14 @@
   position: absolute;
   width: 8px;
   height: 8px;
-  background-color: #0d6efd;
+  background-color: #1f56c2;
   border: 1px solid white;
   z-index: 1001;
   pointer-events: auto;
 }
 
 .wall-resize-handle:hover {
-  background-color: #0a58ca;
+  background-color: #1a479f;
   transform: scale(1.2);
 }
 
@@ -235,7 +416,7 @@
   position: absolute;
   width: 12px;
   height: 12px;
-  background-color: #28a745;
+  background-color: #1f56c2;
   border: 2px solid white;
   border-radius: 50%;
   top: -30px;
@@ -246,7 +427,7 @@
 }
 
 .wall-rotation-handle:hover {
-  background-color: #218838;
+  background-color: #1a479f;
   transform: scale(1.2);
 }
 

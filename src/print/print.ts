@@ -1,3 +1,4 @@
+import { iconSvg } from "../utils/icons";
 import { download_by_blob } from "../importExport/importExport";
 import { SVGelement } from "../SVGelement";
 import { flattenSVGfromString } from "../general";
@@ -155,21 +156,23 @@ export function printsvg() {
   const configsection = document.getElementById("configsection");
   if (configsection != null)
     configsection.innerHTML =
-      '<div style="padding: 20px; width: 100%;">' +
-      '<h1 style="font-size: 22px; margin-bottom: 16px;">🖨️ Afdrukken</h1>' +
-      '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
-      '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📄 PDF Genereren</h2>' +
-      '<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">' +
-      '<button id="button_pdfdownload" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">🖨️ Genereer PDF</button>' +
+      '<header class="page-header">' +
+      '<p class="page-eyebrow">Print</p>' +
+      '<h1 class="page-title">Afdrukken</h1>' +
+      '<p class="page-subtitle">Genereer een PDF of exporteer de tekening als SVG.</p>' +
+      "</header>" +
+      '<section class="card print-card"><div class="card-body">' +
+      '<h2 class="card-title">' + iconSvg("file-text") + "PDF genereren</h2>" +
+      '<div class="print-controls">' +
       '<span id="select_papersize"></span>' +
       '<span id="select_dpi"></span>' +
       '<span id="select_scale"></span>' +
-      '<input id="dopdfname" size="20" value="eendraadschema_print.pdf" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;">' +
+      '<input id="dopdfname" size="20" value="eendraadschema_print.pdf">' +
+      '<button id="button_pdfdownload" class="btn btn-primary">' + iconSvg("download") + "Genereer PDF</button>" +
       "</div>" +
-      '<div id="progress_pdf" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);"></div>' +
-      '<div id="select_page_range" style="margin-top: 12px;"></div>' +
-      "</div>" +
-      "</div>";
+      '<div id="progress_pdf" class="print-progress"></div>' +
+      '<div id="select_page_range" class="print-controls" style="margin-top: 12px;"></div>' +
+      "</div></section>";
 
   const button_pdfdownload = document.getElementById("button_pdfdownload");
   if (button_pdfdownload != null) button_pdfdownload.onclick = generatePdf;
@@ -194,14 +197,14 @@ export function printsvg() {
   );
 
   outstr =
-    '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
-    '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">⚙️ Pagina Instellingen</h2>' +
-    '<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">' +
+    '<section class="card print-card"><div class="card-body">' +
+    '<h2 class="card-title">' + iconSvg("settings") + "Pagina-instellingen</h2>" +
+    '<div class="print-controls">' +
     '<span id="check_autopage"></span>' +
     '<span id="id_verticals"></span>' +
     '<span id="id_suggest_xpos_button"></span>' +
     "</div>" +
-    "</div>";
+    "</div></section>";
 
   if (configsection != null)
     configsection.insertAdjacentHTML("beforeend", outstr);
@@ -223,17 +226,17 @@ export function printsvg() {
 
   if (!globalThis.structure.print_table.enableAutopage) {
     outstr =
-      '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
-      '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📐 Pagina Verdeling</h2>' +
+      '<section class="card print-card"><div class="card-body">' +
+      '<h2 class="card-title">' + iconSvg("zoom-fit") + "Paginaverdeling</h2>" +
       '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">' +
       '<div id="id_print_table"></div>' +
-      '<div style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">' +
-      '<p style="margin-bottom: 8px;">Klik op de groene pijl om het schema over meerdere pagina\'s te printen en kies voor elke pagina de start- en stop-positie in het schema (in pixels).</p>' +
+      '<div>' +
+      '<p style="margin-bottom: 8px;">Klik op de + knop om het schema over meerdere pagina\'s te printen en kies voor elke pagina de start- en stop-positie in het schema (in pixels).</p>' +
       '<p style="margin-bottom: 8px;">Je kan eventueel ook de tekst (info) aanpassen die op elke pagina rechts onderaan komt te staan.</p>' +
       "<p>Onderaan kan je bekijken welk deel van het schema op welke pagina belandt.</p>" +
       "</div>" +
       "</div>" +
-      "</div>";
+      "</div></section>";
 
     if (configsection != null)
       configsection.insertAdjacentHTML("beforeend", outstr);
@@ -243,9 +246,6 @@ export function printsvg() {
       printsvg
     );
   }
-
-  strleft +=
-    '<hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">';
 
   const numPages =
     globalThis.structure.print_table.pages.length +
@@ -257,11 +257,11 @@ export function printsvg() {
   }
 
   strleft +=
-    '<div style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">' +
-    '<h2 style="color: var(--primary-color); font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">👁️ Printvoorbeeld</h2>' +
-    '<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">' +
-    '<span style="font-weight: 500; color: var(--text-primary); font-size: 13px;">Pagina:</span>' +
-    '<select onchange="HLDisplayPage()" id="id_select_page" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">';
+    '<section class="card print-card"><div class="card-body">' +
+    '<h2 class="card-title">' + iconSvg("eye") + "Printvoorbeeld</h2>" +
+    '<div class="print-controls" style="margin-bottom: 12px;">' +
+    '<label for="id_select_page">Pagina</label>' +
+    '<select onchange="HLDisplayPage()" id="id_select_page">';
 
   for (let i = 0; i < numPages; i++) {
     if (i == globalThis.structure.print_table.displaypage) {
@@ -273,23 +273,23 @@ export function printsvg() {
   }
   strleft +=
     "</select>" +
-    '<span style="color: var(--text-secondary); font-size: 12px;">(Enkel tekening, kies "Genereer PDF" om ook de tekstuele gegevens te zien)</span>' +
+    '<span class="print-hint">Enkel tekening, kies "Genereer PDF" om ook de tekstuele gegevens te zien.</span>' +
     "</div>";
 
   strleft +=
-    '<div style="background: var(--background); border-radius: 6px; padding: 12px; margin-bottom: 12px;">' +
-    '<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">' +
-    '<button onclick="dosvgdownload()" style="background: white; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">💾 Opslaan als SVG</button>' +
-    '<input id="dosvgname" size="20" value="eendraadschema_print.svg" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px;">' +
+    '<div class="print-svg-export">' +
+    '<div class="print-controls">' +
+    '<input id="dosvgname" size="20" value="eendraadschema_print.svg">' +
+    '<button onclick="dosvgdownload()" class="btn">' + iconSvg("download") + "Opslaan als SVG</button>" +
+    '<span class="print-hint">Converteer met een ander programma naar PDF (bv. Inkscape).</span>' +
     "</div>" +
-    '<p style="color: var(--text-secondary); font-size: 12px; margin: 0;">Sla tekening hieronder op als SVG en converteer met een ander programma naar PDF (bvb Inkscape).</p>' +
     "</div>";
 
   strleft += globalThis.displayButtonPrintToPdf(); // This is only for the online version
 
   strleft +=
-    '<div id="printarea" style="border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: #f9fafb; overflow: auto; max-height: 500px;"></div>';
-  strleft += "</div></div>"; // Close card and outer container
+    '<div id="printarea" class="print-area"></div>';
+  strleft += "</div></section>"; // Close card
 
   if (configsection != null)
     configsection.insertAdjacentHTML("beforeend", strleft);

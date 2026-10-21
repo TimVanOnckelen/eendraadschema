@@ -1,3 +1,4 @@
+import { iconSvg } from "../utils/icons";
 import { Hierarchical_List } from "../Hierarchical_List";
 import { SituationPlan } from "../sitplan/SituationPlan";
 import { Electro_Item } from "../List_Item/Electro_Item";
@@ -973,14 +974,14 @@ export function showFilePage() {
     if (globalThis.fileAPIobj.filename != null) {
       saveSection = `
                 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                    <button onclick="exportjson(saveAs = false)" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
-                        💾 Opslaan
+                    <button onclick="exportjson(saveAs = false)" class="btn btn-primary">
+                        ${iconSvg("save")} Opslaan
                     </button>
-                    <button onclick="exportjson(saveAs = true)" style="background: white; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
-                        📁 Opslaan als
+                    <button onclick="exportjson(saveAs = true)" class="btn">
+                        ${iconSvg("save")} Opslaan als
                     </button>
                 </div>
-                <div style="background: #f0f9ff; border-left: 4px solid var(--secondary-color); padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+                <div style="background: var(--primary-soft); border-left: 3px solid var(--primary-color); padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
                     <div style="color: var(--text-primary); font-size: 14px; line-height: 1.6;">
                         Laatst geopend of opgeslagen om <strong>${globalThis.fileAPIobj.lastsaved}</strong> met naam <strong>${globalThis.fileAPIobj.filename}</strong>
                         <br><br>
@@ -989,12 +990,12 @@ export function showFilePage() {
                 </div>`;
     } else {
       saveSection = `
-                <button onclick="exportjson(saveAs = true)" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; margin-bottom: 20px;">
-                    💾 Opslaan als
+                <button onclick="exportjson(saveAs = true)" class="btn btn-primary">
+                    ${iconSvg("save")} Opslaan als
                 </button>
-                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
-                    <strong style="color: #92400e;">⚠️ Opgelet:</strong>
-                    <span style="color: #92400e;"> Uw werk werd nog niet opgeslagen tijdens deze sessie. Klik op "Opslaan als".</span>
+                <div style="background: var(--warning-soft); border-left: 3px solid var(--warning-color); padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+                    <strong style="color: var(--warning-color);">Opgelet:</strong>
+                    <span style="color: var(--warning-color);"> Uw werk werd nog niet opgeslagen tijdens deze sessie. Klik op "Opslaan als".</span>
                 </div>`;
     }
   } else {
@@ -1002,14 +1003,14 @@ export function showFilePage() {
     saveSection = `
             <div style="margin-bottom: 20px;">
                 <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
-                    Bestandsnaam: <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 13px;">${globalThis.structure.properties.filename}</code>
+                    Bestandsnaam: <code style="background: var(--surface-sunken); padding: 2px 6px; border-radius: 4px; font-size: 13px;">${globalThis.structure.properties.filename}</code>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button onclick="exportjson()" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
-                        💾 Opslaan
+                    <button onclick="exportjson()" class="btn btn-primary">
+                        ${iconSvg("save")} Opslaan
                     </button>
-                    <button onclick="HL_enterSettings()" style="background: white; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
-                        ✏️ Naam wijzigen
+                    <button onclick="HL_enterSettings()" class="btn">
+                        ${iconSvg("pencil")} Naam wijzigen
                     </button>
                 </div>
             </div>
@@ -1026,29 +1027,29 @@ export function showFilePage() {
         <span id="exportscreen"></span>
         <div class="modern-settings-container">
             <div class="modern-settings-header">
-                <h1>📂 Bestand</h1>
+                <h1>Bestand</h1>
             </div>
 
             <div style="max-width: 900px; margin: 0 auto;">
                 <!-- Openen Section -->
-                <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">
-                    <h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
-                        📥 Openen uit bestand
+                <div class="card print-card"><div class="card-body">
+                    <h2 class="card-title">
+                        ${iconSvg("folder-open")} Openen uit bestand
                     </h2>
                     <div style="display: flex; gap: 20px; align-items: start;">
-                        <button onclick="loadClicked()" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
-                            📂 Openen
+                        <button onclick="loadClicked()" class="btn btn-primary">
+                            ${iconSvg("folder-open")} Openen
                         </button>
                         <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin: 0;">
                             Click op "openen" en selecteer een eerder opgeslagen EDS bestand.
                         </p>
                     </div>
-                </div>
+                </div></div>
 
                 <!-- Opslaan Section -->
-                <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">
-                    <h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
-                        💾 Opslaan
+                <div class="card print-card"><div class="card-body">
+                    <h2 class="card-title">
+                        ${iconSvg("save")} Opslaan
                     </h2>
                     ${saveSection}
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text-secondary);">
@@ -1057,29 +1058,29 @@ export function showFilePage() {
                         } style="width: 18px; height: 18px; cursor: pointer;">
                         <span>Opslaan zonder compressie (groter bestand)</span>
                     </label>
-                </div>
+                </div></div>
 
                 <!-- Samenvoegen Section -->
-                <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <h2 style="color: var(--primary-color); font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
-                        🔀 Samenvoegen
+                <div class="card print-card"><div class="card-body">
+                    <h2 class="card-title">
+                        ${iconSvg("merge")} Samenvoegen
                     </h2>
                     <div style="display: flex; gap: 20px; align-items: start;">
-                        <button onclick="importToAppendClicked()" style="background: linear-gradient(135deg, var(--accent-color), var(--primary-color)); color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
-                            🔀 Samenvoegen
+                        <button onclick="importToAppendClicked()" class="btn btn-primary">
+                            ${iconSvg("merge")} Samenvoegen
                         </button>
                         <div style="flex: 1;">
                             <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin: 0 0 12px 0;">
                                 Open een tweede EDS bestand en voeg de inhoud toe aan het huidige EDS bestand.
                                 Voegt de ééndraadschema's samen en voegt eveneens pagina's toe aan het situatieschema als dat nodig is.
                             </p>
-                            <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; border-radius: 6px;">
-                                <strong style="color: #991b1b;">⚠️ Opgelet!</strong>
-                                <span style="color: #991b1b;"> Het is aanbevolen uw werk op te slaan alvorens deze functie te gebruiken!</span>
+                            <div style="background: var(--danger-soft); border-left: 3px solid var(--danger-color); padding: 12px 16px; border-radius: 6px;">
+                                <strong style="color: var(--danger-color);">Opgelet!</strong>
+                                <span style="color: var(--danger-color);"> Het is aanbevolen uw werk op te slaan alvorens deze functie te gebruiken!</span>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div></div>
             </div>
         </div>
     `;

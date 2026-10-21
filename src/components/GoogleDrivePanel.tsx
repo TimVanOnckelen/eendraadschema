@@ -122,32 +122,27 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
     });
 
   const buttonStyle: React.CSSProperties = {
-    border: 'none',
-    borderRadius: '8px',
-    padding: '10px 18px',
-    fontSize: '14px',
-    fontWeight: 500,
     cursor: busy || !configured ? 'not-allowed' : 'pointer',
-    opacity: busy || !configured ? 0.6 : 1,
   };
 
   return (
     <>
       <div
         style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          marginBottom: '24px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px',
+          boxShadow: 'var(--shadow-sm)',
+          marginBottom: '16px',
         }}
       >
         <h2
           style={{
-            color: 'var(--primary-color)',
-            fontSize: '20px',
+            color: 'var(--text-primary)',
+            fontSize: '15px',
             fontWeight: 600,
-            marginBottom: '8px',
+            margin: '0 0 6px',
           }}
         >
           Google Drive {active ? '· actief' : ''}
@@ -160,9 +155,9 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
         {!configured && (
           <div
             style={{
-              background: '#fef3c7',
-              borderLeft: '4px solid #f59e0b',
-              color: '#92400e',
+              background: 'var(--warning-soft)',
+              borderLeft: '3px solid var(--warning-color)',
+              color: 'var(--warning-color)',
               padding: '12px 16px',
               borderRadius: '6px',
               marginBottom: '16px',
@@ -174,12 +169,13 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
           </div>
         )}
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           <button
             type="button"
             disabled={busy || !configured}
             onClick={handleChooseFile}
-            style={{ ...buttonStyle, background: '#1a73e8', color: 'white' }}
+            className="btn btn-primary"
+            style={buttonStyle}
           >
             {busy ? 'Bezig…' : 'Openen vanuit Drive'}
           </button>
@@ -187,7 +183,8 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
             type="button"
             disabled={busy || !configured}
             onClick={() => handleSave(false)}
-            style={{ ...buttonStyle, background: '#188038', color: 'white' }}
+            className="btn"
+            style={buttonStyle}
           >
             {canOverwriteCurrentDriveFile ? 'Opslaan in Drive' : 'Opslaan als in Drive'}
           </button>
@@ -196,7 +193,8 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
               type="button"
               disabled={busy || !configured}
               onClick={() => handleSave(true)}
-              style={{ ...buttonStyle, background: 'white', color: '#1a73e8', border: '1px solid #1a73e8' }}
+              className="btn"
+              style={buttonStyle}
             >
               Kopie opslaan in Drive
             </button>
@@ -209,7 +207,7 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
           </p>
         )}
         {status && (
-          <p role="status" style={{ margin: '12px 0 0', color: '#137333', fontSize: '13px' }}>
+          <p role="status" style={{ margin: '12px 0 0', color: 'var(--success-color)', fontSize: '13px' }}>
             {status}
           </p>
         )}
@@ -234,7 +232,7 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
             if (event.target === event.currentTarget) setShowFilePicker(false);
           }}
         >
-          <div style={{ width: 'min(620px, 100%)', maxHeight: '80vh', overflow: 'auto', background: 'white', borderRadius: '10px', padding: '20px' }}>
+          <div style={{ width: 'min(620px, 100%)', maxHeight: '80vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Google Drive-bestanden</h3>
               <button type="button" onClick={() => setShowFilePicker(false)} aria-label="Sluiten" style={{ border: 0, background: 'transparent', fontSize: '24px', cursor: 'pointer' }}>×</button>
@@ -244,14 +242,14 @@ export const GoogleDrivePanel: React.FC<GoogleDrivePanelProps> = ({
                 Geen EDS- of JSON-bestanden gevonden die met deze app zijn gemaakt of geopend.
               </p>
             ) : (
-              <div style={{ marginTop: '16px', border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' }}>
+              <div style={{ marginTop: '16px', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
                 {files.map((file) => (
                   <button
                     type="button"
                     key={file.id}
                     disabled={busy}
                     onClick={() => handleOpen(file)}
-                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '12px 14px', border: 0, borderBottom: '1px solid #eee', background: 'white', cursor: busy ? 'wait' : 'pointer', textAlign: 'left' }}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '12px 14px', border: 0, borderBottom: '1px solid var(--border)', boxShadow: 'none', borderRadius: 0, background: 'var(--surface)', cursor: busy ? 'wait' : 'pointer', textAlign: 'left' }}
                   >
                     <span style={{ color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</span>
                     <span style={{ color: 'var(--text-secondary)', fontSize: '12px', whiteSpace: 'nowrap' }}>{formatModifiedTime(file.modifiedTime)}</span>

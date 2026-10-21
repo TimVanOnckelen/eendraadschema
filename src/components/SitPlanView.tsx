@@ -11,6 +11,7 @@ import { AskLegacySchakelaar } from '../importExport/AskLegacySchakelaar';
 import { HelperTip } from '../documentation/HelperTip';
 import { SitPlanSidebar } from './SitPlanSidebar';
 import { useSitPlan } from '../hooks/useSitPlan';
+import { Icon } from './Icon';
 
 export const SitPlanView: React.FC = () => {
   const { structure, appDocStorage, undostruct } = useApp();
@@ -333,801 +334,232 @@ export const SitPlanView: React.FC = () => {
     }
   };
 
-  // Button styling constants
-  const ribbonButtonStyle = {
-    padding: '8px 12px',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: '4px',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    color: 'white',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    fontSize: '13px',
-    fontWeight: '500',
-    whiteSpace: 'nowrap' as const,
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      backgroundColor: 'rgba(255,255,255,0.25)',
-    }
-  };
+  const buildingModeActive = Boolean(
+    sitPlan.state.drawingMode &&
+    (sitPlan.state.drawingMode.type === 'wall' || sitPlan.state.drawingMode.type === 'window' || sitPlan.state.drawingMode.type === 'door')
+  );
+  const shapeModeActive = sitPlan.state.drawingMode?.type === 'shape';
+  const canUndo = Boolean(undostruct && undostruct.undoStackSize() > 0);
+  const canRedo = Boolean(undostruct && undostruct.redoStackSize() > 0);
 
-  const accentButtonStyle = {
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: '4px',
-    backgroundColor: '#ff6b35',
-    color: 'white',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '13px',
-    fontWeight: '500',
-    whiteSpace: 'nowrap' as const,
-    transition: 'all 0.2s ease',
-    ':hover': {
-      backgroundColor: '#ff5722',
-    }
-  };
+  const menuItem = (
+    label: string,
+    icon: React.ReactNode,
+    active: boolean,
+    onSelect: () => void,
+    close: () => void
+  ) => (
+    <button
+      type="button"
+      className={`tb-menu-item${active ? ' active' : ''}`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect();
+        close();
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+      {active && <Icon name="check" size={14} className="tb-menu-check" />}
+    </button>
+  );
 
-  const dropdownButtonStyle = {
-    ...accentButtonStyle,
-    backgroundColor: showGrid ? '#4caf50' : '#ff9800',
-  };
+  const swatch = (color: string) => (
+    <span className="tb-swatch" style={{ background: color }} />
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100vh', overflow: 'hidden', margin: 0, padding: 0 }}>
       {/* Ribbon for sitplan controls */}
-      <div id="ribbon" style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        padding: '10px 16px',
-        background: 'linear-gradient(to right, #0d47a1, #1565c0)',
-        borderBottom: '2px solid #0d3a8c',
-        alignItems: 'center',
-        gap: '12px',
-        minHeight: '56px',
-        flexShrink: 0,
-        color: 'white',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'visible' }}>
+      <div id="ribbon" className="tb">
+        <div className="tb-group-row">
           {/* Undo/Redo */}
-          <button
-            onClick={handleUndo}
-            disabled={!undostruct || undostruct.undoStackSize() === 0}
-            style={{
-              ...ribbonButtonStyle,
-              opacity: undostruct?.undoStackSize() > 0 ? 1 : 0.5,
-              cursor: undostruct?.undoStackSize() > 0 ? 'pointer' : 'not-allowed',
-            } as React.CSSProperties}
-            title="Ongedaan maken (Ctrl+Z)"
-          >
-            <span style={{ fontSize: '16px' }}>↶</span>
-          </button>
-          <button
-            onClick={handleRedo}
-            disabled={!undostruct || undostruct.redoStackSize() === 0}
-            style={{
-              ...ribbonButtonStyle,
-              opacity: undostruct?.redoStackSize() > 0 ? 1 : 0.5,
-              cursor: undostruct?.redoStackSize() > 0 ? 'pointer' : 'not-allowed',
-            } as React.CSSProperties}
-            title="Opnieuw (Ctrl+Y)"
-          >
-            <span style={{ fontSize: '16px' }}>↷</span>
-          </button>
+          <div className="tb-group">
+            <button type="button" className="tb-btn icon-only" onClick={handleUndo} disabled={!canUndo} title="Ongedaan maken (Ctrl+Z)" aria-label="Ongedaan maken">
+              <Icon name="undo" />
+            </button>
+            <button type="button" className="tb-btn icon-only" onClick={handleRedo} disabled={!canRedo} title="Opnieuw (Ctrl+Y)" aria-label="Opnieuw">
+              <Icon name="redo" />
+            </button>
+          </div>
 
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.3)', margin: '0 4px' }}></div>
+          <span className="tb-sep" />
 
           {/* Add items */}
-          <button
-            onClick={handleAddFromFile}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: '#cb997e',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#a5a58d'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#cb997e'}
-            title="Achtergrondafbeelding toevoegen"
-          >
-            <span style={{ fontSize: '16px' }}>📁</span>
-            <span>Bestand</span>
-          </button>
-          <button
-            onClick={handleAddFromSchema}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: '#cb997e',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#a5a58d'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#cb997e'}
-            title="Symbool uit schema toevoegen"
-          >
-            <span style={{ fontSize: '16px' }}>⚡</span>
-            <span>Schema</span>
-          </button>
-          <button
-            onClick={handleAddCustom}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: '#cb997e',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#00796b'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#009688'}
-            title="Los symbool toevoegen"
-          >
-            <span style={{ fontSize: '16px' }}>➕</span>
-            <span>Los</span>
-          </button>
+          <div className="tb-group">
+            <span className="tb-label">Toevoegen</span>
+            <button type="button" className="tb-btn" onClick={handleAddFromFile} title="Achtergrondafbeelding toevoegen">
+              <Icon name="image" />
+              <span>Bestand</span>
+            </button>
+            <button type="button" className="tb-btn" onClick={handleAddFromSchema} title="Symbool uit schema toevoegen">
+              <Icon name="schema" />
+              <span>Schema</span>
+            </button>
+            <button type="button" className="tb-btn" onClick={handleAddCustom} title="Los symbool toevoegen">
+              <Icon name="plus" />
+              <span>Los</span>
+            </button>
+          </div>
 
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.3)', margin: '0 4px' }}></div>
+          <span className="tb-sep" />
 
           {/* Drawing tools group - Bouwelementen Dropdown */}
-          <div style={{ position: 'relative', display: 'inline-block' }} data-building-menu>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Building menu clicked, current state:', buildingElementsMenuOpen);
-                setBuildingElementsMenuOpen(!buildingElementsMenuOpen);
-              }}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: '4px',
-                backgroundColor: sitPlan.state.drawingMode && (sitPlan.state.drawingMode.type === 'wall' || sitPlan.state.drawingMode.type === 'window' || sitPlan.state.drawingMode.type === 'door') ? '#009688' : '#80cbc4',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                fontWeight: '500',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-              }}
-              title="Bouwelementen"
-            >
-              <span style={{ fontSize: '16px' }}>🏗️</span>
-              <span>
-                {isWallDrawingMode('inner') ? 'Binnenmuur' : 
-                 isWallDrawingMode('outer') ? 'Buitenmuur' :
-                 isWindowDrawingMode() ? 'Raam' :
-                 isDoorDrawingMode() ? 'Deur' :
-                 'Bouwelementen'}
-              </span>
-              <span style={{ fontSize: '10px' }}>▼</span>
-            </button>
+          <div className="tb-group">
+            <div className="tb-dropdown" data-building-menu>
+              <button
+                type="button"
+                className={`tb-btn${buildingModeActive ? ' active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setBuildingElementsMenuOpen(!buildingElementsMenuOpen);
+                }}
+                title="Bouwelementen"
+              >
+                <Icon name="wall" />
+                <span>
+                  {isWallDrawingMode('inner') ? 'Binnenmuur' :
+                   isWallDrawingMode('outer') ? 'Buitenmuur' :
+                   isWindowDrawingMode() ? 'Raam' :
+                   isDoorDrawingMode() ? 'Deur' :
+                   'Bouwelementen'}
+                </span>
+                <Icon name="chevron-down" size={14} className="tb-caret" />
+              </button>
 
-            {buildingElementsMenuOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: '4px',
-                backgroundColor: '#ffffff',
-                border: '2px solid #adb5bd',
-                borderRadius: '6px',
-                zIndex: 9999,
-                minWidth: '180px',
-                overflow: 'hidden'
-              }}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleInnerWall();
-                    setBuildingElementsMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isWallDrawingMode('inner') ? '#e8f5e9' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('inner') ? '#e8f5e9' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('inner') ? '#e8f5e9' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>🧱</span>
-                  <span>Binnenmuur</span>
-                </button>
+              {buildingElementsMenuOpen && (
+                <div className="tb-menu">
+                  {menuItem('Binnenmuur', <Icon name="wall" />, isWallDrawingMode('inner'), handleToggleInnerWall, () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Buitenmuur', <Icon name="wall" strokeWidth={2.5} />, isWallDrawingMode('outer'), handleToggleOuterWall, () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Raam', <Icon name="window" />, isWindowDrawingMode(), handleToggleWindow, () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Deur', <Icon name="door" />, isDoorDrawingMode(), handleToggleDoor, () => setBuildingElementsMenuOpen(false))}
+                </div>
+              )}
+            </div>
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleOuterWall();
-                    setBuildingElementsMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isWallDrawingMode('outer') ? '#e8f5e9' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('outer') ? '#e8f5e9' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWallDrawingMode('outer') ? '#e8f5e9' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>🧱</span>
-                  <span>Buitenmuur</span>
-                </button>
+            {/* Shapes/Patterns Dropdown */}
+            <div className="tb-dropdown" data-shapes-menu>
+              <button
+                type="button"
+                className={`tb-btn${shapeModeActive ? ' active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShapesMenuOpen(!shapesMenuOpen);
+                }}
+                title="Vormen & Patronen"
+              >
+                <Icon name="shape" />
+                <span>
+                  {isShapeDrawingMode('white') ? 'Wit' :
+                   isShapeDrawingMode('black') ? 'Zwart' :
+                   isShapeDrawingMode('gray') ? 'Grijs' :
+                   isShapeDrawingMode('darkgray') ? 'Donkergrijs' :
+                   'Vormen'}
+                </span>
+                <Icon name="chevron-down" size={14} className="tb-caret" />
+              </button>
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleWindow();
-                    setBuildingElementsMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isWindowDrawingMode() ? '#e3f2fd' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isWindowDrawingMode() ? '#e3f2fd' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isWindowDrawingMode() ? '#e3f2fd' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>🪟</span>
-                  <span>Raam</span>
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleDoor();
-                    setBuildingElementsMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isDoorDrawingMode() ? '#fff3e0' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDoorDrawingMode() ? '#fff3e0' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDoorDrawingMode() ? '#fff3e0' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>🚪</span>
-                  <span>Deur</span>
-                </button>
-              </div>
-            )}
+              {shapesMenuOpen && (
+                <div className="tb-menu">
+                  {menuItem('Wit', swatch('#ffffff'), isShapeDrawingMode('white'), handleToggleWhiteShape, () => setShapesMenuOpen(false))}
+                  {menuItem('Zwart', swatch('#000000'), isShapeDrawingMode('black'), handleToggleBlackShape, () => setShapesMenuOpen(false))}
+                  {menuItem('Grijs', swatch('#999999'), isShapeDrawingMode('gray'), handleToggleGrayShape, () => setShapesMenuOpen(false))}
+                  {menuItem('Donkergrijs', swatch('#555555'), isShapeDrawingMode('darkgray'), handleToggleDarkGrayShape, () => setShapesMenuOpen(false))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6', margin: '0 4px' }}></div>
+          <span className="tb-sep" />
 
-          {/* Shapes/Patterns Dropdown */}
-          <div style={{ position: 'relative', display: 'inline-block' }} data-shapes-menu>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShapesMenuOpen(!shapesMenuOpen);
-              }}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: '4px',
-                backgroundColor: sitPlan.state.drawingMode?.type === 'shape' ? '#009688' : '#80cbc4',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                fontWeight: '500',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-              }}
-              title="Vormen & Patronen"
-            >
-              <span style={{ fontSize: '16px' }}>🎨</span>
-              <span>
-                {isShapeDrawingMode('white') ? 'Wit' :
-                 isShapeDrawingMode('black') ? 'Zwart' :
-                 isShapeDrawingMode('gray') ? 'Grijs' :
-                 isShapeDrawingMode('darkgray') ? 'Donkergrijs' :
-                 'Vormen'}
-              </span>
-              <span style={{ fontSize: '10px' }}>▼</span>
+          {/* Arrange */}
+          <div className="tb-group">
+            <button type="button" className="tb-btn" onClick={handleToggleLayerManager} title="Laagbeheer tonen/verbergen">
+              <Icon name="layers" />
+              <span>Lagen</span>
             </button>
-
-            {shapesMenuOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: '4px',
-                backgroundColor: '#ffffff',
-                border: '2px solid #adb5bd',
-                borderRadius: '6px',
-                zIndex: 9999,
-                minWidth: '180px',
-                overflow: 'hidden'
-              }}>
-                {/* White */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleWhiteShape();
-                    setShapesMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isShapeDrawingMode('white') ? '#f5f5f5' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('white') ? '#f5f5f5' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('white') ? '#f5f5f5' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>⬜</span>
-                  <span>Wit</span>
-                </button>
-
-                {/* Black */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleBlackShape();
-                    setShapesMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isShapeDrawingMode('black') ? '#e8e8e8' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('black') ? '#e8e8e8' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('black') ? '#e8e8e8' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px' }}>⬛</span>
-                  <span>Zwart</span>
-                </button>
-
-                {/* Gray */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleGrayShape();
-                    setShapesMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isShapeDrawingMode('gray') ? '#e0e0e0' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('gray') ? '#e0e0e0' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('gray') ? '#e0e0e0' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px', backgroundColor: '#999999', borderRadius: '2px', padding: '2px' }}>◼️</span>
-                  <span>Grijs</span>
-                </button>
-
-                {/* Dark Gray */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleDarkGrayShape();
-                    setShapesMenuOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    backgroundColor: isShapeDrawingMode('darkgray') ? '#d0d0d0' : 'transparent',
-                    color: '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    textAlign: 'left'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('darkgray') ? '#d0d0d0' : '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isShapeDrawingMode('darkgray') ? '#d0d0d0' : 'transparent'}
-                >
-                  <span style={{ fontSize: '16px', backgroundColor: '#555555', borderRadius: '2px', padding: '2px' }}>◼️</span>
-                  <span>Donkergrijs</span>
-                </button>
-              </div>
-            )}
+            <button type="button" className="tb-btn icon-only" onClick={handleSendBack} title="Naar achter verplaatsen" aria-label="Naar achter">
+              <Icon name="send-back" />
+            </button>
+            <button type="button" className="tb-btn icon-only" onClick={handleBringFront} title="Naar voor verplaatsen" aria-label="Naar voor">
+              <Icon name="bring-front" />
+            </button>
+            <button type="button" className="tb-btn icon-only danger" onClick={handleDelete} title="Geselecteerde symbool verwijderen (Del)" aria-label="Verwijder">
+              <Icon name="trash" />
+            </button>
           </div>
-
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.3)', margin: '0 4px' }}></div>
-
-          {/* Layer Manager */}
-          <button
-            onClick={handleToggleLayerManager}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'}
-            title="Laagbeheer tonen/verbergen"
-          >
-            <span style={{ fontSize: '16px' }}>🗂️</span>
-            <span>Lagen</span>
-          </button>
-
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.3)', margin: '0 4px' }}></div>
-
-          {/* Delete */}
-          <button
-            onClick={handleDelete}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bb2d3b'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
-            title="Geselecteerde symbool verwijderen (Del)"
-          >
-            <span style={{ fontSize: '16px' }}>🗑️</span>
-            <span>Verwijder</span>
-          </button>
-
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.3)', margin: '0 4px' }}></div>
-
-          {/* Z-order */}
-          <button
-            onClick={handleSendBack}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'}
-            title="Naar achter verplaatsen"
-          >
-            <span style={{ fontSize: '16px' }}>⬇</span>
-            <span>Achter</span>
-          </button>
-          <button
-            onClick={handleBringFront}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'}
-            title="Naar voor verplaatsen"
-          >
-            <span style={{ fontSize: '16px' }}>⬆</span>
-            <span>Voor</span>
-          </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="tb-group-row">
           {/* Grid toggle */}
           <button
+            type="button"
+            className={`tb-btn${showGrid ? ' active' : ''}`}
             onClick={handleToggleGrid}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: showGrid ? '#009688' : '#80cbc4',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title={showGrid ? 'Raster verbergen' : 'Raster tonen'}
+            aria-pressed={showGrid}
           >
-            <span style={{ fontSize: '16px' }}>⊞</span>
-            <span>{showGrid ? 'Raster aan' : 'Raster uit'}</span>
+            <Icon name="window" />
+            <span>Raster</span>
           </button>
 
           {/* Page selector */}
           {sitPlan.state.numPages > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              padding: '6px 12px',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              borderRadius: '4px',
-              whiteSpace: 'nowrap',
-              color: 'white'
-            }}>
-              <span style={{ fontSize: '13px', fontWeight: '500' }}>Pag.</span>
-              <select 
-                id="id_sitplanpage" 
-                value={sitPlan.state.currentPage} 
-                onChange={handlePageChange}
-                style={{
-                  padding: '4px 8px',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  color: 'white',
-                  cursor: 'pointer',
-                }}
-              >
-                {Array.from({ length: sitPlan.state.numPages }, (_, i) => i + 1).map((page) => (
-                  <option key={page} value={page} style={{ color: '#333' }}>
-                    {page}
-                  </option>
-                ))}
-              </select>
-              <button 
-                onClick={handleAddPage}
-                disabled={sitPlan.state.currentPage !== sitPlan.state.numPages}
-                style={{
-                  padding: '4px 8px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: sitPlan.state.currentPage === sitPlan.state.numPages ? '#009688' : '#ccc',
-                  color: 'white',
-                  cursor: sitPlan.state.currentPage === sitPlan.state.numPages ? 'pointer' : 'not-allowed',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (sitPlan.state.currentPage === sitPlan.state.numPages) {
-                    e.currentTarget.style.backgroundColor = '#00796b';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (sitPlan.state.currentPage === sitPlan.state.numPages) {
-                    e.currentTarget.style.backgroundColor = '#009688';
-                  }
-                }}
-                title="Nieuwe pagina toevoegen"
-              >
-                +
-              </button>
-              <button 
-                onClick={handleDeletePage}
-                disabled={sitPlan.state.numPages <= 1}
-                style={{
-                  padding: '4px 8px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: sitPlan.state.numPages > 1 ? '#e91e63' : '#ccc',
-                  color: 'white',
-                  cursor: sitPlan.state.numPages > 1 ? 'pointer' : 'not-allowed',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (sitPlan.state.numPages > 1) {
-                    e.currentTarget.style.backgroundColor = '#c2185b';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (sitPlan.state.numPages > 1) {
-                    e.currentTarget.style.backgroundColor = '#e91e63';
-                  }
-                }}
-                title="Huidige pagina verwijderen"
-              >
-                −
-              </button>
-            </div>
+            <>
+              <span className="tb-sep" />
+              <div className="tb-group">
+                <span className="tb-label">Pagina</span>
+                <select
+                  id="id_sitplanpage"
+                  className="tb-select"
+                  value={sitPlan.state.currentPage}
+                  onChange={handlePageChange}
+                >
+                  {Array.from({ length: sitPlan.state.numPages }, (_, i) => i + 1).map((page) => (
+                    <option key={page} value={page}>
+                      {page} / {sitPlan.state.numPages}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="tb-btn icon-only"
+                  onClick={handleAddPage}
+                  disabled={sitPlan.state.currentPage !== sitPlan.state.numPages}
+                  title="Nieuwe pagina toevoegen"
+                  aria-label="Nieuwe pagina toevoegen"
+                >
+                  <Icon name="plus" />
+                </button>
+                <button
+                  type="button"
+                  className="tb-btn icon-only danger"
+                  onClick={handleDeletePage}
+                  disabled={sitPlan.state.numPages <= 1}
+                  title="Huidige pagina verwijderen"
+                  aria-label="Huidige pagina verwijderen"
+                >
+                  <Icon name="minus" />
+                </button>
+              </div>
+            </>
           )}
 
-          <div style={{ width: '1px', height: '24px', backgroundColor: '#dee2e6' }}></div>
+          <span className="tb-sep" />
 
           {/* Zoom controls */}
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              onClick={handleZoomIn}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: '4px',
-                backgroundColor: '#673ab7',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '16px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5e35b1'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#673ab7'}
-              title="Zoom in"
-            >
-              🔍+
+          <div className="tb-group">
+            <button type="button" className="tb-btn icon-only" onClick={handleZoomOut} title="Zoom uit" aria-label="Zoom uit">
+              <Icon name="zoom-out" />
             </button>
-            <button
-              onClick={handleZoomOut}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: '4px',
-                backgroundColor: '#673ab7',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '16px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5e35b1'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#673ab7'}
-              title="Zoom uit"
-            >
-              🔍−
+            <button type="button" className="tb-btn icon-only" onClick={handleZoomIn} title="Zoom in" aria-label="Zoom in">
+              <Icon name="zoom-in" />
             </button>
-            <button
-              onClick={handleZoomToFit}
-              style={{
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: '4px',
-                backgroundColor: '#673ab7',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '16px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5e35b1'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#673ab7'}
-              title="Zoom om passend te maken"
-            >
-              ⛶
+            <button type="button" className="tb-btn icon-only" onClick={handleZoomToFit} title="Zoom om passend te maken" aria-label="Zoom om passend te maken">
+              <Icon name="zoom-fit" />
             </button>
           </div>
         </div>
@@ -1182,100 +614,63 @@ export const SitPlanView: React.FC = () => {
       {/* Keyboard Shortcuts Dialog */}
       {showKeysDialog && (
         <div 
-          className="keyboard-shortcuts-overlay"
+          className="keyboard-shortcuts-overlay editor-modal-overlay"
           onClick={(e) => {
             if ((e.target as HTMLElement).classList.contains('keyboard-shortcuts-overlay')) {
               setShowKeysDialog(false);
             }
           }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
-          <div 
-            className="keyboard-shortcuts-dialog"
-            style={{
-              backgroundColor: 'var(--surface)',
-              color: 'var(--text-primary)',
-              borderRadius: '12px',
-              padding: '32px',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
-              position: 'relative'
-            }}
-          >
-            <button
-              onClick={() => setShowKeysDialog(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)'
-              }}
-            >
-              ✕
+          <div className="keyboard-shortcuts-dialog editor-modal" style={{ maxWidth: '560px' }}>
+            <button className="editor-modal-close" onClick={() => setShowKeysDialog(false)} aria-label="Sluiten">
+              <Icon name="x" />
             </button>
 
-            <h2 style={{ marginTop: 0, marginBottom: '24px', fontSize: '24px' }}>⌨️ Sneltoetsen</h2>
+            <h2>Sneltoetsen</h2>
 
             <div style={{ display: 'grid', gap: '20px' }}>
               {/* Situatieschema shortcuts */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                <h3>
                   Situatieschema
                 </h3>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>Klik en sleep</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>Symbolen toevoegen</span>
+                <div>
+                  <div className="shortcut-row">
+                    <span>Klik en sleep</span>
+                    <span>Symbolen toevoegen</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>Shift + Klik</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>Selecteer element</span>
+                  <div className="shortcut-row">
+                    <span>Shift + Klik</span>
+                    <span>Selecteer element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>Verwijder geselecteerd element</span>
+                  <div className="shortcut-row">
+                    <span>Delete / Backspace</span>
+                    <span>Verwijder geselecteerd element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>Ctrl + Scroll</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>Zoom in/uit</span>
+                  <div className="shortcut-row">
+                    <span>Ctrl + Scroll</span>
+                    <span>Zoom in/uit</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>?</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>Toon dit scherm</span>
+                  <div className="shortcut-row">
+                    <span>?</span>
+                    <span>Toon dit scherm</span>
                   </div>
                 </div>
               </div>
 
               {/* General tips */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                <h3>
                   Tips
                 </h3>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>Sleep symbolen</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>van sidebar naar scherm</span>
+                <div>
+                  <div className="shortcut-row">
+                    <span>Sleep symbolen</span>
+                    <span>van sidebar naar scherm</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>Zoeken</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>in de linkerzijbalk</span>
+                  <div className="shortcut-row">
+                    <span>Zoeken</span>
+                    <span>in de linkerzijbalk</span>
                   </div>
                 </div>
               </div>

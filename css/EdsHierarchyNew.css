@@ -31,13 +31,13 @@
   align-items: center;
   padding: 10px 12px;
   background: white;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-sunken);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .html_edit_item_header:hover {
-  background: #f8f9fa;
+  background: var(--surface-muted);
 }
 
 /* Collapse/Expand button - Modern design */
@@ -50,27 +50,27 @@
   font-weight: bold;
   transition: all 0.2s ease;
   user-select: none;
-  background: #f8f9fa;
-  color: #667eea;
-  border-right: 1px solid #e9ecef;
+  background: var(--surface-muted);
+  color: var(--primary-color);
+  border-right: 1px solid var(--surface-sunken);
   padding: 10px 0;
 }
 
 .html_edit_table td:first-child:hover {
-  background: #e9ecef;
-  color: #5568d3;
+  background: var(--surface-sunken);
+  color: var(--primary-dark);
 }
 
 /* Collapsed state */
 .html_edit_table td[bgcolor="#8AB2E4"] {
-  background: #f8f9fa !important;
-  color: #667eea !important;
+  background: var(--surface-muted) !important;
+  color: var(--primary-color) !important;
 }
 
 /* Expanded state */
 .html_edit_table td[bgcolor="C0C0C0"] {
-  background: #f8f9fa !important;
-  color: #667eea !important;
+  background: var(--surface-muted) !important;
+  color: var(--primary-color) !important;
 }
 
 /* Content area */
@@ -78,7 +78,7 @@
   padding: 10px 12px;
   font-size: 14px;
   line-height: 1.6;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* Hide action buttons by default, show on hover */
@@ -99,9 +99,10 @@
 .html_edit_item_type {
   display: inline-block;
   padding: 4px 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 16px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   margin-right: 8px;
@@ -111,8 +112,8 @@
 .html_edit_item_id {
   display: inline-block;
   padding: 4px 10px;
-  background: #e9ecef;
-  color: #6c757d;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
@@ -122,8 +123,8 @@
 /* Element details (collapsed by default) */
 .html_edit_item_details {
   padding: 12px;
-  background: #f8f9fa;
-  border-top: 1px solid #e9ecef;
+  background: var(--surface-muted);
+  border-top: 1px solid var(--surface-sunken);
   display: none;
 }
 
@@ -141,7 +142,7 @@
 }
 
 .html_edit_property_label {
-  color: #6c757d;
+  color: var(--text-secondary);
   margin-right: 6px;
   font-weight: 500;
 }
@@ -150,7 +151,7 @@
 .html_edit_table input[type="text"],
 .html_edit_table input[type="number"] {
   padding: 4px 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
   transition: all 0.2s ease;
@@ -161,12 +162,12 @@
 .html_edit_table input[type="text"]:focus,
 .html_edit_table input[type="number"]:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 .html_edit_table input[type="text"]:disabled {
-  background-color: #e9ecef;
+  background-color: var(--surface-sunken);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -174,7 +175,7 @@
 /* Select dropdowns - cleaner styling */
 .html_edit_table select {
   padding: 4px 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
   background: white;
@@ -185,12 +186,12 @@
 
 .html_edit_table select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
 .html_edit_table select:hover {
-  border-color: #adb5bd;
+  border-color: var(--border-strong);
 }
 
 /* Checkbox styling */
@@ -198,7 +199,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: var(--primary-color);
   margin: 0 4px;
 }
 
@@ -218,7 +219,7 @@
   top: 0;
   bottom: 0;
   width: 2px;
-  background: #dee2e6;
+  background: var(--border);
 }
 
 /* Horizontal line to each child */
@@ -229,7 +230,7 @@
   top: 20px;
   width: 16px;
   height: 2px;
-  background: #dee2e6;
+  background: var(--border);
 }
 
 /* Last child - shorter vertical line */
@@ -240,12 +241,12 @@
 
 /* Warning/Error styling */
 .EDS-tekenfout {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
-  border-left: 4px solid #ffc107;
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning-color);
   padding: 12px 16px;
   margin: 8px 0;
   border-radius: 6px;
-  color: #856404;
+  color: var(--warning-color);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -260,19 +261,19 @@
   font-weight: 600;
   min-width: 150px;
   padding: 6px 12px;
-  border: 2px solid #667eea;
+  border: 2px solid var(--primary-color);
   background: white;
-  color: #667eea;
+  color: var(--primary-color);
   font-size: 14px;
 }
 
 .html_edit_table select[id^="HL_edit_"][id$="_type"]:hover {
-  background: #f8f9fa;
+  background: var(--surface-muted);
 }
 
 .html_edit_table select[id^="HL_edit_"][id$="_type"]:focus {
   background: white;
-  border-color: #667eea;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -315,7 +316,7 @@
 
 /* Hover state for better visual feedback */
 .html_edit_table:hover {
-  border-left: 3px solid #667eea;
+  border-left: 3px solid var(--primary-color);
 }
 
 /* Summary line when collapsed - show key info */
@@ -329,18 +330,18 @@
 }
 
 .html_edit_item_summary .summary-badge {
-  background: #e9ecef;
+  background: var(--surface-sunken);
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 /* Toggle details button */
 .toggle-details-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: var(--primary-color);
   cursor: pointer;
   font-size: 12px;
   padding: 4px 8px;
@@ -350,8 +351,8 @@
 }
 
 .toggle-details-btn:hover {
-  background: #f8f9fa;
-  color: #5568d3;
+  background: var(--surface-muted);
+  color: var(--primary-dark);
 }
 
 /* Better visual separation between items at same level */
@@ -361,5 +362,5 @@
 
 /* Indentation indicators */
 .html_edit_table[style*="margin-left"] {
-  background: linear-gradient(90deg, #f8f9fa 0px, #f8f9fa 2px, white 2px);
+  background: linear-gradient(90deg, var(--border) 0px, var(--border) 1px, transparent 1px);
 }

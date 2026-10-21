@@ -171,25 +171,25 @@ const App: React.FC = () => {
   const menuItems: MenuItem[] = [
     {
       name: "Bestand",
-      icon: "📁",
+      icon: "file",
       subMenu: [
-        { name: "Nieuw", icon: "➕", action: handleNewFile },
-        { name: "Openen vanaf computer...", icon: "💻", action: handleOpenFile },
-        ...(googleDriveService.isConfigured() ? [{ name: "Openen vanuit Google Drive...", icon: "☁️", action: handleOpenFromDrive }] : []),
-        { name: "Opslaglocatie en bestanden...", icon: "⚙️", action: handleFileSettings },
-        { name: "─────────", icon: "", action: () => {} },
-        { name: "Opslaan", icon: "💾", action: handleSave },
-        { name: "Opslaan als...", icon: "📁", action: handleSaveAs },
-        { name: "─────────", icon: "", action: () => {} },
-        { name: "EDS-kopie downloaden", icon: "⬇️", action: () => downloadCopy('eds') },
-        { name: "JSON-kopie downloaden", icon: "⬇️", action: () => downloadCopy('json') }
+        { name: "Nieuw", icon: "file-plus", action: handleNewFile },
+        { name: "Openen vanaf computer...", icon: "folder-open", action: handleOpenFile },
+        ...(googleDriveService.isConfigured() ? [{ name: "Openen vanuit Google Drive...", icon: "cloud" as const, action: handleOpenFromDrive }] : []),
+        { name: "Opslaglocatie en bestanden...", icon: "settings", action: handleFileSettings },
+        { divider: true, name: "", action: () => {} },
+        { name: "Opslaan", icon: "save", action: handleSave },
+        { name: "Opslaan als...", icon: "save", action: handleSaveAs },
+        { divider: true, name: "", action: () => {} },
+        { name: "EDS-kopie downloaden", icon: "download", action: () => downloadCopy('eds') },
+        { name: "JSON-kopie downloaden", icon: "download", action: () => downloadCopy('json') }
       ]
     },
-    { name: "Eéndraadschema", icon: "⚡", view: "editor" },
-    { name: "Situatieschema", icon: "🏠", view: "sitplan" },
-    { name: "Print", icon: "🖨️", view: "print" },
-    { name: "Documentatie", icon: "📖", view: "documentation" },
-    { name: "Info/Contact", icon: "ℹ️", view: "contact" },
+    { name: "Eéndraadschema", icon: "schema", view: "editor" },
+    { name: "Situatieschema", icon: "floorplan", view: "sitplan" },
+    { name: "Print", icon: "printer", view: "print" },
+    { name: "Documentatie", icon: "book", view: "documentation" },
+    { name: "Info/Contact", icon: "info", view: "contact" },
   ];
 
   useEffect(() => {
@@ -321,7 +321,7 @@ const App: React.FC = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(15, 18, 24, 0.45)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -331,11 +331,12 @@ const App: React.FC = () => {
             backgroundColor: 'var(--surface)',
             color: 'var(--text-primary)',
             padding: '24px',
-            borderRadius: '8px',
-            maxWidth: '500px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            maxWidth: '480px',
+            boxShadow: 'var(--shadow-lg)'
           }}>
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', color: 'var(--text-primary)' }}>
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', color: 'var(--text-primary)' }}>
               Automatisch opgeslagen bestand gevonden
             </h2>
             <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
@@ -348,34 +349,11 @@ const App: React.FC = () => {
             <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>
               Wilt u deze versie herstellen?
             </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={handleDiscardAutosave}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid var(--border)',
-                  borderRadius: '4px',
-                  backgroundColor: 'var(--background)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={handleDiscardAutosave}>
                 Nee, niet herstellen
               </button>
-              <button
-                onClick={handleRecoverAutosave}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: 'var(--primary-color)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
+              <button className="btn btn-primary" onClick={handleRecoverAutosave}>
                 Ja, herstellen
               </button>
             </div>

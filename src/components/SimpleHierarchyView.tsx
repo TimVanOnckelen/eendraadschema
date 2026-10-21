@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Icon } from './Icon';
+import { elementTypeIcon } from '../utils/icons';
 import { useApp } from '../AppContext';
 import { Hierarchical_List } from '../Hierarchical_List';
 import { DiagramDrawing } from './DiagramDrawing';
@@ -252,23 +254,6 @@ const SimpleHierarchyView: React.FC = () => {
     
     return true;
   });
-
-  // Get icon for element type
-  const getTypeIcon = (type: string): string => {
-    const icons: { [key: string]: string } = {
-      Bord: '📋',
-      Kring: '🔌',
-      Lichtpunt: '💡',
-      Contactdoos: '🔌',
-      Schakelaar: '🎚️',
-      Zekering: '⚡',
-      Splitsing: '↔️',
-      Aansluiting: '🔗',
-      Domotica: '🏠',
-      default: '📦',
-    };
-    return icons[type] || icons['default'];
-  };
 
   // Handle element selection
   const selectElement = (id: number) => {
@@ -1393,7 +1378,7 @@ const SimpleHierarchyView: React.FC = () => {
 
 
       {/* 3-column layout with resizable columns */}
-      <div id="canvas_3col" style={{ display: 'flex', height: 'calc(100vh - 60px)', width: '100%' }}>
+      <div id="canvas_3col" style={{ display: 'flex', width: '100%' }}>
         {/* Left column: Element list */}
         <div 
           id="left_col_3" 
@@ -1402,35 +1387,38 @@ const SimpleHierarchyView: React.FC = () => {
             minWidth: 250,
             maxWidth: 600,
             overflowY: 'auto', 
-            borderRight: '1px solid #ddd',
+            borderRight: '1px solid var(--border)',
             flexShrink: 0,
             flexGrow: 0
           }}
         >
           <div id="left_col_3_inner">
             <div className="simple-hierarchy-header">
-              <h3 style={{ margin: 0 }}>📋 Elementen</h3>
+              <h3 style={{ margin: 0 }}>Elementen</h3>
               <button 
                 className="simple-settings-btn" 
                 onClick={handleOpenSettings}
                 title="Algemene instellingen"
+                aria-label="Algemene instellingen"
               >
-                ⚙️
+                <Icon name="settings" />
               </button>
             </div>
             
             <div className="simple-hierarchy-search">
+              <Icon name="search" size={14} />
               <input
                 type="text"
-                placeholder="🔍 Zoek element..."
+                placeholder="Zoek element..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             
             <div className="simple-hierarchy-add-section">
-              <button className="simple-add-btn" onClick={toggleAddModal}>
-                ➕ Nieuw element toevoegen
+              <button className="simple-add-btn btn-primary" onClick={toggleAddModal}>
+                <Icon name="plus" size={15} />
+                Nieuw element toevoegen
               </button>
             </div>
             
@@ -1441,7 +1429,7 @@ const SimpleHierarchyView: React.FC = () => {
                   className={`simple-hierarchy-item ${selectedElementId === el.id ? 'selected' : ''} ${draggedItemId === el.id ? 'dragging' : ''} ${dragOverItemId === el.id && dropPosition === 'before' ? 'drag-over-before' : ''} ${dragOverItemId === el.id && dropPosition === 'after' ? 'drag-over-after' : ''} ${dragOverItemId === el.id && dropPosition === 'child' ? 'drag-over-child' : ''}`}
                   data-id={el.id}
                   data-level={el.level}
-                  style={{ paddingLeft: `${el.level * 20 + 12}px` }}
+                  style={{ paddingLeft: `${el.level * 16 + 6}px` }}
                   draggable={true}
                   onDragStart={(e) => handleDragStart(e, el.id)}
                   onDragEnd={handleDragEnd}
@@ -1460,17 +1448,17 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title={collapsedElements.has(el.id) ? "Uitklappen" : "Inklappen"}
                     >
-                      {collapsedElements.has(el.id) ? '▶' : '▼'}
+                      <Icon name={collapsedElements.has(el.id) ? 'chevron-right' : 'chevron-down'} size={14} />
                     </button>
                   )}
                   {!el.hasChildren && <span className="simple-collapse-spacer"></span>}
                   
                   <div className="simple-item-icon" onClick={() => selectElement(el.id)}>
-                    {getTypeIcon(el.type)}
+                    <Icon name={elementTypeIcon(el.type)} size={15} />
                   </div>
                   <div className="simple-item-content" onClick={() => selectElement(el.id)}>
                     <div className="simple-item-title">
-                      {el.type} {el.nr ? `#${el.nr}` : ''}
+                      {el.type}{el.nr ? <span className="simple-item-nr"> {el.nr}</span> : null}
                     </div>
                     <div className="simple-item-subtitle">{el.naam || el.adres || ''}</div>
                   </div>
@@ -1484,7 +1472,7 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title="Verplaats omhoog"
                     >
-                      ↑
+                      <Icon name="arrow-up" size={14} />
                     </button>
                     <button
                       className="simple-item-action-btn move-btn"
@@ -1495,7 +1483,7 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title="Verplaats omlaag"
                     >
-                      ↓
+                      <Icon name="arrow-down" size={14} />
                     </button>
                     <button
                       className="simple-item-action-btn"
@@ -1505,7 +1493,7 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title="Voeg kind toe"
                     >
-                      ↳
+                      <Icon name="insert-child" size={14} />
                     </button>
                     <button
                       className="simple-item-action-btn clone-btn"
@@ -1516,7 +1504,7 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title="Dupliceer element"
                     >
-                      📋
+                      <Icon name="copy" size={14} />
                     </button>
                     <button
                       className="simple-item-action-btn delete-btn"
@@ -1526,7 +1514,7 @@ const SimpleHierarchyView: React.FC = () => {
                       }}
                       title="Verwijder"
                     >
-                      🗑️
+                      <Icon name="trash" size={14} />
                     </button>
                   </div>
                 </li>
@@ -1551,7 +1539,7 @@ const SimpleHierarchyView: React.FC = () => {
             flexShrink: 0,
             position: 'relative'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--border)'}
           onMouseLeave={(e) => {
             if (!isResizingLeft) e.currentTarget.style.backgroundColor = 'transparent';
           }}
@@ -1564,7 +1552,7 @@ const SimpleHierarchyView: React.FC = () => {
             width: '3px',
             height: '40px',
             borderRadius: '2px',
-            backgroundColor: isResizingLeft ? 'var(--primary-color)' : '#cbd5e1'
+            backgroundColor: isResizingLeft ? 'var(--primary-color)' : 'var(--border-strong)'
           }} />
         </div>
 
@@ -1573,24 +1561,20 @@ const SimpleHierarchyView: React.FC = () => {
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column', 
-          padding: '12px', 
           overflow: 'hidden',
           minWidth: '400px'
         }}>
           <div id="middle_col_3_inner" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <h3 style={{ margin: '0 0 12px 0', padding: '12px', background: '#f8f9fa', borderRadius: '8px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>📐 Tekening</span>
-              <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#666' }}>💡 Sleep om te pannen · scroll om te zoomen</span>
-            </h3>
+            <div className="panel-header">
+              <h3 className="panel-title">Tekening</h3>
+              <span className="panel-hint">Sleep om te pannen · scroll om te zoomen</span>
+            </div>
             
             <div 
               className="simple-svg-container"
               style={{ 
                 flex: 1,
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                background: '#f5f5f5',
-                marginTop: '12px',
+                background: 'var(--surface-sunken)',
                 minHeight: 0,
                 width: '100%',
                 overflow: 'hidden',
@@ -1605,27 +1589,25 @@ const SimpleHierarchyView: React.FC = () => {
             >
               {/* Zoom controls - positioned absolutely inside container */}
               <div className="svg-zoom-controls">
-                <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
-                <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit">−</button>
-                <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom">⊙</button>
-                <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan">⊡</button>
+                <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in"><Icon name="zoom-in" /></button>
+                <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit"><Icon name="zoom-out" /></button>
+                <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom"><Icon name="zoom-reset" /></button>
+                <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan"><Icon name="zoom-fit" /></button>
+                <span className="toolbar-sep" />
                 <button 
-                  className="svg-zoom-btn" 
+                  className={`svg-zoom-btn${highlightEnabled ? ' active' : ''}`}
                   onClick={() => setHighlightEnabled(!highlightEnabled)}
                   title={highlightEnabled ? "Highlighting uitschakelen" : "Highlighting inschakelen"}
-                  style={{ 
-                    background: highlightEnabled ? 'var(--primary-color)' : '#e0e0e0',
-                    color: highlightEnabled ? 'white' : '#666'
-                  }}
+                  aria-pressed={highlightEnabled}
                 >
-                  {highlightEnabled ? '🎨' : '⬜'}
+                  <Icon name="highlight" />
                 </button>
                 <button 
                   className="svg-zoom-btn" 
                   onClick={toggleFullscreen}
                   title="Volledig scherm"
                 >
-                  ⛶
+                  <Icon name="fullscreen" />
                 </button>
               </div>
 
@@ -1659,7 +1641,7 @@ const SimpleHierarchyView: React.FC = () => {
             flexShrink: 0,
             position: 'relative'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--border)'}
           onMouseLeave={(e) => {
             if (!isResizingRight) e.currentTarget.style.backgroundColor = 'transparent';
           }}
@@ -1672,7 +1654,7 @@ const SimpleHierarchyView: React.FC = () => {
             width: '3px',
             height: '40px',
             borderRadius: '2px',
-            backgroundColor: isResizingRight ? 'var(--primary-color)' : '#cbd5e1'
+            backgroundColor: isResizingRight ? 'var(--primary-color)' : 'var(--border-strong)'
           }} />
         </div>
 
@@ -1691,7 +1673,7 @@ const SimpleHierarchyView: React.FC = () => {
           <div id="right_col_3_inner">
             {!selectedElement ? (
               <div className="simple-properties-empty">
-                <div className="simple-properties-empty-icon">📝</div>
+                <div className="simple-properties-empty-icon"><Icon name="pencil" size={20} /></div>
                 <div className="simple-properties-empty-text">
                   Selecteer een element om te bewerken
                 </div>
@@ -1710,7 +1692,8 @@ const SimpleHierarchyView: React.FC = () => {
                     onClick={toggleChangeTypeModal}
                     title="Wijzig element type"
                   >
-                    🔄 Type wijzigen
+                    <Icon name="refresh" size={13} />
+                    Type wijzigen
                   </button>
                 </div>
 
@@ -1784,25 +1767,32 @@ const SimpleHierarchyView: React.FC = () => {
 
                 <div className="simple-properties-actions">
                   <button className="simple-action-btn" onClick={handleInsertBefore}>
-                    ⬆️ Voeg toe voor
+                    <Icon name="insert-before" size={14} />
+                    Voeg toe voor
                   </button>
                   <button className="simple-action-btn" onClick={handleInsertAfter}>
-                    ⬇️ Voeg toe na
+                    <Icon name="insert-after" size={14} />
+                    Voeg toe na
                   </button>
                   <button className="simple-action-btn" onClick={() => handleInsertChild()}>
-                    ↳ Voeg kind toe
+                    <Icon name="insert-child" size={14} />
+                    Voeg kind toe
                   </button>
                   <button className="simple-action-btn" onClick={handleClone}>
-                    📋 Dupliceer
+                    <Icon name="copy" size={14} />
+                    Dupliceer
                   </button>
                   <button className="simple-action-btn" onClick={handleMoveUp}>
-                    ⬆️ Omhoog
+                    <Icon name="arrow-up" size={14} />
+                    Omhoog
                   </button>
                   <button className="simple-action-btn" onClick={handleMoveDown}>
-                    ⬇️ Omlaag
+                    <Icon name="arrow-down" size={14} />
+                    Omlaag
                   </button>
                   <button className="simple-action-btn danger" onClick={() => handleDelete()}>
-                    🗑️ Verwijder
+                    <Icon name="trash" size={14} />
+                    Verwijder
                   </button>
                 </div>
               </div>
@@ -1813,130 +1803,69 @@ const SimpleHierarchyView: React.FC = () => {
 
       {/* Settings Dialog */}
       {showSettingsDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '24px',
-            borderRadius: '12px',
-            width: '90%',
-            maxWidth: '600px',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
-          }}>
-            <h2 style={{ margin: '0 0 20px 0', color: '#667eea' }}>⚙️ Algemene Instellingen</h2>
+        <div className="editor-modal-overlay">
+          <div className="editor-modal" style={{ maxWidth: '560px' }}>
+            <h2>Algemene instellingen</h2>
+            <button type="button" className="editor-modal-close" onClick={handleCloseSettings} aria-label="Sluiten">
+              <Icon name="x" />
+            </button>
             
             <form onSubmit={handleSaveSettings}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Bestandsnaam:
                 </label>
                 <input
                   type="text"
                   name="filename"
                   defaultValue={structure?.properties?.filename || 'eendraadschema.eds'}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
+                  style={{ width: '100%' }}
                 />
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Eigenaar/Klant:
                 </label>
                 <textarea
                   name="owner"
                   rows={5}
                   defaultValue={structure?.properties?.owner?.replace(/<br>/g, '\n') || ''}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontFamily: 'inherit'
-                  }}
+                  style={{ width: '100%', resize: 'vertical' }}
                   placeholder="Naam&#10;Straat & nr&#10;Postcode & gemeente&#10;Tel: ...&#10;e-mail: ..."
                 />
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Installateur:
                 </label>
                 <textarea
                   name="installer"
                   rows={5}
                   defaultValue={structure?.properties?.installer?.replace(/<br>/g, '\n') || ''}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontFamily: 'inherit'
-                  }}
+                  style={{ width: '100%', resize: 'vertical' }}
                   placeholder="Naam&#10;Straat & nr&#10;Postcode & gemeente&#10;Tel: ...&#10;e-mail: ..."
                 />
               </div>
 
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Installatie informatie:
                 </label>
                 <input
                   type="text"
                   name="info"
                   defaultValue={structure?.properties?.info || '1 x 230V + N ~50 Hz'}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px'
-                  }}
+                  style={{ width: '100%' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseSettings}
-                  style={{
-                    padding: '10px 20px',
-                    border: '2px solid #ddd',
-                    borderRadius: '8px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                <button type="button" className="btn" onClick={handleCloseSettings}>
                   Annuleren
                 </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
+                <button type="submit" className="btn btn-primary">
                   Opslaan
                 </button>
               </div>
@@ -1958,15 +1887,15 @@ const SimpleHierarchyView: React.FC = () => {
           }))
           .filter(({ types }) => types.length > 0);
 
-        let modalTitle = '✨ Nieuw element toevoegen';
+        let modalTitle = 'Nieuw element toevoegen';
         if (insertionMode === 'insert-before') {
-          modalTitle = '⬆️ Element invoegen ervoor';
+          modalTitle = 'Element invoegen ervoor';
         } else if (insertionMode === 'insert-after') {
-          modalTitle = '⬇️ Element invoegen erna';
+          modalTitle = 'Element invoegen erna';
         } else if (insertionMode === 'insert-child') {
-          modalTitle = '➕ Kind-element toevoegen';
+          modalTitle = 'Kind-element toevoegen';
         } else if (selectedElementId) {
-          modalTitle = '✨ Element toevoegen aan geselecteerd item';
+          modalTitle = 'Element toevoegen aan geselecteerd item';
         }
 
         return (
@@ -1989,15 +1918,17 @@ const SimpleHierarchyView: React.FC = () => {
                     setInsertionMode('add');
                     setInsertionTargetId(null);
                   }}
+                  aria-label="Sluiten"
                 >
-                  ✕
+                  <Icon name="x" />
                 </button>
               </div>
 
               <div className="add-element-modal-search">
+                <Icon name="search" size={15} />
                 <input
                   type="text"
-                  placeholder="🔍 Zoek element type..."
+                  placeholder="Zoek element type..."
                   value={modalSearchTerm}
                   onChange={(e) => setModalSearchTerm(e.target.value)}
                   autoFocus
@@ -2006,8 +1937,9 @@ const SimpleHierarchyView: React.FC = () => {
                   <button 
                     className="modal-search-clear"
                     onClick={() => setModalSearchTerm('')}
+                    aria-label="Zoekterm wissen"
                   >
-                    ✕
+                    <Icon name="x" size={14} />
                   </button>
                 )}
               </div>
@@ -2015,9 +1947,7 @@ const SimpleHierarchyView: React.FC = () => {
               <div className="add-element-modal-content">
                 {filteredCategories.length === 0 ? (
                   <div className="add-element-modal-empty">
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-                      {modalSearchTerm ? '�' : '�🚫'}
-                    </div>
+                    <Icon name={modalSearchTerm ? 'search' : 'ban'} size={28} strokeWidth={1.5} />
                     <p>
                       {modalSearchTerm 
                         ? `Geen resultaten voor "${modalSearchTerm}"`
@@ -2073,24 +2003,24 @@ const SimpleHierarchyView: React.FC = () => {
           }}>
             <div className="add-element-modal">
               <div className="add-element-modal-header">
-                <h2>
-                  🔄 Wijzig element type
-                </h2>
+                <h2>Wijzig element type</h2>
                 <button 
                   className="add-element-modal-close"
                   onClick={() => {
                     setShowChangeTypeModal(false);
                     setModalSearchTerm('');
                   }}
+                  aria-label="Sluiten"
                 >
-                  ✕
+                  <Icon name="x" />
                 </button>
               </div>
 
               <div className="add-element-modal-search">
+                <Icon name="search" size={15} />
                 <input
                   type="text"
-                  placeholder="🔍 Zoek element type..."
+                  placeholder="Zoek element type..."
                   value={modalSearchTerm}
                   onChange={(e) => setModalSearchTerm(e.target.value)}
                   autoFocus
@@ -2099,8 +2029,9 @@ const SimpleHierarchyView: React.FC = () => {
                   <button 
                     className="modal-search-clear"
                     onClick={() => setModalSearchTerm('')}
+                    aria-label="Zoekterm wissen"
                   >
-                    ✕
+                    <Icon name="x" size={14} />
                   </button>
                 )}
               </div>
@@ -2108,9 +2039,7 @@ const SimpleHierarchyView: React.FC = () => {
               <div className="add-element-modal-content">
                 {filteredCategories.length === 0 ? (
                   <div className="add-element-modal-empty">
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-                      {modalSearchTerm ? '�' : '�🚫'}
-                    </div>
+                    <Icon name={modalSearchTerm ? 'search' : 'ban'} size={28} strokeWidth={1.5} />
                     <p>
                       {modalSearchTerm 
                         ? `Geen resultaten voor "${modalSearchTerm}"`
@@ -2162,27 +2091,26 @@ const SimpleHierarchyView: React.FC = () => {
               onClickCapture={handleDrawingClick}>
             {/* Fullscreen controls */}
             <div className="svg-fullscreen-controls">
-              <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
-              <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit">−</button>
-              <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom">⊙</button>
-              <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan">⊡</button>
+              <button className="svg-zoom-btn" onClick={handleZoomIn} title="Zoom in"><Icon name="zoom-in" /></button>
+              <button className="svg-zoom-btn" onClick={handleZoomOut} title="Zoom uit"><Icon name="zoom-out" /></button>
+              <button className="svg-zoom-btn" onClick={handleZoomReset} title="Reset zoom"><Icon name="zoom-reset" /></button>
+              <button className="svg-zoom-btn" onClick={handleZoomFit} title="Pas aan scherm aan"><Icon name="zoom-fit" /></button>
+              <span className="toolbar-sep" />
               <button 
-                className="svg-zoom-btn" 
+                className={`svg-zoom-btn${highlightEnabled ? ' active' : ''}`}
                 onClick={() => setHighlightEnabled(!highlightEnabled)}
                 title={highlightEnabled ? "Highlighting uitschakelen" : "Highlighting inschakelen"}
-                style={{ 
-                  background: highlightEnabled ? 'var(--primary-color)' : '#e0e0e0',
-                  color: highlightEnabled ? 'white' : '#666'
-                }}
+                aria-pressed={highlightEnabled}
               >
-                {highlightEnabled ? '🎨' : '⬜'}
+                <Icon name="highlight" />
               </button>
+              <span className="toolbar-sep" />
               <button 
-                className="svg-zoom-btn svg-fullscreen-close" 
+                className="svg-zoom-btn close" 
                 onClick={() => setIsFullscreen(false)}
                 title="Volledig scherm sluiten (ESC)"
               >
-                ✕
+                <Icon name="x" />
               </button>
             </div>
 
@@ -2203,107 +2131,71 @@ const SimpleHierarchyView: React.FC = () => {
       {/* Keyboard Shortcuts Dialog */}
       {showKeysDialog && (
         <div 
-          className="keyboard-shortcuts-overlay"
+          className="keyboard-shortcuts-overlay editor-modal-overlay"
           onClick={(e) => {
             if ((e.target as HTMLElement).classList.contains('keyboard-shortcuts-overlay')) {
               setShowKeysDialog(false);
             }
           }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
-          <div 
-            className="keyboard-shortcuts-dialog"
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '32px',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
-              position: 'relative'
-            }}
-          >
-            <button
-              onClick={() => setShowKeysDialog(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: '#666'
-              }}
-            >
-              ✕
+          <div className="keyboard-shortcuts-dialog editor-modal" style={{ maxWidth: '560px' }}>
+            <button className="editor-modal-close" onClick={() => setShowKeysDialog(false)} aria-label="Sluiten">
+              <Icon name="x" />
             </button>
 
-            <h2 style={{ marginTop: 0, marginBottom: '24px', fontSize: '24px' }}>⌨️ Sneltoetsen</h2>
+            <h2>Sneltoetsen</h2>
 
             <div style={{ display: 'grid', gap: '20px' }}>
               {/* Eendraadschema shortcuts */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                <h3>
                   Eendraadschema
                 </h3>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Ctrl + Z</span>
-                    <span style={{ color: '#666' }}>Ongedaan maken</span>
+                <div>
+                  <div className="shortcut-row">
+                    <span>Ctrl + Z</span>
+                    <span>Ongedaan maken</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Ctrl + Y</span>
-                    <span style={{ color: '#666' }}>Herhalen</span>
+                  <div className="shortcut-row">
+                    <span>Ctrl + Y</span>
+                    <span>Herhalen</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
-                    <span style={{ color: '#666' }}>Verwijder geselecteerd element</span>
+                  <div className="shortcut-row">
+                    <span>Delete / Backspace</span>
+                    <span>Verwijder geselecteerd element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>?</span>
-                    <span style={{ color: '#666' }}>Toon dit scherm</span>
+                  <div className="shortcut-row">
+                    <span>?</span>
+                    <span>Toon dit scherm</span>
                   </div>
                 </div>
               </div>
 
               {/* Situatieschema shortcuts */}
               <div>
-                <h3 style={{ fontSize: '16px', marginTop: 0, marginBottom: '12px', color: '#333' }}>
+                <h3>
                   Situatieschema
                 </h3>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Klik en sleep</span>
-                    <span style={{ color: '#666' }}>Symbolen toevoegen</span>
+                <div>
+                  <div className="shortcut-row">
+                    <span>Klik en sleep</span>
+                    <span>Symbolen toevoegen</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Shift + Klik</span>
-                    <span style={{ color: '#666' }}>Selecteer element</span>
+                  <div className="shortcut-row">
+                    <span>Shift + Klik</span>
+                    <span>Selecteer element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Delete / Backspace</span>
-                    <span style={{ color: '#666' }}>Verwijder geselecteerd element</span>
+                  <div className="shortcut-row">
+                    <span>Delete / Backspace</span>
+                    <span>Verwijder geselecteerd element</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>Ctrl + Scroll</span>
-                    <span style={{ color: '#666' }}>Zoom in/uit</span>
+                  <div className="shortcut-row">
+                    <span>Ctrl + Scroll</span>
+                    <span>Zoom in/uit</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-                    <span style={{ fontWeight: 500 }}>?</span>
-                    <span style={{ color: '#666' }}>Toon dit scherm</span>
+                  <div className="shortcut-row">
+                    <span>?</span>
+                    <span>Toon dit scherm</span>
                   </div>
                 </div>
               </div>
@@ -2316,7 +2208,13 @@ const SimpleHierarchyView: React.FC = () => {
 };
 
 // Helper function to generate SVG preview for element type
+// Container types whose stand-alone symbol is too small to recognise as a preview
+const ICON_PREVIEW_TYPES = new Set(['Aansluiting', 'Bord', 'Kring']);
+
 function getElementPreviewSVG(type: string): React.ReactElement {
+  if (ICON_PREVIEW_TYPES.has(type)) {
+    return <div className="add-element-card-fallback">{getElementIcon(type)}</div>;
+  }
   try {
     // Create a temporary structure to generate the SVG
     const tempStructure = new Hierarchical_List();
@@ -2376,58 +2274,8 @@ function getElementPreviewSVG(type: string): React.ReactElement {
 }
 
 // Helper function to get icon for element type (fallback)
-function getElementIcon(type: string): string {
-  const iconMap: Record<string, string> = {
-    'Aansluiting': '🔌',
-    'Bord': '📋',
-    'Kring': '⚡',
-    'Leiding': '〰️',
-    'Splitsing': '🔀',
-    'Zekering/differentieel': '🛡️',
-    'Lichtpunt': '💡',
-    'Contactdoos': '🔌',
-    'Verbruiker': '⚙️',
-    'Meerdere verbruikers': '⚙️⚙️',
-    'Schakelaars': '🎚️',
-    'Drukknop': '🔘',
-    'Lichtcircuit': '💡',
-    'Boiler': '🔥',
-    'Wasmachine': '🧺',
-    'Droogkast': '🌀',
-    'Vaatwasmachine': '🍽️',
-    'Koelkast': '❄️',
-    'Diepvriezer': '🧊',
-    'Kookfornuis': '🍳',
-    'Elektrische oven': '🔥',
-    'Microgolfoven': '📻',
-    'Stoomoven': '♨️',
-    'Ketel': '☕',
-    'Verwarmingstoestel': '🌡️',
-    'Warmtepomp/airco': '❄️',
-    'Zonnepaneel': '☀️',
-    'Omvormer': '⚡',
-    'Batterij': '🔋',
-    'EV lader': '🚗',
-    'Elektriciteitsmeter': '📊',
-    'Transformator': '⚡',
-    'Motor': '⚙️',
-    'Ventilator': '💨',
-    'Domotica': '🏠',
-    'Domotica module (verticaal)': '🏠',
-    'Domotica gestuurde verbruiker': '🏠',
-    'Aftakdoos': '📦',
-    'Aardingsonderbreker': '⚠️',
-    'Overspanningsbeveiliging': '🛡️',
-    'USB lader': '🔌',
-    'Media': '📺',
-    'Bel': '🔔',
-    'Zeldzame symbolen': '🔣',
-    'Vrije tekst': '📝',
-    'Vrije ruimte': '⬜',
-    'Aansluitpunt': '📍',
-  };
-  
-  return iconMap[type] || '⚡';
+function getElementIcon(type: string): React.ReactElement {
+  return <Icon name={elementTypeIcon(type)} size={32} strokeWidth={1.5} />;
 }
 
 export default SimpleHierarchyView;
