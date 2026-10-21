@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useApp } from "../AppContext";
 import { GoogleDrivePanel } from "./GoogleDrivePanel";
+import { Icon } from "./Icon";
 import {
   getSaveDestination,
   notifyDocumentStorageStateChanged,
@@ -25,33 +26,17 @@ import { appendStructureFromLocalFile } from "../importExport/importExport";
 
 const cardStyle: React.CSSProperties = {
   background: "var(--surface)",
-  borderRadius: "12px",
-  padding: "24px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-  marginBottom: "24px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
+  padding: "20px",
+  boxShadow: "var(--shadow-sm)",
+  marginBottom: "16px",
 };
 
-const primaryButton: React.CSSProperties = {
-  background:
-    "linear-gradient(135deg, var(--primary-color), var(--accent-color))",
-  color: "white",
-  border: "none",
-  padding: "10px 20px",
-  borderRadius: "8px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-const secondaryButton: React.CSSProperties = {
-  background: "var(--surface)",
-  color: "var(--primary-color)",
-  border: "1px solid var(--primary-color)",
-  padding: "10px 20px",
-  borderRadius: "8px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
+const cardTitleStyle: React.CSSProperties = {
+  margin: "0 0 6px",
+  fontSize: "15px",
+  color: "var(--text-primary)",
 };
 
 function errorMessage(error: unknown): string {
@@ -176,7 +161,7 @@ const FilePage: React.FC<FilePageProps> = ({
 
         <div style={{ maxWidth: "900px", margin: "0 auto" }}>
           <section style={cardStyle}>
-            <h2 style={{ marginTop: 0, color: "var(--primary-color)" }}>
+            <h2 style={cardTitleStyle}>
               Actieve opslaglocatie
             </h2>
             <p style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
@@ -218,19 +203,33 @@ const FilePage: React.FC<FilePageProps> = ({
                       alignItems: "center",
                       gap: "14px",
                       padding: "16px",
-                      borderRadius: "10px",
+                      borderRadius: "var(--radius-lg)",
                       border: selected
-                        ? "2px solid var(--primary-color)"
+                        ? "1px solid var(--primary-color)"
                         : "1px solid var(--border)",
-                      background: selected
-                        ? "color-mix(in srgb, var(--primary-color) 10%, var(--surface))"
-                        : "var(--surface)",
+                      boxShadow: selected ? "0 0 0 3px var(--primary-ring)" : "none",
+                      background: selected ? "var(--primary-soft)" : "var(--surface)",
                       cursor: available ? "pointer" : "not-allowed",
                       opacity: available ? 1 : 0.55,
                       textAlign: "left",
                     }}
                   >
-                    <span style={{ fontSize: "28px" }}>{option.icon}</span>
+                    <span
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        background: "var(--surface)",
+                        color: selected ? "var(--primary-color)" : "var(--text-secondary)",
+                      }}
+                    >
+                      <Icon name={option.icon} size={18} />
+                    </span>
                     <span>
                       <strong
                         style={{
@@ -262,7 +261,7 @@ const FilePage: React.FC<FilePageProps> = ({
                           : "var(--text-secondary)",
                       }}
                     >
-                      {selected ? "●" : "○"}
+                      <Icon name={selected ? "circle-check" : "circle"} size={18} />
                     </span>
                   </button>
                 );
@@ -271,7 +270,7 @@ const FilePage: React.FC<FilePageProps> = ({
           </section>
 
           <section style={cardStyle}>
-            <h2 style={{ marginTop: 0, color: "var(--primary-color)" }}>
+            <h2 style={cardTitleStyle}>
               Bestandsformaat
             </h2>
             <div
@@ -322,7 +321,7 @@ const FilePage: React.FC<FilePageProps> = ({
                 type="button"
                 disabled={busy}
                 onClick={handleRename}
-                style={secondaryButton}
+                className="btn"
               >
                 Documentnaam wijzigen…
               </button>
@@ -330,7 +329,7 @@ const FilePage: React.FC<FilePageProps> = ({
           </section>
 
           <section style={cardStyle}>
-              <h2 style={{ marginTop: 0, color: "var(--primary-color)" }}>
+              <h2 style={cardTitleStyle}>
                 Computer {backend === "local-file" ? "· actief" : ""}
               </h2>
               <p style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
@@ -342,7 +341,7 @@ const FilePage: React.FC<FilePageProps> = ({
                   type="button"
                   disabled={busy}
                   onClick={handleOpenLocal}
-                  style={secondaryButton}
+                  className="btn"
                 >
                   Openen vanaf computer
                 </button>
@@ -350,7 +349,7 @@ const FilePage: React.FC<FilePageProps> = ({
                   type="button"
                   disabled={busy}
                   onClick={() => handleSaveLocal(false)}
-                  style={primaryButton}
+                  className="btn btn-primary"
                 >
                   {fileAPIobj.hasCurrentFile()
                     ? `Opslaan in ${fileAPIobj.filename}`
@@ -360,7 +359,7 @@ const FilePage: React.FC<FilePageProps> = ({
                   type="button"
                   disabled={busy}
                   onClick={() => handleSaveLocal(true)}
-                  style={secondaryButton}
+                  className="btn"
                 >
                   Opslaan als nieuw bestand…
                 </button>
@@ -375,7 +374,7 @@ const FilePage: React.FC<FilePageProps> = ({
           />
 
           <section style={cardStyle}>
-            <h2 style={{ marginTop: 0, color: "var(--primary-color)" }}>
+            <h2 style={cardTitleStyle}>
               Een lokale kopie downloaden
             </h2>
             <p style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
@@ -386,14 +385,14 @@ const FilePage: React.FC<FilePageProps> = ({
               <button
                 type="button"
                 onClick={() => downloadCopy("eds")}
-                style={primaryButton}
+                className="btn btn-primary"
               >
                 EDS-kopie downloaden
               </button>
               <button
                 type="button"
                 onClick={() => downloadCopy("json")}
-                style={secondaryButton}
+                className="btn"
               >
                 JSON-kopie downloaden
               </button>
@@ -401,7 +400,7 @@ const FilePage: React.FC<FilePageProps> = ({
           </section>
 
           <section style={cardStyle}>
-            <h2 style={{ marginTop: 0, color: "var(--primary-color)" }}>
+            <h2 style={cardTitleStyle}>
               Schema samenvoegen
             </h2>
             <p style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
@@ -411,7 +410,7 @@ const FilePage: React.FC<FilePageProps> = ({
             <button
               type="button"
               onClick={() => void appendStructureFromLocalFile()}
-              style={secondaryButton}
+              className="btn"
             >
               Bestand samenvoegen…
             </button>

@@ -50,29 +50,16 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
 
   if (!autoSaver) return null;
 
-  const getStatusIcon = () => {
-    if (
-      lastSaveType === AutoSaver.SavedType.NONE &&
-      !documentState.autosaveAvailable
-    ) {
-      return '○'; // No save yet
-    } else if (documentState.dirty) {
-      return '◐'; // Unsaved changes (automatic save)
-    } else {
-      return '●'; // Saved (manual save)
-    }
-  };
-
   const getStatusColor = () => {
     if (
       lastSaveType === AutoSaver.SavedType.NONE &&
       !documentState.autosaveAvailable
     ) {
-      return '#6c757d'; // Gray
+      return 'var(--text-muted)';
     } else if (documentState.dirty) {
-      return '#ffc107'; // Yellow/warning
+      return 'var(--warning-color)';
     } else {
-      return '#28a745'; // Green
+      return 'var(--success-color)';
     }
   };
 
@@ -114,25 +101,29 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        padding: '4px 10px',
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '4px',
+        gap: '7px',
+        padding: '0 6px',
         fontSize: '12px',
-        color: 'var(--text-primary)',
+        color: 'var(--text-secondary)',
         whiteSpace: 'nowrap',
         userSelect: 'none'
       }}
       title={lastSaveTime ? `${getStatusText()} - ${getTimeAgo()}` : getStatusText()}
     >
-      <span style={{ fontSize: '14px', color: getStatusColor() }}>
-        {getStatusIcon()}
-      </span>
-      <span>{getStatusText()}</span>
+      <span
+        aria-hidden="true"
+        style={{
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          background: getStatusColor(),
+          flexShrink: 0
+        }}
+      />
+      <span className="topmenu-status-text">{getStatusText()}</span>
       {lastSaveTime && (
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-          ({getTimeAgo()})
+        <span className="topmenu-status-text" style={{ color: 'var(--text-muted)' }}>
+          · {getTimeAgo()}
         </span>
       )}
     </div>

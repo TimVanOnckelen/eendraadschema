@@ -1,3 +1,4 @@
+import { iconSvg } from "../utils/icons";
 import { Page_Info } from "./Page_Info";
 import { MarkerList } from "./MarkerList";
 import { htmlspecialchars } from "../general";
@@ -349,7 +350,7 @@ export class Print_Table {
     label.style.gap = "6px";
     label.style.fontSize = "13px";
     label.style.fontWeight = "500";
-    label.style.color = "var(--text-primary)";
+    label.style.color = "var(--text-secondary)";
 
     var labelText = document.createElement("span");
     labelText.textContent = "Papier:";
@@ -357,11 +358,6 @@ export class Print_Table {
 
     var select: HTMLSelectElement = document.createElement("select");
     select.id = "select_papersize_input";
-    select.style.padding = "6px 10px";
-    select.style.border = "1px solid #d1d5db";
-    select.style.borderRadius = "6px";
-    select.style.fontSize = "13px";
-    select.style.background = "white";
     select.style.cursor = "pointer";
 
     var optionA4: HTMLOptionElement = document.createElement("option");
@@ -406,7 +402,7 @@ export class Print_Table {
     label.style.gap = "6px";
     label.style.fontSize = "13px";
     label.style.fontWeight = "500";
-    label.style.color = "var(--text-primary)";
+    label.style.color = "var(--text-secondary)";
 
     var labelText = document.createElement("span");
     labelText.textContent = "Kwaliteit:";
@@ -414,11 +410,6 @@ export class Print_Table {
 
     var select: HTMLSelectElement = document.createElement("select");
     select.id = "select_dpi_input";
-    select.style.padding = "6px 10px";
-    select.style.border = "1px solid #d1d5db";
-    select.style.borderRadius = "6px";
-    select.style.fontSize = "13px";
-    select.style.background = "white";
     select.style.cursor = "pointer";
 
     var option300: HTMLOptionElement = document.createElement("option");
@@ -467,7 +458,7 @@ export class Print_Table {
     label.style.gap = "6px";
     label.style.fontSize = "13px";
     label.style.fontWeight = "500";
-    label.style.color = "var(--text-primary)";
+    label.style.color = "var(--text-secondary)";
 
     var labelText = document.createElement("span");
     labelText.textContent = "Schaal:";
@@ -475,11 +466,6 @@ export class Print_Table {
 
     var select: HTMLSelectElement = document.createElement("select");
     select.id = "select_scale_input";
-    select.style.padding = "6px 10px";
-    select.style.border = "1px solid #d1d5db";
-    select.style.borderRadius = "6px";
-    select.style.fontSize = "13px";
-    select.style.background = "white";
     select.style.cursor = "pointer";
 
     const scaleOptions = [
@@ -528,15 +514,15 @@ export class Print_Table {
     container.style.flexWrap = "wrap";
     container.style.marginTop = "12px";
     container.innerHTML =
-      '<label for="print_page_mode" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-primary);">' +
+      '<label for="print_page_mode" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary);">' +
       "<span>Pagina's:</span>" +
-      '<select id="print_page_mode" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">' +
+      '<select id="print_page_mode">' +
       '<option value="all">Alles</option>' +
       '<option value="custom">Aangepast</option>' +
       "</select>" +
       "</label>" +
-      '<input type="text" id="print_page_range" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 130px;" placeholder="bijv. 1-2, 4">' +
-      '<span id="print_range_error" style="color: #dc2626; font-size: 12px; display: none;"></span>';
+      '<input type="text" id="print_page_range" style="width: 130px;" placeholder="bijv. 1-2, 4">' +
+      '<span id="print_range_error" style="color: var(--danger-color); font-size: 12px; display: none;"></span>';
 
     // Get references to elements
     const select =
@@ -871,7 +857,7 @@ export class Print_Table {
       }
 
       outstr +=
-        '</td><td><div style="width:200px; border-style:solid; border-width:thin; cursor:text; padding: 2px; border-color:darkgray; font-size: small;" align=left contenteditable="true" id="input_info_' +
+        '</td><td><div style="width:200px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); cursor:text; padding: 3px 6px; font-size: small;" align=left contenteditable="true" id="input_info_' +
         pagenum +
         '">';
       outstr += this.pages[pagenum].info;
@@ -879,14 +865,14 @@ export class Print_Table {
 
       if (pagenum == this.pages.length - 1) {
         outstr +=
-          '<button style="background-color:green;" id="Btn_Addpage">&#9660;</button>';
+          '<button class="btn btn-icon" title="Pagina toevoegen" id="Btn_Addpage">' + iconSvg("plus") + '</button>';
       }
 
       if (this.pages.length > 1) {
         outstr +=
-          '<button style="background-color:red;" id="Btn_Deletepage_' +
+          '<button class="btn btn-icon btn-danger" title="Pagina verwijderen" id="Btn_Deletepage_' +
           pagenum +
-          '">&#9851;</button>';
+          '">' + iconSvg("trash") + '</button>';
       }
 
       outstr += "</td></tr>";

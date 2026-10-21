@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp, AppView } from '../AppContext';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
+import { Icon } from './Icon';
+import { IconName } from '../utils/icons';
 import { getTheme, toggleTheme, Theme } from '../utils/theme';
 import {
   getStorageBackend,
@@ -10,14 +12,15 @@ import {
 export interface SubMenuItem {
   name: string;
   action: () => void;
-  icon?: string;
+  icon?: IconName;
+  divider?: boolean;
 }
 
 export interface MenuItem {
   name: string;
   view?: AppView;
   subMenu?: SubMenuItem[];
-  icon?: string;
+  icon?: IconName;
 }
 
 interface TopMenuProps {
@@ -53,11 +56,7 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
     }
   };
 
-  const handleSubMenuClick = (action: () => void, name: string) => {
-    // Don't do anything for dividers or headers
-    if (name.includes('─────────') || name.includes('Recente bestanden:')) {
-      return;
-    }
+  const handleSubMenuClick = (action: () => void) => {
     action();
     setOpenSubmenu(null);
   };
@@ -72,100 +71,80 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
   const editingView = currentView === 'editor' || currentView === 'sitplan';
 
   return (
-    <div id="topmenu" ref={menuRef} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
-      <ul id="minitabs" style={{ margin: 0 }}>
-        {items.map((item, index) => (
-          <li key={index} className="menu-item">
-            <a
-              id={currentView === item.view ? 'current' : undefined}
-              onClick={() => handleMenuClick(item, index)}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              {item.icon && <span>{item.icon}</span>}
-              {item.name}
-              {item.subMenu && <span style={{ marginLeft: '4px', fontSize: '10px' }}>▼</span>}
-            </a>
-            {item.subMenu && openSubmenu === index && (
-              <ul className="submenu">
-                {item.subMenu.map((subItem, subIndex) => (
-                  <li key={subIndex}>
-                    <a
-                      onClick={() => handleSubMenuClick(subItem.action, subItem.name)}
-                      style={{ 
-                        cursor: subItem.name.includes('─────────') || subItem.name.includes('Recente bestanden:') ? 'default' : 'pointer',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px' 
-                      }}
-                    >
-                      {subItem.icon && <span>{subItem.icon}</span>}
-                      {subItem.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div id="topmenu" ref={menuRef}>
+      <div className="topmenu-left">
+        <div className="topmenu-brand">
+          <span className="topmenu-brand-mark"><Icon name="schema" size={15} strokeWidth={2} /></span>
+          <span className="topmenu-brand-text">Eendraadschema</span>
+        </div>
+        <ul id="minitabs">
+          {items.map((item, index) => (
+            <li key={index} className="menu-item">
+              <a
+                id={currentView === item.view ? 'current' : undefined}
+                onClick={() => handleMenuClick(item, index)}
+                title={item.name}
+              >
+                {item.icon && <Icon name={item.icon} />}
+                <span className="tab-label">{item.name}</span>
+                {item.subMenu && <Icon name="chevron-down" size={14} style={{ marginLeft: '-2px', opacity: 0.7 }} />}
+              </a>
+              {item.subMenu && openSubmenu === index && (
+                <ul className="submenu">
+                  {item.subMenu.map((subItem, subIndex) =>
+                    subItem.divider ? (
+                      <li key={subIndex} className="submenu-divider" role="separator" />
+                    ) : (
+                      <li key={subIndex}>
+                        <a onClick={() => handleSubMenuClick(subItem.action)}>
+                          {subItem.icon && <Icon name={subItem.icon} />}
+                          {subItem.name}
+                        </a>
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="topmenu-right">
         <button
           type="button"
+          className="topmenu-icon-btn"
           title="Ongedaan maken (Ctrl/Cmd+Z)"
           aria-label="Ongedaan maken"
           disabled={!editingView}
           onClick={() => globalThis.undoClicked?.()}
-          style={{ opacity: editingView ? 1 : 0.45 }}
-        >↶</button>
+        ><Icon name="undo" /></button>
         <button
           type="button"
+          className="topmenu-icon-btn"
           title="Herhalen (Ctrl/Cmd+Y)"
           aria-label="Herhalen"
           disabled={!editingView}
           onClick={() => globalThis.redoClicked?.()}
-          style={{ opacity: editingView ? 1 : 0.45 }}
-        >↷</button>
-        <div style={{
-          padding: '4px 10px',
-          backgroundColor: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: '4px',
-          fontSize: '13px',
-          color: 'var(--text-primary)',
-          fontWeight: 500,
-          userSelect: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span aria-label="Bestandsnaam">📄 {currentFilename || 'Zonder titel'}</span>
-          <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
-            Opslaan naar: {destinationLabel}
-          </span>
+        ><Icon name="redo" /></button>
+        <span className="topmenu-divider" />
+        <div className="topmenu-file" title={`Opslaan naar: ${destinationLabel}`}>
+          <Icon name="file-text" size={14} style={{ color: 'var(--text-muted)' }} />
+          <span className="topmenu-file-name" aria-label="Bestandsnaam">{currentFilename || 'Zonder titel'}</span>
+          <span className="topmenu-file-dest">· {destinationLabel}</span>
         </div>
-        <button
-          onClick={handleThemeToggle}
-          title={theme === 'dark' ? 'Lichte modus' : 'Donkere modus'}
-          style={{
-            background: 'rgba(255, 255, 255, 0.15)',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '6px 10px',
-            cursor: 'pointer',
-            color: 'white',
-            fontSize: '16px',
-            lineHeight: 1,
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
         <AutoSaveIndicator
           autoSaver={globalThis.autoSaver}
           savedLocation={destinationLabel}
         />
+        <button
+          type="button"
+          className="topmenu-icon-btn"
+          onClick={handleThemeToggle}
+          title={theme === 'dark' ? 'Lichte modus' : 'Donkere modus'}
+          aria-label={theme === 'dark' ? 'Lichte modus' : 'Donkere modus'}
+        >
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+        </button>
       </div>
     </div>
   );

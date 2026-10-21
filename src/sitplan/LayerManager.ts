@@ -1,3 +1,4 @@
+import { iconSvg } from "../utils/icons";
 import { SituationPlan } from "./SituationPlan";
 import { SituationPlanElement } from "./SituationPlanElement";
 import { SituationPlanView } from "./SituationPlanView";
@@ -33,10 +34,11 @@ export class LayerManager {
       right: 20px;
       top: 100px;
       width: 300px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background: var(--surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
       z-index: 10000;
       display: flex;
       flex-direction: column;
@@ -46,9 +48,8 @@ export class LayerManager {
     // Header (draggable)
     this.header = document.createElement("div");
     this.header.style.cssText = `
-      padding: 12px;
-      background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
-      border-bottom: 1px solid #ccc;
+      padding: 8px 8px 8px 14px;
+      border-bottom: 1px solid var(--border);
       cursor: move;
       user-select: none;
       display: flex;
@@ -58,11 +59,12 @@ export class LayerManager {
     `;
     this.header.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-weight: 600; font-size: 14px; color: #333;">🗂️ Lagen</span>
+        <span style="color: var(--text-secondary); display: flex;">${iconSvg("layers")}</span>
+        <span style="font-weight: 600; font-size: 13px;">Lagen</span>
       </div>
       <div style="display: flex; gap: 4px;">
-        <button id="layer-manager-collapse" style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 4px;" title="Inklappen">−</button>
-        <button id="layer-manager-close" style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 4px; color: #666;" title="Sluiten">×</button>
+        <button id="layer-manager-collapse" class="layer-manager-btn" title="Inklappen">−</button>
+        <button id="layer-manager-close" class="layer-manager-btn" title="Sluiten">${iconSvg("x")}</button>
       </div>
     `;
 
@@ -150,7 +152,7 @@ export class LayerManager {
 
     if (!elements || elements.length === 0) {
       this.content.innerHTML =
-        '<div style="padding: 20px; text-align: center; color: #999;">Geen lagen</div>';
+        '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Geen lagen</div>';
       return;
     }
 
@@ -166,7 +168,7 @@ export class LayerManager {
     });
 
     let html = `
-      <div style="margin-bottom: 8px; padding: 6px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666;">
+      <div style="margin-bottom: 8px; padding: 6px 8px; background: var(--surface-muted); border-radius: var(--radius-sm); font-size: 11px; color: var(--text-secondary);">
         Pagina ${currentPage} • ${pageElements.length} element${
       pageElements.length !== 1 ? "en" : ""
     }
@@ -175,7 +177,7 @@ export class LayerManager {
 
     if (pageElements.length === 0) {
       html +=
-        '<div style="padding: 20px; text-align: center; color: #999;">Geen elementen op deze pagina</div>';
+        '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Geen elementen op deze pagina</div>';
     } else {
       pageElements.forEach((element, index) => {
         html += this.renderLayerItem(element, index);
@@ -194,13 +196,13 @@ export class LayerManager {
     const isVisible = element.boxref?.style.display !== "none";
 
     // Determine element type and name
-    let icon = "📄";
+    let icon = iconSvg("file");
     let name = "Element";
     let details = "";
 
     if (element.isWall()) {
       const wall = element.getWallElement();
-      icon = "🧱";
+      icon = iconSvg("wall");
       name = wall?.type === "outer" ? "Buitenmuur" : "Binnenmuur";
       details = `${Math.round(wall?.width || 0)} × ${Math.round(
         wall?.height || 0
@@ -210,7 +212,7 @@ export class LayerManager {
         element.getElectroItemId()
       );
       if (electroItem) {
-        icon = "⚡";
+        icon = iconSvg("schema");
         name = electroItem.getType() || "Symbool";
         try {
           const adres = electroItem.getReadableAdres();
@@ -220,7 +222,7 @@ export class LayerManager {
         }
       }
     } else {
-      icon = "🖼️";
+      icon = iconSvg("image");
       name = "Afbeelding";
     }
 
@@ -236,9 +238,9 @@ export class LayerManager {
         style="
           padding: 8px;
           margin-bottom: 4px;
-          background: ${isSelected ? "#e3f2fd" : "#f9f9f9"};
-          border: 1px solid ${isSelected ? "#2196f3" : "#e0e0e0"};
-          border-radius: 4px;
+          background: ${isSelected ? "var(--primary-soft)" : "var(--surface)"};
+          border: 1px solid ${isSelected ? "var(--primary-color)" : "var(--border)"};
+          border-radius: var(--radius);
           cursor: move;
           display: flex;
           align-items: center;
@@ -247,20 +249,20 @@ export class LayerManager {
           transition: all 0.2s;
         "
         onmouseover="this.style.background='${
-          isSelected ? "#bbdefb" : "#f0f0f0"
+          isSelected ? "var(--primary-soft)" : "var(--hover-bg)"
         }'"
         onmouseout="this.style.background='${
-          isSelected ? "#e3f2fd" : "#f9f9f9"
+          isSelected ? "var(--primary-soft)" : "var(--surface)"
         }'"
       >
-        <span style="font-size: 16px; cursor: grab;">${icon}</span>
+        <span style="display: flex; color: var(--text-secondary); cursor: grab;">${icon}</span>
         <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 500; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             ${this.escapeHtml(name)}
           </div>
           ${
             details
-              ? `<div style="font-size: 10px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(
+              ? `<div style="font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(
                   details
                 )}</div>`
               : ""
@@ -270,10 +272,9 @@ export class LayerManager {
           <button 
             class="layer-visibility-btn" 
             data-element-id="${element.id}"
-            style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px;"
             title="${isVisible ? "Verbergen" : "Tonen"}"
-          >${isVisible ? "👁️" : "👁️‍🗨️"}</button>
-          <span style="font-size: 10px; color: #999;" title="Z-index">${zIndex}</span>
+          >${iconSvg(isVisible ? "eye" : "eye-off", 14)}</button>
+          <span style="font-size: 10px; color: var(--text-muted);" title="Z-index">${zIndex}</span>
         </div>
       </div>
     `;

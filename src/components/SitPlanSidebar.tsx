@@ -262,7 +262,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
         onClick={() => openKringColorEditor(kring)}
         title={`Kleur voor kring ${kring.name}`}
         aria-label={`Kleur voor kring ${kring.name}`}
-        style={{ width: '27px', height: '22px', padding: '2px', border: '1px solid #aaa', borderRadius: '3px', background: '#fff', cursor: 'pointer' }}
+        style={{ width: '27px', height: '22px', padding: '2px', border: '1px solid var(--border-strong)', borderRadius: '3px', background: '#fff', cursor: 'pointer' }}
       >
         <span style={{ display: 'block', width: '100%', height: '100%', borderRadius: '1px', backgroundColor: color }} />
       </button>
@@ -282,9 +282,9 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
           if (event.target === event.currentTarget) setColorEditor(null);
         }}
       >
-        <div style={{ width: '330px', padding: '18px', borderRadius: '8px', background: '#fff', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#222' }}>Kleur voor kring {colorEditor.kringName}</h3>
-          <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#666' }}>Kies een contrastrijke printkleur of een eigen kleur.</p>
+        <div style={{ width: '330px', padding: '18px', borderRadius: '8px', background: 'var(--surface)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: 'var(--text-primary)' }}>Kleur voor kring {colorEditor.kringName}</h3>
+          <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-secondary)' }}>Kies een contrastrijke printkleur of een eigen kleur.</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
             {PRINTABLE_KRING_COLORS.map((option) => {
               const selected = colorEditor.draftColor === option.color;
@@ -293,15 +293,15 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   type="button"
                   key={option.label}
                   onClick={() => setColorEditor({ ...colorEditor, draftColor: option.color })}
-                  style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px', border: selected ? '2px solid #1565c0' : '1px solid #ccc', borderRadius: '4px', background: '#fff', cursor: 'pointer', fontSize: '11px', textAlign: 'left' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px', border: selected ? '2px solid var(--primary-color)' : '1px solid var(--border-strong)', borderRadius: '4px', background: 'var(--surface)', cursor: 'pointer', fontSize: '11px', textAlign: 'left' }}
                 >
-                  <span style={{ width: '22px', height: '22px', flexShrink: 0, border: '1px solid #888', borderRadius: '3px', backgroundColor: option.color || '#000000' }} />
+                  <span style={{ width: '22px', height: '22px', flexShrink: 0, border: '1px solid var(--text-muted)', borderRadius: '3px', backgroundColor: option.color || '#000000' }} />
                   {option.label}
                 </button>
               );
             })}
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', fontSize: '12px', color: '#444' }}>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             Eigen kleur
             <input
               type="color"
@@ -321,7 +321,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   // Render symbols from the schema
   const renderSymbols = () => {
     if (!structure?.data) {
-      return <div style={{ padding: '15px', color: '#999', fontSize: '12px' }}>
+      return <div style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '12px' }}>
         Geen symbolen beschikbaar. Maak eerst een eendraadschema.
       </div>;
     }
@@ -410,11 +410,11 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
         <div key={`kring-${kringId}`} style={{ marginBottom: '12px' }}>
           <div style={{
             padding: '8px 8px',
-            backgroundColor: '#e3f2fd',
-            borderLeft: `3px solid ${structure.sitplan?.getKringColor?.(kringId) || '#1565c0'}`,
+            backgroundColor: 'var(--primary-soft)',
+            borderLeft: `3px solid ${structure.sitplan?.getKringColor?.(kringId) || 'var(--primary-color)'}`,
             fontSize: '11px',
             fontWeight: '600',
-            color: '#0d47a1',
+            color: 'var(--primary-color)',
             marginBottom: '6px',
             cursor: 'default',
             display: 'flex',
@@ -468,8 +468,8 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   style={{
                     padding: '8px',
                     marginBottom: '4px',
-                    backgroundColor: '#f9f9f9',
-                    border: '1px solid #e0e0e0',
+                    backgroundColor: 'var(--surface-muted)',
+                    border: '1px solid var(--border)',
                     borderRadius: '4px',
                     cursor: 'grab',
                     fontSize: '11px',
@@ -479,13 +479,13 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#e8f4ff';
-                    e.currentTarget.style.borderColor = '#0078d4';
+                    e.currentTarget.style.backgroundColor = 'var(--primary-soft)';
+                    e.currentTarget.style.borderColor = 'var(--primary-color)';
                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f9f9f9';
-                    e.currentTarget.style.borderColor = '#e0e0e0';
+                    e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
+                    e.currentTarget.style.borderColor = 'var(--border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                   title="Sleep naar het canvas om toe te voegen"
@@ -500,7 +500,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                       justifyContent: 'center',
                       backgroundColor: 'white',
                       borderRadius: '3px',
-                      border: '1px solid #e0e0e0',
+                      border: '1px solid var(--border)',
                       overflow: 'hidden',
                       padding: '2px',
                     }}>
@@ -526,10 +526,10 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: '#f0f0f0',
+                      backgroundColor: 'var(--surface-sunken)',
                       borderRadius: '3px',
-                      border: '1px solid #ddd',
-                      color: '#999',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-muted)',
                       fontSize: '9px',
                       fontWeight: 'bold',
                     }}>
@@ -539,7 +539,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontWeight: 500,
-                      color: '#333',
+                      color: 'var(--text-primary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -549,7 +549,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                     {adres && (
                       <div style={{
                         fontSize: '10px',
-                        color: '#666',
+                        color: 'var(--text-secondary)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -560,7 +560,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                     {tekst && (
                       <div style={{
                         fontSize: '9px',
-                        color: '#888',
+                        color: 'var(--text-muted)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -590,33 +590,33 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
       <div style={{
         width: '280px',
         height: '100%',
-        backgroundColor: '#f8f9fa',
-        borderRight: '1px solid #dee2e6',
+        backgroundColor: 'var(--surface-muted)',
+        borderRight: '1px solid var(--border)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}>
         <div style={{
           padding: '15px',
-          borderBottom: '1px solid #dee2e6',
-          backgroundColor: 'white',
+          borderBottom: '1px solid var(--border)',
+          backgroundColor: 'var(--surface)',
         }}>
-          <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
             Beschikbare symbolen
           </h3>
-          <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#666' }}>
+          <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
             Sleep symbolen naar het canvas
           </p>
           {getKringen().length > 0 && (
             <div style={{ marginTop: '12px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#444', marginBottom: '5px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>
                 Kringkleuren
               </div>
-              <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #dee2e6', borderRadius: '4px' }}>
+              <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '4px' }}>
                 {getKringen().map((kring) => (
                   <div
                     key={kring.id}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 7px', borderBottom: '1px solid #eee', fontSize: '11px' }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 7px', borderBottom: '1px solid var(--border)', fontSize: '11px' }}
                   >
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kring.name}</span>
                     <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -636,7 +636,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
               width: '100%',
               marginTop: '10px',
               padding: '8px',
-              border: '1px solid #dee2e6',
+              border: '1px solid var(--border)',
               borderRadius: '4px',
               fontSize: '13px',
               boxSizing: 'border-box',
@@ -660,21 +660,21 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
     <div style={{
       width: '280px',
       height: '100%',
-      backgroundColor: '#f8f9fa',
-      borderRight: '1px solid #dee2e6',
+      backgroundColor: 'var(--surface-muted)',
+      borderRight: '1px solid var(--border)',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
     }}>
       <div style={{
         padding: '15px',
-        borderBottom: '1px solid #dee2e6',
-        backgroundColor: 'white',
+        borderBottom: '1px solid var(--border)',
+        backgroundColor: 'var(--surface)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
-        <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
+        <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
           {selectedElement.isWall() ? 'Muur eigenschappen' :
            selectedElement.isWindow() ? 'Raam eigenschappen' :
            selectedElement.isDoor() ? 'Deur eigenschappen' :
@@ -688,7 +688,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
             border: 'none',
             fontSize: '20px',
             cursor: 'pointer',
-            color: '#666',
+            color: 'var(--text-secondary)',
             padding: 0,
             width: '24px',
             height: '24px',
@@ -705,7 +705,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
         padding: '15px',
       }}>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface)',
           borderRadius: '8px',
           padding: '15px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -719,7 +719,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 fontWeight: 600,
                 marginBottom: '6px',
                 fontSize: '13px',
-                color: '#555',
+                color: 'var(--text-secondary)',
               }}>
                 Muurtype
               </label>
@@ -729,10 +729,10 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 style={{
                   width: '100%',
                   padding: '8px',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--border)',
                   borderRadius: '4px',
                   fontSize: '13px',
-                  backgroundColor: 'white',
+                  backgroundColor: 'var(--surface)',
                 }}
               >
                 <option value="inner">Binnenmuur</option>
@@ -748,7 +748,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
               fontWeight: 600,
               marginBottom: '6px',
               fontSize: '13px',
-              color: '#555',
+              color: 'var(--text-secondary)',
             }}>
               Positie
             </label>
@@ -761,7 +761,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <label style={{
                   display: 'block',
                   fontSize: '11px',
-                  color: '#777',
+                  color: 'var(--text-muted)',
                   marginBottom: '4px',
                 }}>
                   X (px)
@@ -773,7 +773,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   style={{
                     width: '100%',
                     padding: '6px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--border)',
                     borderRadius: '4px',
                     fontSize: '13px',
                   }}
@@ -783,7 +783,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <label style={{
                   display: 'block',
                   fontSize: '11px',
-                  color: '#777',
+                  color: 'var(--text-muted)',
                   marginBottom: '4px',
                 }}>
                   Y (px)
@@ -795,7 +795,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   style={{
                     width: '100%',
                     padding: '6px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--border)',
                     borderRadius: '4px',
                     fontSize: '13px',
                   }}
@@ -811,7 +811,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
               fontWeight: 600,
               marginBottom: '6px',
               fontSize: '13px',
-              color: '#555',
+              color: 'var(--text-secondary)',
             }}>
               Afmetingen
             </label>
@@ -824,7 +824,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <label style={{
                   display: 'block',
                   fontSize: '11px',
-                  color: '#777',
+                  color: 'var(--text-muted)',
                   marginBottom: '4px',
                 }}>
                   Breedte (px)
@@ -836,7 +836,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   style={{
                     width: '100%',
                     padding: '6px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--border)',
                     borderRadius: '4px',
                     fontSize: '13px',
                   }}
@@ -846,7 +846,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <label style={{
                   display: 'block',
                   fontSize: '11px',
-                  color: '#777',
+                  color: 'var(--text-muted)',
                   marginBottom: '4px',
                 }}>
                   Hoogte (px)
@@ -858,7 +858,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   style={{
                     width: '100%',
                     padding: '6px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--border)',
                     borderRadius: '4px',
                     fontSize: '13px',
                   }}
@@ -874,7 +874,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
               fontWeight: 600,
               marginBottom: '6px',
               fontSize: '13px',
-              color: '#555',
+              color: 'var(--text-secondary)',
             }}>
               Rotatie (°)
             </label>
@@ -887,7 +887,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
               style={{
                 width: '100%',
                 padding: '8px',
-                border: '1px solid #ddd',
+                border: '1px solid var(--border)',
                 borderRadius: '4px',
                 fontSize: '13px',
               }}

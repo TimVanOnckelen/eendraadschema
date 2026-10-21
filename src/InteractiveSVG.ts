@@ -13,9 +13,11 @@ declare global {
   }
 }
 
+import { iconSvg, IconName } from "./utils/icons";
+
 interface ContextMenuOption {
   label: string;
-  icon?: string;
+  icon?: IconName;
   action: (id: number) => void;
   divider?: boolean;
 }
@@ -220,7 +222,7 @@ class InteractiveSVG {
     panel.innerHTML = `
             <div class="svg-properties-header">
                 <h3>${elementType} ${elementNr}</h3>
-                <button class="svg-properties-close" onclick="document.getElementById('svg-properties-panel')?.remove();">✕</button>
+                <button class="svg-properties-close" onclick="document.getElementById('svg-properties-panel')?.remove();">${iconSvg("x")}</button>
             </div>
             <div class="svg-properties-content">
                 <div class="svg-properties-info">
@@ -233,28 +235,28 @@ class InteractiveSVG {
                 </div>
                 <div class="svg-properties-actions">
                     <button class="svg-prop-btn svg-prop-edit" onclick="event.stopPropagation(); document.getElementById('id_elem_${elementId}')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>✏️</span> Bewerk eigenschappen
+                        ${iconSvg("pencil")} Bewerk eigenschappen
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLInsertBefore(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>⬆️</span> Voeg toe voor
+                        ${iconSvg("insert-before")} Voeg toe voor
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLInsertAfter(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>⬇️</span> Voeg toe na
+                        ${iconSvg("insert-after")} Voeg toe na
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLInsertChild(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>↳</span> Voeg kind toe
+                        ${iconSvg("insert-child")} Voeg kind toe
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLClone(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>📋</span> Dupliceer
+                        ${iconSvg("copy")} Dupliceer
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLMoveUp(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>⬆️</span> Verplaats omhoog
+                        ${iconSvg("arrow-up")} Verplaats omhoog
                     </button>
                     <button class="svg-prop-btn" onclick="event.stopPropagation(); HLMoveDown(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>⬇️</span> Verplaats omlaag
+                        ${iconSvg("arrow-down")} Verplaats omlaag
                     </button>
                     <button class="svg-prop-btn svg-prop-delete" onclick="event.stopPropagation(); window.deleteElementWithConfirm(${elementId}); document.getElementById('svg-properties-panel')?.remove();">
-                        <span>🗑️</span> Verwijder
+                        ${iconSvg("trash")} Verwijder
                     </button>
                 </div>
             </div>
@@ -310,7 +312,7 @@ class InteractiveSVG {
     const menuOptions: ContextMenuOption[] = [
       {
         label: "Bewerk eigenschappen",
-        icon: "✏️",
+        icon: "pencil",
         action: (id) => {
           const listElement = document.getElementById(`id_elem_${id}`);
           if (listElement)
@@ -320,39 +322,39 @@ class InteractiveSVG {
       { label: "", divider: true, action: () => {} },
       {
         label: "Voeg toe voor",
-        icon: "⬆️",
+        icon: "insert-before",
         action: (id) => gl.HLInsertBefore(id),
       },
       {
         label: "Voeg toe na",
-        icon: "⬇️",
+        icon: "insert-after",
         action: (id) => gl.HLInsertAfter(id),
       },
       {
         label: "Voeg kind toe",
-        icon: "↳",
+        icon: "insert-child",
         action: (id) => gl.HLInsertChild(id),
       },
       { label: "", divider: true, action: () => {} },
       {
         label: "Dupliceer",
-        icon: "📋",
+        icon: "copy",
         action: (id) => gl.HLClone(id),
       },
       {
         label: "Verplaats omhoog",
-        icon: "⬆️",
+        icon: "arrow-up",
         action: (id) => gl.HLMoveUp(id),
       },
       {
         label: "Verplaats omlaag",
-        icon: "⬇️",
+        icon: "arrow-down",
         action: (id) => gl.HLMoveDown(id),
       },
       { label: "", divider: true, action: () => {} },
       {
         label: "Verwijder",
-        icon: "🗑️",
+        icon: "trash",
         action: (id) => {
           window.deleteElementWithConfirm(id);
         },
@@ -370,7 +372,7 @@ class InteractiveSVG {
         }')">
                     ${
                       option.icon
-                        ? `<span class="menu-icon">${option.icon}</span>`
+                        ? `<span class="menu-icon">${iconSvg(option.icon)}</span>`
                         : ""
                     }
                     <span>${option.label}</span>

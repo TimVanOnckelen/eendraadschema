@@ -1,3 +1,5 @@
+import type { IconName } from '../utils/icons';
+
 export type StorageBackendId = 'local-file' | 'google-drive';
 export type SaveDestination = StorageBackendId;
 
@@ -5,7 +7,7 @@ export interface StorageBackendDefinition {
   id: StorageBackendId;
   label: string;
   shortLabel: string;
-  icon: string;
+  icon: IconName;
   description: string;
   available: () => boolean;
   unavailableReason?: string;
@@ -16,7 +18,7 @@ export const storageBackends: readonly StorageBackendDefinition[] = [
     id: 'local-file',
     label: 'Computer',
     shortLabel: 'Computer',
-    icon: '💻',
+    icon: 'monitor',
     description: 'Open en bewaar een werkbestand op deze computer.',
     available: () => true,
   },
@@ -24,7 +26,7 @@ export const storageBackends: readonly StorageBackendDefinition[] = [
     id: 'google-drive',
     label: 'Google Drive',
     shortLabel: 'Drive',
-    icon: '☁️',
+    icon: 'cloud',
     description: 'Open en bewaar een werkbestand in Google Drive.',
     available: () => Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim()),
     unavailableReason: 'Google Drive is niet geconfigureerd voor deze installatie.',
