@@ -69,37 +69,49 @@ Eendraadschema is a browser-based tool for designing one-wire electrical diagram
 - Integrated documentation viewer
 - PDF manuals included
 
-### WebMCP editing for Codex and ChatGPT
+### AI assistants (MCP)
 
-The editor exposes its current eendraadschema document as WebMCP tools. This
-lets Codex or ChatGPT inspect and edit a schema through a supported browser
-session, without sending the document to an application server.
+AI assistants can read and edit schemas through the
+[Model Context Protocol](https://modelcontextprotocol.io). There are two ways to
+connect, and both use the same tools (defined in `src/mcp/schemaTools.ts`):
 
-The available tools are:
+- **In the browser (WebMCP):** the editor registers the tools on the open page when the
+  browser supports WebMCP. The assistant edits the schema you have open, and every
+  change can be undone. No server is involved.
+- **Local MCP server:** [`mcp-server/`](mcp-server/README.md) runs the app in headless
+  Chromium and offers the tools to Claude Desktop, Claude Code and other MCP clients
+  over stdio. It adds `file_open`, `file_save` and `schema_render` (a PNG preview).
 
 | Tool | Purpose |
 |---|---|
-| `schema.get` | List active schema elements with ids, types, parents and labels |
-| `schema.get_element` | Read one element and all of its editable properties |
-| `schema.add_element` | Add a supported element at the root or under a parent |
-| `schema.update_element` | Change primitive properties on an existing element |
-| `schema.delete_element` | Delete an element and its children after explicit confirmation |
+| `schema_get` | List elements (id, type, parent, depth, name, number), paged with `offset`/`limit` |
+| `schema_get_tree` | The whole schema as a nested tree |
+| `schema_get_element` | One element with all properties and the types allowed below it |
+| `schema_list_types` | Element types allowed at the root or below a parent |
+| `schema_describe_type` | Properties of an element type and their default values |
+| `schema_add_element` | Add an element as the last child of a parent, or before/after a sibling, optionally with initial properties |
+| `schema_update_element` | Change properties of an element |
+| `schema_change_type` | Change the type of an element |
+| `schema_delete_element` | Delete an element and its children (requires `confirm: true`) |
+| `schema_validate` | Indicative AREI checks: unnamed or unprotected circuits, more than 8 socket outlets per circuit, breaker too large for the cable section |
+| `schema_new` | Start a new default schema (requires `confirm: true`) |
+| `schema_export` | Return the schema as `.json` or `.eds` content |
+| `schema_import` | Replace the schema with `.eds` or `.json` content (requires `confirm: true`) |
 
-In Codex or ChatGPT, open the app in the same WebMCP-enabled browser session
-and ask for a concrete operation, for example:
+The tools apply the same rules as the editor: only types allowed under the parent, the
+maximum number of children, and a `Leiding` only inside a `Kring`. Types and property
+names are Dutch, as in the app. `schema_validate` is an aid, not a replacement for an
+AREI inspection.
 
-> Find the element named `Keuken`, show its id and properties, then change its
-> address to `Keuken gelijkvloers`.
+Example prompt:
 
-The assistant should read the schema first, use the returned numeric id for an
-edit, and describe consequential changes before applying them. Deletion always
-requires `confirm: true`; an omitted or false confirmation is rejected by the
-editor.
+> Open `~/schemas/woning.eds`, add a circuit "K" below the main board with 6 sockets
+> and 2 light points, run the checks, show me the drawing and save it.
 
-WebMCP is an experimental browser feature. Use a recent Chromium build with
-the WebMCP testing flag enabled (`chrome://flags/#enable-webmcp-testing`) and
-serve the app from a secure context (`https://` or local development). Browsers
-without WebMCP continue to work normally; the tools simply are not registered.
+**WebMCP in the browser** is experimental. Use a recent Chromium with
+`chrome://flags/#enable-webmcp-testing` enabled and serve the app from a secure
+context (`https://` or local development). Browsers without WebMCP work normally;
+the tools are just not registered.
 
 ## Getting Started
 
@@ -144,19 +156,16 @@ client secret.
 4. Create an **OAuth 2.0 Client ID** of type **Web application**.
 5. Add authorized JavaScript origins, for example:
    - `http://localhost:5173`
-   - `https://drskunk.github.io`
+   - `https://eendraadschema.xeweb.be`
 6. Copy `.env.example` to `.env.local` and set:
 
 ```bash
 VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-For GitHub Pages, add a repository **secret** named `VITE_GOOGLE_CLIENT_ID`
-under **Settings → Secrets and variables → Actions → Secrets**. The deployment
-workflow passes that secret to Vite during the build. The client ID is public in
-the built browser application; using a secret here only avoids putting it in
-repository configuration. The older repository variable `GOOGLE_CLIENT_ID` is
-also accepted as a fallback.
+For a production build, set `VITE_GOOGLE_CLIENT_ID` in the environment of
+`npm run build` (or in `.env.production.local`). The client ID is public in the
+built browser application.
 
 Files remain in user's Drive. App requests access only to Drive files created
 or opened through app.
@@ -228,3 +237,12 @@ The original application is available at [igoethal/eendraadschema](https://githu
 ## Checks
 
 Run `npm ci`, then `npm test` to build the production bundle.
+
+To test the MCP server against that build:
+
+```bash
+cd mcp-server
+npm ci
+npx playwright install chromium
+npm test
+```

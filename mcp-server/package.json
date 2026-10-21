@@ -1,0 +1,22 @@
+{
+  "name": "eendraadschema-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server that lets MCP clients (Claude Desktop, Claude Code, ...) read and edit Eendraadschema files through a headless copy of the app",
+  "type": "module",
+  "bin": {
+    "eendraadschema-mcp": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "playwright": "^1.64.1"
+  },
+  "license": "GPL-3.0"
+}
