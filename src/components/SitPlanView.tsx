@@ -330,6 +330,8 @@ export const SitPlanView: React.FC = () => {
   };
 
   // Tap alternative for drag & drop: drop the symbol in the middle of the visible canvas.
+  // Successive symbols are offset a little so they don't end up exactly on top of each other.
+  const centerAddCount = useRef(0);
   const handleAddSymbolAtCenter = (electroItemId: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -338,7 +340,8 @@ export const SitPlanView: React.FC = () => {
       clientX: rect.left + rect.width / 2,
       clientY: rect.top + rect.height / 2,
     } as MouseEvent);
-    const element = sitPlan.addElement(electroItemId, x, y);
+    const offset = (centerAddCount.current++ % 8) * 24;
+    const element = sitPlan.addElement(electroItemId, x + offset, y + offset);
     if (element && undostruct) {
       undostruct.store();
     }

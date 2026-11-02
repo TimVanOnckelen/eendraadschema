@@ -1,514 +1,342 @@
 import { jsPDF } from "jspdf";
-import { dialogAlert } from "../utils/DialogHelpers";
+import { flattenSVGfromString } from "../general";
+import {
+  buildPageSvg,
+  contentFromSvg,
+  fitScale,
+  getPageLayout,
+  PageLayout,
+  PageSpec,
+  PDF_FONT_FAMILY,
+} from "./pdfPage";
 
-type PrintTable = {
-  papersize: string;
-  pages: { start: number; stop: number; info: string }[];
-  starty: number;
-  stopy: number;
-  scale?: number;
-};
+/**
+ * PDF export.
+ *
+ * Every page is built as one SVG (drawing + title block, see pdfPage.ts) and
+ * converted to vector PDF with svg2pdf.js: sharp at any zoom level, small
+ * files and selectable text. Should a page fail to convert (e.g. an image
+ * format svg2pdf cannot handle), that page falls back to a high resolution
+ * bitmap so the export always completes.
+ */
 
-type Properties = {
-  dpi?: number;
-  control: string;
-  owner: string;
-  installer: string;
-  info: string;
-};
+export interface PrintDocument {
+  layout: PageLayout;
+  pages: PageSpec[];
+  /** Number of eendraadschema pages; situatieschema pages follow. */
+  edsPageCount: number;
+}
 
-type SitPlanPrint = {
-  numpages: number;
-  pages: { svg: string; sizex: number; sizey: number }[];
-};
+/**
+ * Collects all printable pages of the current structure.
+ * Eendraadschema pages share one scale so symbols are equally large on every page.
+ */
+export function collectPrintDocument(structure: any = globalThis.structure): PrintDocument {
+  const printTable = structure.print_table;
+  const properties = structure.properties;
+  const layout = getPageLayout(printTable.getPaperSize?.() ?? printTable.papersize);
 
-type StatusCallback = { innerHTML: string };
+  const eds = structure.toSVG(0, "horizontal");
+  const edsMarkup = flattenSVGfromString(eds.data);
+  const starty = printTable.getstarty();
+  const height = printTable.getstopy() - starty;
 
-export function printPDF(
-  svg: string, // SVG van het eendraadschema
-  print_table: PrintTable, // Informatie over de paginering van het eendraadschema
-  properties: Properties, // Extra informatie zoals eigenaar, installateur, etc.  Ook het aantal DPI
-  pagerange: string, // Pagina's die moeten worden afgedrukt, in de vorm "1-3,5,7-9" of "1,2,3" of "1-3"
-  //pages: number[] = [1],                // Pagina's die moeten worden afgedrukt, standaard is pagina 1
-  filename = "eendraadschema_print.pdf", // Filename van de PDF die gegenereerd wordt
-  statuscallback: StatusCallback, // Via deze functie wordt de voortgang doorgegeven aan een oproepend element (doorgaans GUI)
-  sitplanprint: SitPlanPrint // Informatie over het situatieschema
-): void {
-  let paperdetails: any;
+  const edsContents = printTable.pages.map((page: any) => ({
+    markup: edsMarkup,
+    viewBox: { x: page.start, y: starty, w: page.stop - page.start, h: height },
+  }));
+  const edsScale = Math.min(...edsContents.map((c: any) => fitScale(layout, c.viewBox)));
 
-  if (print_table.papersize === "A3") {
-    paperdetails = {
-      // All sizes in millimeters
-      paperwidth: 420,
-      paperheight: 297,
-      paper_margin: 10,
-      svg_padding: 5, //minimal size to keep below svg before the text boxes start
-      drawnby_box_height: 5,
-      owner_box_height: 30,
-      owner_box_width: 80,
-    };
-  } else {
-    paperdetails = {
-      // All sizes in millimeters
-      paperwidth: 297,
-      paperheight: 210,
-      paper_margin: 10,
-      svg_padding: 5, //minimal size to keep below svg before the text boxes start
-      drawnby_box_height: 5,
-      owner_box_height: 30,
-      owner_box_width: 80,
-    };
+  const sitplan = structure.sitplan ? structure.sitplan.toSitPlanPrint() : { numpages: 0, pages: [] };
+  const sitContents = sitplan.pages.map((page: any) => contentFromSvg(page.svg));
+
+  const pageCount = edsContents.length + sitContents.length;
+  const date = new Date().toLocaleDateString("nl-BE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const title = (kind: string, index: number, info: string) => ({
+    control: properties.control,
+    owner: properties.owner,
+    installer: properties.installer,
+    info,
+    kind,
+    pageNumber: index + 1,
+    pageCount,
+    date,
+  });
+
+  const pages: PageSpec[] = [
+    ...edsContents.map((content: any, i: number) => ({
+      content,
+      scale: edsScale,
+      align: (edsContents.length > 1 ? "left" : "center") as "left" | "center",
+      title: title(
+        "Eéndraadschema",
+        i,
+        printTable.enableAutopage ? properties.info : printTable.pages[i].info || properties.info
+      ),
+    })),
+    ...sitContents.map((content: any, i: number) => ({
+      content,
+      scale: fitScale(layout, content.viewBox),
+      align: "center" as const,
+      title: title("Situatieschema", edsContents.length + i, properties.info),
+    })),
+  ];
+
+  return { layout, pages, edsPageCount: edsContents.length };
+}
+
+/**
+ * Parses a page range like "1-3, 5" into 0-based page indices.
+ * An empty range selects all pages.
+ */
+export function parsePageRange(range: string, total: number): number[] {
+  const selected = new Set<number>();
+  const parts = range.split(",").map((r) => r.trim()).filter(Boolean);
+  if (parts.length === 0) return Array.from({ length: total }, (_, i) => i);
+  for (const part of parts) {
+    const [a, b] = part.split("-").map((n) => parseInt(n.trim(), 10));
+    const start = a;
+    const end = Number.isFinite(b) ? b : a;
+    for (let p = start; p <= end; p++) if (p >= 1 && p <= total) selected.add(p - 1);
   }
+  return Array.from(selected).sort((x, y) => x - y);
+}
 
-  let pages: (number | null)[];
-  const totalPages = print_table.pages.length + sitplanprint.numpages;
+export interface PdfProgress {
+  done: number;
+  total: number;
+  pageNumber: number;
+}
 
-  // Initialize all as null
-  pages = Array(totalPages).fill(null);
+export interface PdfOptions {
+  /** 0-based indices of the pages to export. */
+  pageIndices: number[];
+  /** Resolution for the bitmap fallback. */
+  dpi: number;
+  onProgress?: (progress: PdfProgress) => void;
+}
 
-  // Parse custom ranges
-  const ranges = pagerange.split(",").map((r) => r.trim());
-  for (const range of ranges) {
-    if (range.includes("-")) {
-      const [start, end] = range.split("-").map(Number);
-      if (!isNaN(start) && !isNaN(end)) {
-        for (let i = start; i <= end; i++) {
-          if (i >= 1 && i <= totalPages) pages[i - 1] = i;
-        }
-      }
-    } else {
-      const pageNum = Number(range);
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-        pages[pageNum - 1] = pageNum;
-      }
-    }
-  }
+export interface PdfResult {
+  doc: jsPDF;
+  /** Page numbers (1-based) that had to be rasterised. */
+  rasterizedPages: number[];
+}
 
-  function svgToPng(
-    svg: string,
-    sizex: number,
-    sizey: number,
-    callback: (png: string, scale: number) => void
-  ) {
-    const max_height_in_mm =
-      paperdetails.paperheight -
-      2 * paperdetails.paper_margin -
-      paperdetails.owner_box_height -
-      paperdetails.drawnby_box_height -
-      paperdetails.svg_padding;
+let fontsPromise: Promise<typeof import("./fonts/edsSans")> | null = null;
 
-    const max_width_in_mm =
-      paperdetails.paperwidth - 2 * paperdetails.paper_margin;
+async function registerFonts(doc: jsPDF) {
+  fontsPromise ??= import("./fonts/edsSans");
+  const fonts = await fontsPromise;
+  doc.addFileToVFS("EDSSans-Regular.ttf", fonts.EDS_SANS_REGULAR);
+  doc.addFont("EDSSans-Regular.ttf", PDF_FONT_FAMILY, "normal");
+  doc.addFileToVFS("EDSSans-Bold.ttf", fonts.EDS_SANS_BOLD);
+  doc.addFont("EDSSans-Bold.ttf", PDF_FONT_FAMILY, "bold");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
+}
 
-    const dpi = properties.dpi || 300;
-    const max_height_in_pixels = (max_height_in_mm / 25.4) * dpi;
-    const max_width_in_pixels = (max_width_in_mm / 25.4) * dpi;
-
-    const userScale = print_table.scale || 1;
-
-    const scale =
-      Math.min(max_height_in_pixels / sizey, max_width_in_pixels / sizex) *
-      userScale;
-
-    const scaledsvg =
-      `<svg width="${sizex * scale}" height="${
-        sizey * scale
-      }" viewBox="0 0 ${sizex} ${sizey}" xmlns="http://www.w3.org/2000/svg">` +
-      svg +
-      "</svg>";
-
-    const url =
-      "data:image/svg+xml; charset=utf8, " + encodeURIComponent(scaledsvg);
-
+/** Renders an SVG string to a PNG data URL. */
+function svgToPng(svg: string, widthPx: number, heightPx: number): Promise<string> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = function () {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      (canvas as any).crossOrigin = "anonymous";
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        let png: string | null = null;
-        try {
-          png = canvas.toDataURL("image/png");
-        } catch (e) {
-          if (img.complete) {
-            dialogAlert(
-              "Fout bij genereren PDF",
-              "Er is een element in het situatieschema dat verwijst naar een andere website en dit veroorzaakt een security-error in deze browser. Dit kan bijvoorbeeld gebeuren indien u een plattegrond gemaakt heeft met online tools zoals draw.io. Probeer uw plattegrond op te slaan in een ander formaat. Indien het probleem blijft aanhouden, contacteer ons dan via het contactformulier."
-            );
-          } else {
-            dialogAlert(
-              "Fout bij genereren PDF",
-              "Het genereren van de PDF is om onduidelijke redenen vastgelopen. Contacteer ons via het contactformulier."
-            );
-          }
-          return;
-        }
-        callback(png, scale);
-        URL.revokeObjectURL(url);
-        canvas.remove();
-      }
-    };
-    img.src = url;
-  }
-
-  function htmlToPDFlines(doc: any, html: string): string[] {
-    function htmlToUnicode(html: string): string {
-      const tempElement = document.createElement("div");
-      tempElement.innerHTML = html;
-      return tempElement.textContent || tempElement.innerText || "";
-    }
-
-    let printlines: string[] = [];
-    html = html.replace(/<div>/g, "");
-    let lines = html.split(/<br>|<\/div>/).map(htmlToUnicode);
-    for (let line of lines) {
-      let wrappedlines = doc.splitTextToSize(
-        line,
-        paperdetails.owner_box_width - 2 * 2 - 3
-      );
-      printlines = printlines.concat(wrappedlines);
-    }
-    return printlines;
-  }
-
-  function init() {
-    let doc: jsPDF;
-    if (print_table.papersize === "A3") {
-      doc = new jsPDF("landscape", "mm", "a3", true);
-    } else {
-      doc = new jsPDF("landscape", "mm", "a4", true);
-    }
-    return doc;
-  }
-
-  function addPage(
-    doc: any,
-    svg: string,
-    sizex: number,
-    sizey: number,
-    callback: (doc: any, iter: number) => void,
-    iter = 0
-  ) {
-    svgToPng(svg, sizex, sizey, function (png, scale) {
-      let canvasx = paperdetails.paperwidth - 2 * paperdetails.paper_margin;
-      let canvasy =
-        paperdetails.paperheight -
-        2 * paperdetails.paper_margin -
-        paperdetails.owner_box_height -
-        paperdetails.drawnby_box_height -
-        paperdetails.svg_padding;
-
-      if (sizex * sizey > 0) {
-        //width is leading
-        if (sizex / sizey > canvasx / canvasy) {
-          let max_height_in_mm =
-            paperdetails.paperheight -
-            2 * paperdetails.paper_margin -
-            paperdetails.owner_box_height -
-            paperdetails.drawnby_box_height -
-            paperdetails.svg_padding;
-          let shiftdown = (max_height_in_mm - (sizey / sizex) * canvasx) / 2;
-          doc.addImage(
-            png,
-            "PNG",
-            paperdetails.paper_margin,
-            paperdetails.paper_margin + shiftdown,
-            canvasx,
-            (sizey / sizex) * canvasx,
-            undefined,
-            "FAST"
-          );
-        } else {
-          //height is leading
-          doc.addImage(
-            png,
-            "PNG",
-            paperdetails.paper_margin,
-            paperdetails.paper_margin,
-            (sizex / sizey) * canvasy,
-            canvasy,
-            undefined,
-            "FAST"
-          );
-        }
-      }
-
-      doc.setProperties({
-        title: "Eendraadschema.pdf",
-        subject: "Eendraadschema",
-        author: "Ivan Goethals (original) / Tim Van Onckelen (React version)",
-        keywords: "eendraadschema, online",
-        creator: "eendraadschema.goethals-jacobs.be",
-      });
-
-      let startx = paperdetails.paperwidth - (297 - paperdetails.paper_margin); //In "A4" we fill everything, in A3 we squeeze to the right
-
-      doc.rect(
-        startx, // Drawn by box below
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height,
-        3 * paperdetails.owner_box_width,
-        paperdetails.drawnby_box_height
-      );
-      doc.rect(
-        startx, // first large box from left to right
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height,
-        paperdetails.owner_box_width,
-        paperdetails.owner_box_height
-      );
-      doc.rect(
-        startx + paperdetails.owner_box_width, // second large box from left to right
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height,
-        paperdetails.owner_box_width,
-        paperdetails.owner_box_height
-      );
-      doc.rect(
-        startx + 2 * paperdetails.owner_box_width, // third large box from left to right
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height,
-        paperdetails.owner_box_width,
-        paperdetails.owner_box_height
-      );
-      doc.rect(
-        startx + 3 * paperdetails.owner_box_width, // Last box at the right
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height,
-        paperdetails.paperwidth -
-          paperdetails.paper_margin -
-          startx -
-          3 * paperdetails.owner_box_width,
-        paperdetails.drawnby_box_height + paperdetails.owner_box_height
-      );
-
-      const fontSize = 8;
-      const textHeight = fontSize * 0.352778; // 1 point = 0.352778 mm
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(fontSize);
-
-      doc.text(
-        "Getekend met https://eendraadschema.xeweb.be",
-        startx + 2, // Leave 2mm at the left of the drawn by text
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          (paperdetails.drawnby_box_height - textHeight) / 2 -
-          textHeight / 6
-      );
-
-      let page = iter + 1;
-      let maxpages = print_table.pages.length + sitplanprint.numpages;
-
-      doc.text(
-        "pagina. " + page + "/" + maxpages,
-        startx + 3 * paperdetails.owner_box_width + 2, //Leave 2mm at the left
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight +
-          1.5
-      );
-
-      let pagename =
-        iter < print_table.pages.length ? "Eendraadschema" : "Situatieschema";
-
-      doc.text(
-        pagename,
-        startx + 3 * paperdetails.owner_box_width + 2, //Leave 2mm at the left
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight * (1 + 1.2) +
-          1.5
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, "Erkend Organisme"),
-        startx + 2,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight +
-          1.5
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, "Plaats van de elektrische installatie"),
-        startx + paperdetails.owner_box_width + 2,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight +
-          1.5
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, "Installateur"),
-        startx + 2 * paperdetails.owner_box_width + 2,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight +
-          1.5
-      );
-
-      doc.setFont("helvetica", "normal");
-
-      doc.text(
-        htmlToPDFlines(doc, properties.control).slice(0, 8),
-        startx + 2 + 3,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight * (1 + 1.2) +
-          1.5
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, properties.owner).slice(0, 8),
-        startx + paperdetails.owner_box_width + 2 + 3,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight * (1 + 1.2) +
-          1.5
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, properties.installer).slice(0, 8),
-        startx + 2 * paperdetails.owner_box_width + 2 + 3,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight * (1 + 1.2) +
-          1.5
-      );
-
-      let info: string =
-        iter < print_table.pages.length
-          ? print_table.pages[iter].info || properties.info || ""
-          : properties.info || "";
-
-      let infoshorter = info.replace(
-        "https://www.eendraadschema.goethals-jacobs.be",
-        "eendraadschema"
-      );
-
-      doc.text(
-        htmlToPDFlines(doc, infoshorter).slice(0, 8),
-        startx + 3 * paperdetails.owner_box_width + 2 + 3,
-        paperdetails.paperheight -
-          paperdetails.paper_margin -
-          paperdetails.drawnby_box_height -
-          paperdetails.owner_box_height -
-          textHeight / 6 +
-          textHeight * (1 + 3 * 1.2) +
-          1.5
-      );
-
-      callback(doc, iter + 1);
-    });
-  }
-
-  function cropSVG(svg: string, page: number): string {
-    let startx = print_table.pages[page].start;
-    let width = print_table.pages[page].stop;
-    let starty = print_table.starty;
-    let height = print_table.stopy - starty;
-
-    let viewbox = `${startx} ${starty} ${width} ${height}`;
-
-    let outsvg =
-      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" transform="scale(1,1)" style="border:1px solid white" ` +
-      `height="${height}" width="${width}" viewBox="${viewbox}">` +
-      svg +
-      "</svg>";
-
-    return outsvg;
-  }
-
-  function nextpage(doc: any, iter = 0) {
-    // Check if this is the first page we will print
-    let firstpage = false;
-    let idx = pages.findIndex((page) => page !== null);
-    if (iter === idx) firstpage = true;
-
-    if (iter < print_table.pages.length) {
-      if (pages[iter] == null) {
-        nextpage(doc, iter + 1);
-      } else {
-        statuscallback.innerHTML =
-          "Pagina " + pages[iter] + " wordt gegenereerd. Even geduld..";
-
-        if (!firstpage) doc.addPage();
-
-        let sizex =
-          print_table.pages[pages[iter] - 1].stop -
-          print_table.pages[pages[iter] - 1].start;
-        let sizey = print_table.stopy - print_table.starty;
-
-        addPage(
-          doc,
-          cropSVG(svg, pages[iter] - 1),
-          sizex,
-          sizey,
-          nextpage,
-          iter
+    const timer = window.setTimeout(() => reject(new Error("Afbeelding laden duurde te lang.")), 30000);
+    img.onload = () => {
+      window.clearTimeout(timer);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(widthPx);
+        canvas.height = Math.round(heightPx);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas wordt niet ondersteund.");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (e) {
+        reject(
+          new Error(
+            "Een afbeelding in het situatieschema verwijst naar een andere website en kan daardoor niet in de PDF worden opgenomen. " +
+              "Sla de plattegrond op in een ander formaat (bv. PNG) en voeg hem opnieuw toe."
+          )
         );
       }
-    } else if (iter < pages.length) {
-      if (pages[iter] == null) {
-        nextpage(doc, iter + 1);
-      } else {
-        statuscallback.innerHTML =
-          "Pagina " + (iter + 1) + " wordt gegenereerd. Even geduld..";
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      reject(new Error("De pagina kon niet als afbeelding worden weergegeven."));
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
 
-        if (!firstpage) doc.addPage();
-
-        let toprint = sitplanprint.pages[iter - print_table.pages.length];
-        addPage(doc, toprint.svg, toprint.sizex, toprint.sizey, nextpage, iter);
+/**
+ * Replaces every <use> by a copy of the element it references. svg2pdf.js
+ * renders <use> as a clipped form object whose bounding box ignores stroke
+ * widths, so e.g. a purely vertical earth bar (zero width) disappears.
+ * Lookups stay inside the given root, so ids elsewhere on the page don't interfere.
+ */
+function inlineUses(root: Element) {
+  const byId = new Map<string, Element>();
+  root.querySelectorAll("[id]").forEach((el) => {
+    if (!byId.has(el.id)) byId.set(el.id, el);
+  });
+  // Nested uses inside referenced symbols are resolved in later passes.
+  for (let pass = 0; pass < 8; pass++) {
+    const uses = Array.from(root.querySelectorAll("use"));
+    if (uses.length === 0) break;
+    for (const use of uses) {
+      const href = use.getAttribute("href") || use.getAttributeNS("http://www.w3.org/1999/xlink", "href") || "";
+      const target = href.startsWith("#") ? byId.get(href.slice(1)) : undefined;
+      if (!target || target.contains(use)) {
+        use.remove();
+        continue;
       }
-    } else {
-      save(doc);
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      for (const attr of Array.from(use.attributes)) {
+        if (!["x", "y", "width", "height", "href", "xlink:href", "transform"].includes(attr.name)) {
+          g.setAttribute(attr.name, attr.value);
+        }
+      }
+      const x = parseFloat(use.getAttribute("x") || "0") || 0;
+      const y = parseFloat(use.getAttribute("y") || "0") || 0;
+      const transform = [use.getAttribute("transform") || "", x || y ? `translate(${x} ${y})` : ""]
+        .filter(Boolean)
+        .join(" ");
+      if (transform) g.setAttribute("transform", transform);
+      const clone = target.cloneNode(true) as Element;
+      clone.removeAttribute("id");
+      clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+      g.appendChild(clone);
+      use.replaceWith(g);
     }
   }
+}
 
-  function save(doc: any) {
-    doc.save(filename);
-    statuscallback.innerHTML =
-      "PDF is klaar. Kijk in uw Downloads folder indien deze niet spontaan wordt geopend.";
+/**
+ * svg2pdf.js ignores <line> elements when computing the bounding box of a
+ * group referenced by <use>, and clips them away (e.g. the cross of a lamp).
+ * An equivalent <path> is measured correctly.
+ */
+function linesToPaths(root: Element) {
+  root.querySelectorAll("line").forEach((line) => {
+    const num = (name: string) => parseFloat(line.getAttribute(name) || "0") || 0;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    for (const attr of Array.from(line.attributes)) {
+      if (!["x1", "y1", "x2", "y2"].includes(attr.name)) path.setAttribute(attr.name, attr.value);
+    }
+    path.setAttribute("d", `M${num("x1")} ${num("y1")}L${num("x2")} ${num("y2")}`);
+    if (!path.hasAttribute("fill")) path.setAttribute("fill", "none");
+    line.replaceWith(path);
+  });
+}
+
+/**
+ * svg2pdf.js/jsPDF embed PNG and JPEG reliably; other formats (SVG plans,
+ * WebP, GIF, ...) are converted to a high resolution PNG first so they are
+ * never silently dropped from the PDF.
+ */
+async function normalizeImages(root: Element) {
+  const images = Array.from(root.querySelectorAll("image"));
+  for (const image of images) {
+    const href = image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href") || "";
+    if (/^data:image\/(png|jpe?g);/i.test(href) || href === "") continue;
+    const width = parseFloat(image.getAttribute("width") || "0") || 0;
+    const height = parseFloat(image.getAttribute("height") || "0") || 0;
+    const png = await new Promise<string>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = width || img.naturalWidth || 1000;
+        const h = height || img.naturalHeight || 1000;
+        const factor = Math.min(4, 4000 / Math.max(w, h)); // up to 4000 px on the long side
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(w * factor));
+        canvas.height = Math.max(1, Math.round(h * factor));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas wordt niet ondersteund."));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        try {
+          resolve(canvas.toDataURL("image/png"));
+        } catch {
+          reject(
+            new Error(
+              "Een afbeelding in het situatieschema verwijst naar een andere website en kan daardoor niet in de PDF worden opgenomen. " +
+                "Sla de plattegrond op in een ander formaat (bv. PNG) en voeg hem opnieuw toe."
+            )
+          );
+        }
+      };
+      img.onerror = () => reject(new Error("Een afbeelding in het situatieschema kon niet worden geladen."));
+      img.src = href;
+    });
+    image.setAttribute("href", png);
+    image.removeAttributeNS("http://www.w3.org/1999/xlink", "href");
+  }
+}
+
+const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+export async function generatePdf(printDoc: PrintDocument, options: PdfOptions): Promise<PdfResult> {
+  const { layout, pages } = printDoc;
+  const indices = options.pageIndices.filter((i) => i >= 0 && i < pages.length);
+  if (indices.length === 0) throw new Error("Er zijn geen pagina's geselecteerd om af te drukken.");
+
+  const format = layout.width > 300 ? "a3" : "a4";
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format, compress: true });
+  await registerFonts(doc);
+  const { svg2pdf } = await import("svg2pdf.js");
+
+  // svg2pdf needs the element in the document for style resolution.
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;width:0;height:0;overflow:hidden;";
+  document.body.appendChild(host);
+
+  const rasterizedPages: number[] = [];
+  try {
+    for (let n = 0; n < indices.length; n++) {
+      const index = indices[n];
+      const spec = pages[index];
+      options.onProgress?.({ done: n, total: indices.length, pageNumber: index + 1 });
+      await nextFrame(); // let the progress indicator paint
+
+      if (n > 0) doc.addPage(format, "landscape");
+
+      try {
+        host.innerHTML = buildPageSvg(layout, spec, true);
+        const svgEl = host.firstElementChild as SVGSVGElement;
+        inlineUses(svgEl);
+        await normalizeImages(svgEl);
+        linesToPaths(svgEl);
+        await svg2pdf(svgEl, doc, { x: 0, y: 0, width: layout.width, height: layout.height });
+      } catch (error) {
+        console.warn(`Pagina ${index + 1}: vectorexport mislukt, terugval naar afbeelding.`, error);
+        const pxPerMm = options.dpi / 25.4;
+        const png = await svgToPng(buildPageSvg(layout, spec), layout.width * pxPerMm, layout.height * pxPerMm);
+        // Cover anything svg2pdf may have drawn before failing.
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, layout.width, layout.height, "F");
+        doc.addImage(png, "PNG", 0, 0, layout.width, layout.height, undefined, "FAST");
+        rasterizedPages.push(index + 1);
+      }
+    }
+  } finally {
+    host.remove();
   }
 
-  statuscallback.innerHTML = "PDF wordt gegenereerd. Even geduld..";
-  let doc = init();
-  nextpage(doc, 0);
+  options.onProgress?.({ done: indices.length, total: indices.length, pageNumber: indices[indices.length - 1] + 1 });
+
+  doc.setProperties({
+    title: "Eéndraadschema",
+    subject: "Eéndraadschema en situatieschema van de elektrische installatie",
+    keywords: "eendraadschema, situatieschema, elektrische installatie",
+    creator: "Eendraadschema",
+  });
+
+  return { doc, rasterizedPages };
+}
+
+/** Normalises a user supplied file name to "<name>.pdf". */
+export function pdfFilename(name: string | undefined | null): string {
+  let base = (name || "").trim().replace(/[\\/:*?"<>|]+/g, "_");
+  base = base.replace(/\.(eds|json|pdf|svg)$/i, "");
+  return (base || "eendraadschema") + ".pdf";
 }
