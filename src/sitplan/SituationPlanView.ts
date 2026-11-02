@@ -182,10 +182,24 @@ export class SituationPlanView {
 
     // Opnieuw passend maken wanneer het beschikbare venster wijzigt (enkel indien in "passend" modus)
     if (typeof ResizeObserver !== "undefined") {
+      // Gebundeld per animatieframe, en beveiligd tegen terugkoppellussen: als een herschaling de
+      // layout rond het canvas wijzigt (bvb een toolbar die anders afbreekt) en het canvas daardoor
+      // heen en weer springt tussen twee groottes, stoppen we na de eerste keer.
+      let frame = 0;
+      const recentSizes: string[] = [];
       this.resizeObserver = new ResizeObserver(() => {
-        if (this.disposed) return;
-        if (this.fitMode) this.zoomToFit();
-        else this.updateSizer();
+        if (this.disposed || frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (this.disposed) return;
+          const size = `${this.canvas.clientWidth}x${this.canvas.clientHeight}`;
+          if (recentSizes[recentSizes.length - 1] === size) return; // niets gewijzigd
+          const oscillating = recentSizes.length >= 2 && recentSizes[recentSizes.length - 2] === size;
+          recentSizes.push(size);
+          if (recentSizes.length > 4) recentSizes.shift();
+          if (this.fitMode && !oscillating) this.zoomToFit();
+          else this.updateSizer();
+        });
       });
       this.resizeObserver.observe(canvas);
     }
@@ -430,7 +444,9 @@ export class SituationPlanView {
       availableHeight / this.paper.offsetHeight
     );
 
-    this.setzoom(Math.floor(scale * 1000) / 1000);
+    const newZoom = Math.floor(scale * 1000) / 1000;
+    if (newZoom !== this.zoomfactor) this.setzoom(newZoom);
+    else this.updateSizer();
     this.fitMode = true;
     this.canvas.scrollLeft = 0;
     this.canvas.scrollTop = 0;
@@ -870,7 +886,10 @@ export class SituationPlanView {
 
     let svg = sitPlanElement.getScaledSVG(); // Deze call past ook viewUpdateNeeded aan en moet dus eerst gebeuren
 
-    if (sitPlanElement.needsViewUpdate || box.innerHTML !== svg) {
+    // Vergelijk met de laatst getekende SVG (niet met innerHTML: de browser serialiseert anders,
+    // waardoor elk element bij elke redraw herschreven werd en afbeeldingen zichtbaar flitsten)
+    if ((box as any).renderedSvg !== svg) {
+      (box as any).renderedSvg = svg;
       sitPlanElement.needsViewUpdate = false;
       // Handvatten (bij een geselecteerd bouwelement) behouden wanneer de inhoud vernieuwd wordt
       const handles = Array.from(

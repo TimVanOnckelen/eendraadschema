@@ -13,6 +13,7 @@ import { SitPlanSidebar, BuildingGeometry } from './SitPlanSidebar';
 import { useSitPlan } from '../hooks/useSitPlan';
 import { Icon } from './Icon';
 import { WallType } from '../sitplan/WallElement';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const GRID_STORAGE_KEY = 'sitplan.showGrid';
 
@@ -42,6 +43,20 @@ export const SitPlanView: React.FC = () => {
   const [shapesMenuOpen, setShapesMenuOpen] = useState<boolean>(false);
   const [showGrid, setShowGrid] = useState<boolean>(readGridPreference);
   const [showKeysDialog, setShowKeysDialog] = useState<boolean>(false);
+  const isMobile = useIsMobile();
+  // Op mobiel is de zijbalk een inklapbaar paneel onder de toolbar.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const centerAddCount = useRef(0);
+  // Positie van een geopend uitklapmenu (vast t.o.v. het venster, onder de knop die het opende)
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const placeMenuBelow = (button: HTMLElement) => {
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 200;
+    setMenuPos({
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8)),
+      top: rect.bottom,
+    });
+  };
 
   const drawingMode = sitPlan.state.drawingMode;
 
@@ -250,6 +265,25 @@ export const SitPlanView: React.FC = () => {
   const selectedBuildingElement =
     sitPlan.state.selectedElement?.isBuildingElement() ? sitPlan.state.selectedElement : null;
 
+  // Bij het selecteren van een bouwelement op mobiel het eigenschappenpaneel openen
+  useEffect(() => {
+    if (isMobile && selectedBuildingElement) setMobileSidebarOpen(true);
+  }, [isMobile, selectedBuildingElement]);
+
+  // Tik-alternatief voor slepen: symbool in het midden van het zichtbare deel van het blad plaatsen.
+  // Opeenvolgende symbolen worden licht verschoven zodat ze niet exact op elkaar liggen.
+  const handleAddSymbolAtCenter = (electroItemId: number) => {
+    const view = sitPlan.getView();
+    if (!view) return;
+    const center = view.getVisiblePaperCenter();
+    const offset = (centerAddCount.current++ % 8) * 24;
+    const x = Math.min(view.getPaperWidth(), center.x + offset);
+    const y = Math.min(view.getPaperHeight(), center.y + offset);
+    // addElement selecteert, brengt naar voor en bewaart een undo-stap
+    sitPlan.addElement(electroItemId, x, y);
+    if (isMobile) setMobileSidebarOpen(false);
+  };
+
   const buildingModeActive = Boolean(
     drawingMode && (drawingMode.type === 'wall' || drawingMode.type === 'window' || drawingMode.type === 'door')
   );
@@ -337,13 +371,14 @@ export const SitPlanView: React.FC = () => {
                   e.preventDefault();
                   e.stopPropagation();
                   setShapesMenuOpen(false);
+                  placeMenuBelow(e.currentTarget);
                   setBuildingElementsMenuOpen(!buildingElementsMenuOpen);
                 }}
                 title="Bouwelementen tekenen"
                 aria-expanded={buildingElementsMenuOpen}
               >
                 <Icon name="wall" />
-                <span>
+                <span className="tb-fixed-label">
                   {isWallDrawingMode('inner') ? 'Binnenmuur' :
                    isWallDrawingMode('outer') ? 'Buitenmuur' :
                    isWindowDrawingMode() ? 'Raam' :
@@ -354,7 +389,7 @@ export const SitPlanView: React.FC = () => {
               </button>
 
               {buildingElementsMenuOpen && (
-                <div className="tb-menu">
+                <div className="tb-menu" style={{ left: menuPos.left, top: menuPos.top }}>
                   {menuItem('Binnenmuur', <Icon name="wall" />, isWallDrawingMode('inner'), () => toggleWall('inner'), () => setBuildingElementsMenuOpen(false))}
                   {menuItem('Buitenmuur', <Icon name="wall" strokeWidth={2.5} />, isWallDrawingMode('outer'), () => toggleWall('outer'), () => setBuildingElementsMenuOpen(false))}
                   {menuItem('Raam', <Icon name="window" />, isWindowDrawingMode(), toggleWindow, () => setBuildingElementsMenuOpen(false))}
@@ -372,13 +407,14 @@ export const SitPlanView: React.FC = () => {
                   e.preventDefault();
                   e.stopPropagation();
                   setBuildingElementsMenuOpen(false);
+                  placeMenuBelow(e.currentTarget);
                   setShapesMenuOpen(!shapesMenuOpen);
                 }}
                 title="Vormen tekenen"
                 aria-expanded={shapesMenuOpen}
               >
                 <Icon name="shape" />
-                <span>
+                <span className="tb-fixed-label tb-fixed-label-short">
                   {isShapeDrawingMode('white') ? 'Wit' :
                    isShapeDrawingMode('black') ? 'Zwart' :
                    isShapeDrawingMode('gray') ? 'Grijs' :
@@ -389,7 +425,7 @@ export const SitPlanView: React.FC = () => {
               </button>
 
               {shapesMenuOpen && (
-                <div className="tb-menu">
+                <div className="tb-menu" style={{ left: menuPos.left, top: menuPos.top }}>
                   {menuItem('Wit', swatch('#ffffff'), isShapeDrawingMode('white'), () => toggleShape('white'), () => setShapesMenuOpen(false))}
                   {menuItem('Zwart', swatch('#000000'), isShapeDrawingMode('black'), () => toggleShape('black'), () => setShapesMenuOpen(false))}
                   {menuItem('Grijs', swatch('#999999'), isShapeDrawingMode('gray'), () => toggleShape('gray'), () => setShapesMenuOpen(false))}
@@ -398,17 +434,18 @@ export const SitPlanView: React.FC = () => {
               )}
             </div>
 
-            {drawingMode && (
-              <button
-                type="button"
-                className="tb-btn icon-only"
-                onClick={() => sitPlan.disableDrawingMode()}
-                title="Stop met tekenen (Esc)"
-                aria-label="Stop met tekenen"
-              >
-                <Icon name="x" />
-              </button>
-            )}
+            <button
+              type="button"
+              className="tb-btn icon-only"
+              style={{ visibility: drawingMode ? 'visible' : 'hidden' }}
+              tabIndex={drawingMode ? 0 : -1}
+              aria-hidden={!drawingMode}
+              onClick={() => sitPlan.disableDrawingMode()}
+              title="Stop met tekenen (Esc)"
+              aria-label="Stop met tekenen"
+            >
+              <Icon name="x" />
+            </button>
           </div>
 
           <span className="tb-sep" />
@@ -526,15 +563,31 @@ export const SitPlanView: React.FC = () => {
 
       {/* Main sitplan area */}
       <div id="outerdiv">
+        {isMobile && (
+          <button
+            type="button"
+            className="sitplan-mobile-panel-toggle"
+            aria-expanded={mobileSidebarOpen}
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          >
+            <Icon name={selectedBuildingElement ? 'pencil' : 'plus'} size={15} />
+            <span>{selectedBuildingElement ? 'Eigenschappen' : 'Symbolen'}</span>
+            <Icon name={mobileSidebarOpen ? 'chevron-up' : 'chevron-down'} size={14} />
+          </button>
+        )}
+
         {/* React Sidebar Component */}
-        <SitPlanSidebar
-          selectedElement={selectedBuildingElement}
-          selectionRevision={sitPlan.state.selectionRevision}
-          onClose={sitPlan.clearSelection}
-          onUpdateBuilding={handleUpdateBuilding}
-          onUpdateKringColor={handleUpdateKringColor}
-          structure={structure}
-        />
+        <div className={`sitplan-sidebar-wrap${isMobile && !mobileSidebarOpen ? ' collapsed' : ''}`}>
+          <SitPlanSidebar
+            selectedElement={selectedBuildingElement}
+            selectionRevision={sitPlan.state.selectionRevision}
+            onClose={sitPlan.clearSelection}
+            onUpdateBuilding={handleUpdateBuilding}
+            onUpdateKringColor={handleUpdateKringColor}
+            onAddSymbol={handleAddSymbolAtCenter}
+            structure={structure}
+          />
+        </div>
 
         <div
           id="canvas"

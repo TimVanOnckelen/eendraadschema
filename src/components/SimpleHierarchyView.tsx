@@ -6,6 +6,9 @@ import { Hierarchical_List } from '../Hierarchical_List';
 import { DiagramDrawing } from './DiagramDrawing';
 import { ContextMenu } from '../sitplan/ContextMenu';
 import { dialogAlert, dialogConfirm } from '../utils/DialogHelpers';
+import { useIsMobile } from '../hooks/useIsMobile';
+
+type MobilePane = 'list' | 'drawing' | 'properties';
 
 /**
  * SimpleHierarchyView React Component
@@ -41,6 +44,11 @@ const SimpleHierarchyView: React.FC = () => {
     svgPanYRef.current = svgPanY;
   }, [svgZoom, svgPanX, svgPanY]);
   const panGesture = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  // Active pointers on the drawing, used for two-finger pinch zoom on touch screens.
+  const activePointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchGesture = useRef<{ distance: number; midX: number; midY: number; zoom: number; panX: number; panY: number } | null>(null);
+  const isMobile = useIsMobile();
+  const [mobilePane, setMobilePane] = useState<MobilePane>('list');
   const suppressDrawingClick = useRef(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [highlightEnabled, setHighlightEnabled] = useState(true);
@@ -260,6 +268,12 @@ const SimpleHierarchyView: React.FC = () => {
     setSelectedElementId(id);
     
 
+  };
+
+  // Tapping a list row on mobile opens its properties directly.
+  const openElement = (id: number) => {
+    selectElement(id);
+    if (isMobile) setMobilePane('properties');
   };
 
   // Toggle collapse/expand for an element
@@ -1171,9 +1185,33 @@ const SimpleHierarchyView: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
 
-  // A plain click still selects a symbol; dragging pans the fixed viewport.
+  const pinchMetrics = (container: HTMLElement) => {
+    const [a, b] = Array.from(activePointers.current.values());
+    const rect = container.getBoundingClientRect();
+    return {
+      distance: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+      midX: (a.x + b.x) / 2 - rect.left,
+      midY: (a.y + b.y) / 2 - rect.top,
+    };
+  };
+
+  // A plain click still selects a symbol; dragging pans the fixed viewport and
+  // a two-finger pinch zooms around the midpoint between the fingers.
   const handlePanStart = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as Element).closest('button') || (event.button !== 0 && event.button !== 1)) return;
+    activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.current.size === 2) {
+      const metrics = pinchMetrics(event.currentTarget);
+      pinchGesture.current = {
+        ...metrics,
+        zoom: svgZoomRef.current, panX: svgPanXRef.current, panY: svgPanYRef.current,
+      };
+      panGesture.current = null;
+      suppressDrawingClick.current = true;
+      setIsPanning(true);
+      return;
+    }
+    if (activePointers.current.size > 2) return;
     suppressDrawingClick.current = false;
     panGesture.current = {
       pointerId: event.pointerId, x: event.clientX, y: event.clientY,
@@ -1183,6 +1221,25 @@ const SimpleHierarchyView: React.FC = () => {
   };
 
   const handlePanMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointers.current.has(event.pointerId)) {
+      activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    const pinch = pinchGesture.current;
+    if (pinch && activePointers.current.size >= 2) {
+      event.preventDefault();
+      const { distance, midX, midY } = pinchMetrics(event.currentTarget);
+      const zoom = Math.max(0.1, Math.min(8, pinch.zoom * distance / pinch.distance));
+      const ratio = zoom / pinch.zoom;
+      const panX = midX - (pinch.midX - pinch.panX) * ratio;
+      const panY = midY - (pinch.midY - pinch.panY) * ratio;
+      svgZoomRef.current = zoom;
+      svgPanXRef.current = panX;
+      svgPanYRef.current = panY;
+      setSvgZoom(zoom);
+      setSvgPanX(panX);
+      setSvgPanY(panY);
+      return;
+    }
     const gesture = panGesture.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     const dx = event.clientX - gesture.x;
@@ -1197,12 +1254,30 @@ const SimpleHierarchyView: React.FC = () => {
   };
 
   const handlePanEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    activePointers.current.delete(event.pointerId);
+    if (pinchGesture.current) {
+      if (activePointers.current.size < 2) {
+        // Finish the pinch; the remaining finger must be lifted before panning again.
+        pinchGesture.current = null;
+        panGesture.current = null;
+        setIsPanning(false);
+      }
+      return;
+    }
     if (panGesture.current?.pointerId !== event.pointerId) return;
     panGesture.current = null;
     setIsPanning(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  };
+
+  // Touch pointers are implicitly captured by the touched SVG node; that capture
+  // is released (and bubbles up) as soon as the container takes over, which
+  // must not end the gesture. Only the container's own capture loss counts.
+  const handleLostCapture = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    handlePanEnd(event);
   };
 
   const handleDrawingClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -1377,8 +1452,35 @@ const SimpleHierarchyView: React.FC = () => {
       </svg>
 
 
+      {/* Mobile: switch between the three panes with a tab bar */}
+      {isMobile && (
+        <div className="editor-mobile-tabs" role="tablist" aria-label="Editor weergave">
+          {([
+            ['list', 'Elementen', 'list'],
+            ['drawing', 'Tekening', 'schema'],
+            ['properties', 'Eigenschappen', 'pencil'],
+          ] as const).map(([pane, label, icon]) => (
+            <button
+              key={pane}
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === pane}
+              className={`editor-mobile-tab${mobilePane === pane ? ' active' : ''}`}
+              onClick={() => setMobilePane(pane)}
+            >
+              <Icon name={icon} size={15} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 3-column layout with resizable columns */}
-      <div id="canvas_3col" style={{ display: 'flex', width: '100%' }}>
+      <div
+        id="canvas_3col"
+        className={isMobile ? `editor-mobile editor-mobile-${mobilePane}` : undefined}
+        style={{ display: 'flex', width: '100%' }}
+      >
         {/* Left column: Element list */}
         <div 
           id="left_col_3" 
@@ -1453,10 +1555,10 @@ const SimpleHierarchyView: React.FC = () => {
                   )}
                   {!el.hasChildren && <span className="simple-collapse-spacer"></span>}
                   
-                  <div className="simple-item-icon" onClick={() => selectElement(el.id)}>
+                  <div className="simple-item-icon" onClick={() => openElement(el.id)}>
                     <Icon name={elementTypeIcon(el.type)} size={15} />
                   </div>
-                  <div className="simple-item-content" onClick={() => selectElement(el.id)}>
+                  <div className="simple-item-content" onClick={() => openElement(el.id)}>
                     <div className="simple-item-title">
                       {el.type}{el.nr ? <span className="simple-item-nr"> {el.nr}</span> : null}
                     </div>
@@ -1584,7 +1686,7 @@ const SimpleHierarchyView: React.FC = () => {
               onPointerMove={handlePanMove}
               onPointerUp={handlePanEnd}
               onPointerCancel={handlePanEnd}
-              onLostPointerCapture={handlePanEnd}
+              onLostPointerCapture={handleLostCapture}
               onClickCapture={handleDrawingClick}
             >
               {/* Zoom controls - positioned absolutely inside container */}
@@ -2087,7 +2189,7 @@ const SimpleHierarchyView: React.FC = () => {
               onPointerMove={handlePanMove}
               onPointerUp={handlePanEnd}
               onPointerCancel={handlePanEnd}
-              onLostPointerCapture={handlePanEnd}
+              onLostPointerCapture={handleLostCapture}
               onClickCapture={handleDrawingClick}>
             {/* Fullscreen controls */}
             <div className="svg-fullscreen-controls">

@@ -119,6 +119,20 @@
   cursor: grabbing !important;
 }
 
+/* Knoplabels met vaste breedte: de toolbar mag niet van breedte veranderen wanneer een
+   tekengereedschap gekozen wordt (anders verspringt de layout en wordt het canvas herschaald) */
+.tb-fixed-label {
+  display: inline-block;
+  width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.tb-fixed-label-short {
+  width: 76px;
+}
+
 .sitplan-hint {
   position: absolute;
   left: 50%;
@@ -137,7 +151,9 @@
 }
 
 .sitplan-zoom-label {
-  min-width: 52px;
+  width: 64px;
+  min-width: 64px;
+  padding: 0 4px;
   justify-content: center;
   font-variant-numeric: tabular-nums;
 }
@@ -534,4 +550,32 @@
 
 .boxlabel.hidden {
   display: none;
+}
+
+/* Tijdens het tekenen moeten aanraakbewegingen tekenen in plaats van scrollen */
+#canvas.drawing {
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  /* Toolbar op één lijn, horizontaal scrollbaar (zoals de rest van de mobiele layout) */
+  .sitplan-root > #ribbon.tb {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 6px;
+  }
+
+  /* Kolomlayout: het canvas neemt de resterende hoogte onder toolbar en paneel */
+  #canvas {
+    height: auto;
+    flex: 1 1 0;
+  }
+
+  .sitplan-hint {
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    bottom: 12px;
+  }
 }

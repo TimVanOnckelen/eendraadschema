@@ -202,8 +202,12 @@ export class SituationPlanElement {
     shape.y = this.posy - this.sizey / 2;
     shape.rotate = this.rotate;
     shape.page = this.page;
-    this.svg = shape.toSVG();
-    this.needsViewUpdate = true;
+    const svg = shape.toSVG();
+    // Enkel opnieuw tekenen als de inhoud effectief wijzigde (vermijdt onnodig herschrijven van de DOM)
+    if (svg !== this.svg) {
+      this.svg = svg;
+      this.needsViewUpdate = true;
+    }
   }
 
   public getscale(): number {
