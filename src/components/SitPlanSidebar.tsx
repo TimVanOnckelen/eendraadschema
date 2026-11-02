@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { SituationPlanElement } from '../sitplan/SituationPlanElement';
 import { WallType } from '../sitplan/WallElement';
+import { Icon } from './Icon';
 
 const PRINTABLE_KRING_COLORS: Array<{ color: string | null; label: string }> = [
   { color: null, label: 'Standaard (zwart)' },
@@ -28,6 +29,8 @@ interface SitPlanSidebarProps {
   onClose: () => void;
   onUpdateElement: (element: SituationPlanElement) => void;
   onUpdateKringColor: (kringId: number, color: string | null) => void;
+  /** Adds the symbol in the middle of the visible plan (tap alternative to drag & drop). */
+  onAddSymbol?: (electroItemId: number) => void;
   structure: any; // TODO: Type this properly
 }
 
@@ -36,6 +39,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   onClose,
   onUpdateElement,
   onUpdateKringColor,
+  onAddSymbol,
   structure,
 }) => {
   const [wallType, setWallType] = useState<WallType>('inner');
@@ -488,7 +492,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                     e.currentTarget.style.borderColor = 'var(--border)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
-                  title="Sleep naar het canvas om toe te voegen"
+                  title="Sleep naar het canvas of tik op + om toe te voegen"
                 >
                   {svgContent ? (
                     <div style={{
@@ -570,6 +574,20 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                       </div>
                     )}
                   </div>
+                  {onAddSymbol && (
+                    <button
+                      type="button"
+                      className="sitplan-symbol-add-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddSymbol(item.id);
+                      }}
+                      title="Toevoegen in het midden van het plan"
+                      aria-label={`${type} toevoegen aan het plan`}
+                    >
+                      <Icon name="plus" size={14} />
+                    </button>
+                  )}
                 </div>
               );
             } catch (error) {
@@ -587,7 +605,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   // If no element is selected, show available symbols
   if (!selectedElement) {
     return (
-      <div style={{
+      <div className="sitplan-sidebar" style={{
         width: '280px',
         height: '100%',
         backgroundColor: 'var(--surface-muted)',
@@ -605,7 +623,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
             Beschikbare symbolen
           </h3>
           <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Sleep symbolen naar het canvas
+            Sleep symbolen naar het canvas of tik op +
           </p>
           {getKringen().length > 0 && (
             <div style={{ marginTop: '12px' }}>
@@ -657,7 +675,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
 
   // Render properties for selected element
   return (
-    <div style={{
+    <div className="sitplan-sidebar" style={{
       width: '280px',
       height: '100%',
       backgroundColor: 'var(--surface-muted)',

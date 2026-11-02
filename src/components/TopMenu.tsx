@@ -33,6 +33,7 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
   const { currentView, setCurrentView } = useApp();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [theme, setTheme] = useState<Theme>(getTheme);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close submenu when clicking outside
@@ -40,11 +41,12 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setOpenSubmenu(null);
+        setMobileNavOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
   const handleMenuClick = (item: MenuItem, index: number) => {
@@ -53,12 +55,14 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
     } else if (item.view) {
       setCurrentView(item.view);
       setOpenSubmenu(null);
+      setMobileNavOpen(false);
     }
   };
 
   const handleSubMenuClick = (action: () => void) => {
     action();
     setOpenSubmenu(null);
+    setMobileNavOpen(false);
   };
 
   const handleThemeToggle = () => {
@@ -69,15 +73,30 @@ export const TopMenu: React.FC<TopMenuProps> = ({ items, currentFilename, saveDe
     saveDestination ?? 'local-file'
   ).shortLabel;
   const editingView = currentView === 'editor' || currentView === 'sitplan';
+  const currentItem = items.find((item) => item.view && item.view === currentView);
 
   return (
     <div id="topmenu" ref={menuRef}>
       <div className="topmenu-left">
+        <button
+          type="button"
+          className="topmenu-icon-btn topmenu-hamburger"
+          aria-label={mobileNavOpen ? 'Menu sluiten' : 'Menu openen'}
+          aria-expanded={mobileNavOpen}
+          aria-controls="minitabs"
+          onClick={() => {
+            setMobileNavOpen(!mobileNavOpen);
+            setOpenSubmenu(null);
+          }}
+        >
+          <Icon name={mobileNavOpen ? 'x' : 'menu'} />
+        </button>
         <div className="topmenu-brand">
           <span className="topmenu-brand-mark"><Icon name="schema" size={15} strokeWidth={2} /></span>
           <span className="topmenu-brand-text">Eendraadschema</span>
         </div>
-        <ul id="minitabs">
+        <span className="topmenu-current-view">{currentItem?.name ?? 'Eendraadschema'}</span>
+        <ul id="minitabs" className={mobileNavOpen ? 'mobile-open' : undefined}>
           {items.map((item, index) => (
             <li key={index} className="menu-item">
               <a

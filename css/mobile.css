@@ -1,0 +1,386 @@
+/* ==========================================================================
+   Mobile / touch layout
+   Everything below the 768px breakpoint (kept in sync with
+   src/hooks/useIsMobile.ts) plus touch-only tweaks.
+   ========================================================================== */
+
+/* Desktop defaults for elements that only exist for mobile */
+.topmenu-hamburger,
+.topmenu-current-view,
+.editor-mobile-tabs,
+.sitplan-mobile-panel-toggle {
+  display: none;
+}
+
+.sitplan-sidebar-wrap {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.sitplan-symbol-add-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.sitplan-symbol-add-btn:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Interactive sitplan parts must receive touch drags instead of scrolling */
+.box,
+.boxlabel,
+.wall-resize-handle,
+.wall-rotation-handle {
+  touch-action: none;
+}
+
+/* Touch screens have no hover: keep row actions reachable */
+@media (hover: none) {
+  .simple-item-actions {
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --menu-height: 52px;
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  /* ---------- Top menu ---------- */
+  #topmenu {
+    gap: 6px;
+    padding: 0 6px;
+  }
+
+  .topmenu-hamburger {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .topmenu-brand {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+  }
+
+  .topmenu-current-view {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    margin-left: 4px;
+  }
+
+  .topmenu-left {
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .topmenu-right {
+    gap: 2px;
+  }
+
+  .topmenu-icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .topmenu-divider,
+  .topmenu-file {
+    display: none;
+  }
+
+  /* Navigation becomes a drop-down sheet below the bar */
+  ul#minitabs {
+    display: none;
+    position: fixed;
+    top: var(--menu-height);
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: calc(100dvh - var(--menu-height));
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    white-space: normal;
+    z-index: 1002;
+  }
+
+  ul#minitabs.mobile-open {
+    display: flex;
+  }
+
+  ul#minitabs li.menu-item {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+  }
+
+  ul#minitabs > li > a {
+    padding: 12px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+
+  ul#minitabs > li > a .tab-label {
+    display: inline;
+    flex: 1;
+  }
+
+  ul#minitabs > li > a#current::after {
+    left: 0;
+    right: auto;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    height: auto;
+  }
+
+  .submenu {
+    position: static;
+    min-width: 0;
+    box-shadow: none;
+    border: none;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    margin: 0 0 6px 22px;
+    padding: 0 0 0 6px;
+    animation: none;
+  }
+
+  .submenu a {
+    padding: 11px 10px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  /* ---------- Editor (eendraadschema) ---------- */
+  .editor-mobile-tabs {
+    display: flex;
+    position: absolute;
+    top: var(--menu-height);
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    z-index: 5;
+  }
+
+  .editor-mobile-tab {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 4px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .editor-mobile-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+  }
+
+  #canvas_3col.editor-mobile {
+    top: calc(var(--menu-height) + 44px);
+  }
+
+  #canvas_3col.editor-mobile > #left_col_3,
+  #canvas_3col.editor-mobile > #middle_col_3,
+  #canvas_3col.editor-mobile > #right_col_3 {
+    display: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    border: none !important;
+    flex: 1 1 auto !important;
+  }
+
+  #canvas_3col.editor-mobile > .column-resize-handle {
+    display: none !important;
+  }
+
+  #canvas_3col.editor-mobile-list > #left_col_3,
+  #canvas_3col.editor-mobile-drawing > #middle_col_3,
+  #canvas_3col.editor-mobile-properties > #right_col_3 {
+    display: flex !important;
+  }
+
+  .panel-hint {
+    display: none;
+  }
+
+  .svg-zoom-controls,
+  .svg-fullscreen-controls {
+    top: auto;
+    bottom: 12px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+
+  .svg-zoom-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .svg-fullscreen-container {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  /* Bigger touch targets in the element list */
+  .simple-hierarchy-item {
+    min-height: 44px;
+  }
+
+  .simple-item-actions {
+    display: flex;
+  }
+
+  .simple-item-action-btn,
+  .simple-collapse-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .simple-hierarchy-search input,
+  .simple-properties-form input,
+  .simple-properties-form select,
+  .simple-properties-form textarea {
+    font-size: 16px; /* avoids iOS zoom-on-focus */
+  }
+
+  /* Modals fill the screen */
+  .add-element-modal,
+  .editor-modal {
+    width: 100%;
+    max-width: none !important;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+
+  .editor-modal {
+    padding: 16px;
+  }
+
+  /* ---------- Situatieschema ---------- */
+  #ribbon.tb {
+    padding: 0 6px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  #ribbon.tb::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tb-label {
+    display: none;
+  }
+
+  .tb-btn {
+    height: 40px;
+  }
+
+  #outerdiv {
+    flex-direction: column !important;
+  }
+
+  .sitplan-mobile-panel-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    min-height: 44px;
+    flex-shrink: 0;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .sitplan-mobile-panel-toggle > span {
+    flex: 1;
+    text-align: left;
+  }
+
+  .sitplan-sidebar-wrap {
+    height: auto;
+    max-height: 45dvh;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sitplan-sidebar-wrap.collapsed {
+    display: none;
+  }
+
+  .sitplan-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 45dvh;
+    border-right: none !important;
+  }
+
+  .sitplan-symbol-add-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  #canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tb-menu {
+    max-width: calc(100vw - 16px);
+  }
+}
