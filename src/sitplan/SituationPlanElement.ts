@@ -124,8 +124,90 @@ export class SituationPlanElement {
   }
 
   public setscale(scale: number) {
+    // Bouwelementen (muren, ramen, deuren, vormen) worden altijd op ware grootte getekend.
+    // Hun afmetingen worden rechtstreeks via sizex/sizey aangepast.
+    if (this.isBuildingElement()) {
+      this.scale = 1;
+      return;
+    }
     this.scale = scale;
     this.needsViewUpdate = true;
+  }
+
+  /**
+   * Geeft true terug indien het element een bouwelement is (muur, raam, deur of vrije vorm).
+   */
+  isBuildingElement(): boolean {
+    return (
+      this.wallElement != null ||
+      this.windowElement != null ||
+      this.doorElement != null ||
+      this.freeformShapeElement != null
+    );
+  }
+
+  /**
+   * Geeft het onderliggende bouwelement terug (muur, raam, deur of vrije vorm) of null.
+   */
+  getBuildingShape():
+    | WallElement
+    | WindowElement
+    | DoorElement
+    | FreeformShapeElement
+    | null {
+    return (
+      this.wallElement ??
+      this.windowElement ??
+      this.doorElement ??
+      this.freeformShapeElement ??
+      null
+    );
+  }
+
+  /**
+   * Zet positie, afmetingen en rotatie van een bouwelement in één keer.
+   * Positie is het middelpunt van het element.
+   */
+  setBuildingGeometry(geometry: {
+    posx?: number;
+    posy?: number;
+    width?: number;
+    height?: number;
+    rotate?: number;
+  }) {
+    const shape = this.getBuildingShape();
+    if (!shape) return;
+    if (geometry.posx != null && isFinite(geometry.posx)) this.posx = geometry.posx;
+    if (geometry.posy != null && isFinite(geometry.posy)) this.posy = geometry.posy;
+    if (geometry.width != null && isFinite(geometry.width))
+      this.sizex = Math.max(1, geometry.width);
+    if (geometry.height != null && isFinite(geometry.height))
+      this.sizey = Math.max(1, geometry.height);
+    if (geometry.rotate != null && isFinite(geometry.rotate))
+      this.rotate = ((geometry.rotate % 360) + 360) % 360;
+    this.syncBuildingShape();
+  }
+
+  /**
+   * Synchroniseert de gegevens van het bouwelement (x, y, breedte, hoogte, rotatie, svg)
+   * met de canonieke gegevens van dit element (posx, posy, sizex, sizey, rotate).
+   */
+  syncBuildingShape() {
+    const shape = this.getBuildingShape();
+    if (!shape) return;
+    this.scale = 1;
+    shape.width = this.sizex;
+    shape.height = this.sizey;
+    shape.x = this.posx - this.sizex / 2;
+    shape.y = this.posy - this.sizey / 2;
+    shape.rotate = this.rotate;
+    shape.page = this.page;
+    const svg = shape.toSVG();
+    // Enkel opnieuw tekenen als de inhoud effectief wijzigde (vermijdt onnodig herschrijven van de DOM)
+    if (svg !== this.svg) {
+      this.svg = svg;
+      this.needsViewUpdate = true;
+    }
   }
 
   public getscale(): number {
@@ -191,6 +273,8 @@ export class SituationPlanElement {
     this.sizex = wallElement.width;
     this.sizey = wallElement.height;
     this.page = wallElement.page;
+    this.rotate = wallElement.rotate || 0;
+    this.scale = 1;
     this.svg = wallElement.toSVG();
     this.needsViewUpdate = true;
   }
@@ -236,6 +320,8 @@ export class SituationPlanElement {
     this.sizex = windowElement.width;
     this.sizey = windowElement.height;
     this.page = windowElement.page;
+    this.rotate = windowElement.rotate || 0;
+    this.scale = 1;
     this.svg = windowElement.toSVG();
     this.needsViewUpdate = true;
   }
@@ -281,6 +367,8 @@ export class SituationPlanElement {
     this.sizex = doorElement.width;
     this.sizey = doorElement.height;
     this.page = doorElement.page;
+    this.rotate = doorElement.rotate || 0;
+    this.scale = 1;
     this.svg = doorElement.toSVG();
     this.needsViewUpdate = true;
   }
@@ -326,6 +414,8 @@ export class SituationPlanElement {
     this.sizex = freeformShapeElement.width;
     this.sizey = freeformShapeElement.height;
     this.page = freeformShapeElement.page;
+    this.rotate = freeformShapeElement.rotate || 0;
+    this.scale = 1;
     this.svg = freeformShapeElement.toSVG();
     this.needsViewUpdate = true;
   }
@@ -602,31 +692,8 @@ export class SituationPlanElement {
       if (electroItem != null) electroItem.updateSituationPlanElement(this);
     }
 
-    // For walls, always regenerate SVG to ensure correct dimensions
-    if (this.isWall()) {
-      const wallElement = this.getWallElement();
-      if (wallElement) {
-        wallElement.width = this.sizex;
-        wallElement.height = this.sizey;
-        wallElement.x = this.posx - this.sizex / 2;
-        wallElement.y = this.posy - this.sizey / 2;
-        this.svg = wallElement.toSVG();
-        this.needsViewUpdate = true; // Force update
-      }
-    }
-
-    // For freeform shapes, always regenerate SVG to ensure correct dimensions
-    if (this.isFreeformShape()) {
-      const freeformShapeElement = this.getFreeformShapeElement();
-      if (freeformShapeElement) {
-        freeformShapeElement.width = this.sizex;
-        freeformShapeElement.height = this.sizey;
-        freeformShapeElement.x = this.posx - this.sizex / 2;
-        freeformShapeElement.y = this.posy - this.sizey / 2;
-        this.svg = freeformShapeElement.toSVG();
-        this.needsViewUpdate = true; // Force update
-      }
-    }
+    // Bouwelementen worden steeds opnieuw gegenereerd zodat de SVG overeenkomt met de huidige afmetingen
+    if (this.isBuildingElement()) this.syncBuildingShape();
 
     const renderedSvg = this.getRenderedSVG();
     let posinfo = "";
@@ -876,6 +943,17 @@ export class SituationPlanElement {
         json.freeformShape
       );
       this.svg = this.freeformShapeElement.toSVG();
+    }
+
+    // Bouwelementen werden vroeger met de standaard symboolschaal (0.7) getekend.
+    // We zetten ze om naar ware grootte zodat ze er visueel identiek blijven uitzien.
+    if (this.isBuildingElement()) {
+      if (this.scale != null && this.scale !== 1 && isFinite(this.scale) && this.scale > 0) {
+        this.sizex = this.sizex * this.scale;
+        this.sizey = this.sizey * this.scale;
+      }
+      this.scale = 1;
+      this.syncBuildingShape();
     }
 
     this.needsViewUpdate = true; // TODO: make this more efficient as it will always trigger redraws, even when not needed

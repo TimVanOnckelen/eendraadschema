@@ -1,13 +1,19 @@
 /**
  * useSitPlan - React hook for managing situation plan state
  *
- * This hook provides a modern React interface to the situation plan functionality,
- * gradually replacing the legacy SituationPlanView class.
+ * Deze hook vormt de brug tussen React en de (imperatieve) SituationPlanView class.
+ * De view verwittigt React via window events (zie SITPLAN_EVENTS) wanneer pagina, zoom,
+ * tekengereedschap of selectie wijzigen.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SituationPlan } from "../sitplan/SituationPlan";
 import { SituationPlanElement } from "../sitplan/SituationPlanElement";
+import {
+  SituationPlanView,
+  SitPlanDrawingTool,
+  SITPLAN_EVENTS,
+} from "../sitplan/SituationPlanView";
 import { WallType } from "../sitplan/WallElement";
 import { FreeformShapeType } from "../sitplan/FreeformShapeElement";
 import { Hierarchical_List } from "../Hierarchical_List";
@@ -16,7 +22,13 @@ export interface SitPlanState {
   currentPage: number;
   numPages: number;
   zoomFactor: number;
+  fitMode: boolean;
   drawingMode: DrawingMode | null;
+  selectedCount: number;
+  /** Het geselecteerde element indien er precies één geselecteerd is */
+  selectedElement: SituationPlanElement | null;
+  /** Wordt verhoogd telkens de selectie of de geselecteerde elementen wijzigen */
+  selectionRevision: number;
 }
 
 export type DrawingMode =
@@ -58,198 +70,161 @@ export interface UseSitPlanResult {
   selectElement: (element: SituationPlanElement | null) => void;
   clearSelection: () => void;
 
+  // Grid
+  setSnapToGrid: (enabled: boolean) => void;
+
   // Utility
   redraw: () => void;
-  getCoordinatesFromEvent: (e: React.MouseEvent | MouseEvent) => {
+  getView: () => SituationPlanView | null;
+  getCoordinatesFromEvent: (e: { clientX: number; clientY: number }) => {
     x: number;
     y: number;
   };
 }
 
+const ZOOM_STEP = 1.25;
+
+function toolToDrawingMode(tool: SitPlanDrawingTool | null): DrawingMode | null {
+  if (!tool) return null;
+  switch (tool.kind) {
+    case "wall":
+      return { type: "wall", wallType: tool.wallType };
+    case "window":
+      return { type: "window" };
+    case "door":
+      return { type: "door" };
+    case "shape":
+      return { type: "shape", shapeType: tool.shapeType };
+  }
+}
+
 export function useSitPlan(
   sitplan: SituationPlan | null,
-  structure: Hierarchical_List | null,
-  canvasRef: React.RefObject<HTMLElement>,
-  paperRef: React.RefObject<HTMLElement>
+  structure: Hierarchical_List | null
 ): UseSitPlanResult {
   const [state, setState] = useState<SitPlanState>({
     currentPage: 1,
     numPages: 1,
     zoomFactor: 1,
+    fitMode: true,
     drawingMode: null,
+    selectedCount: 0,
+    selectedElement: null,
+    selectionRevision: 0,
   });
 
-  // Sync state with legacy sitplanview when it changes
-  useEffect(() => {
-    if (!structure?.sitplanview) return;
+  const getView = useCallback((): SituationPlanView | null => {
+    const view = structure?.sitplanview as SituationPlanView | null | undefined;
+    if (!view || view.isDisposed()) return null;
+    return view;
+  }, [structure]);
 
-    const updateState = () => {
+  const syncFromView = useCallback(
+    (bumpSelection: boolean = false) => {
+      const view = getView();
+      if (!view) return;
       setState((prev) => ({
         ...prev,
-        currentPage: structure.sitplanview.getCurrentPage(),
-        numPages: structure.sitplanview.getNumPages(),
-        zoomFactor: structure.sitplanview.getZoomFactor(),
+        currentPage: view.getCurrentPage(),
+        numPages: view.getNumPages(),
+        zoomFactor: view.getZoomFactor(),
+        fitMode: view.isFitMode(),
+        drawingMode: toolToDrawingMode(view.getDrawingTool()),
+        selectedCount: view.getSelectedCount(),
+        selectedElement: view.getSingleSelectedElement(),
+        selectionRevision: bumpSelection
+          ? prev.selectionRevision + 1
+          : prev.selectionRevision,
       }));
-    };
+    },
+    [getView]
+  );
 
-    updateState();
-  }, [structure?.sitplanview, sitplan]);
-
-  // Listen for selection changes
+  // Luister naar wijzigingen in de view
   useEffect(() => {
-    const handleSelectionChange = () => {
-      // Selection changes are handled by the legacy system
-      // Just force a state update to trigger UI refresh
-      setState((prev) => ({ ...prev }));
-    };
-
-    window.addEventListener(
-      "sitplan-selection-change",
-      handleSelectionChange as EventListener
-    );
+    const onView = () => syncFromView(false);
+    const onSelection = () => syncFromView(true);
+    window.addEventListener(SITPLAN_EVENTS.viewChange, onView);
+    window.addEventListener(SITPLAN_EVENTS.toolChange, onView);
+    window.addEventListener(SITPLAN_EVENTS.selectionChange, onSelection);
+    syncFromView(true);
     return () => {
-      window.removeEventListener(
-        "sitplan-selection-change",
-        handleSelectionChange as EventListener
-      );
+      window.removeEventListener(SITPLAN_EVENTS.viewChange, onView);
+      window.removeEventListener(SITPLAN_EVENTS.toolChange, onView);
+      window.removeEventListener(SITPLAN_EVENTS.selectionChange, onSelection);
     };
-  }, []);
+  }, [syncFromView, sitplan]);
 
   // Page management
   const changePage = useCallback(
     (pageNum: number) => {
-      if (!structure?.sitplanview) return;
-      structure.sitplanview.changePage(pageNum);
-      setState((prev) => ({ ...prev, currentPage: pageNum }));
+      getView()?.changePage(pageNum);
+      syncFromView();
     },
-    [structure]
+    [getView, syncFromView]
   );
 
   const addPage = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    structure.sitplanview.addPage();
-    setState((prev) => ({ ...prev, numPages: prev.numPages + 1 }));
-  }, [structure]);
+    getView()?.addPage();
+    syncFromView();
+  }, [getView, syncFromView]);
 
   const deletePage = useCallback(
     (callback?: () => void) => {
-      if (!structure?.sitplanview) return;
-      structure.sitplanview.deletePage(() => {
-        setState((prev) => ({ ...prev, numPages: prev.numPages - 1 }));
+      getView()?.deletePage(() => {
+        syncFromView();
         callback?.();
       });
     },
-    [structure]
+    [getView, syncFromView]
   );
 
   // Zoom management
   const setZoomFactor = useCallback(
     (factor: number) => {
-      if (!structure?.sitplanview) return;
-      structure.sitplanview.setzoom(factor);
-      setState((prev) => ({ ...prev, zoomFactor: factor }));
+      getView()?.zoomAt(factor);
     },
-    [structure]
+    [getView]
   );
 
   const zoomIn = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    const currentZoom = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
-    const newZoom = Math.min(currentZoom * 1.2, 5);
-    setZoomFactor(newZoom);
-  }, [structure, state.zoomFactor, setZoomFactor]);
+    getView()?.zoomBy(ZOOM_STEP);
+  }, [getView]);
 
   const zoomOut = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    const currentZoom = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
-    const newZoom = Math.max(currentZoom / 1.2, 0.1);
-    setZoomFactor(newZoom);
-  }, [structure, state.zoomFactor, setZoomFactor]);
+    getView()?.zoomBy(1 / ZOOM_STEP);
+  }, [getView]);
 
   const zoomToFit = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    structure.sitplanview.zoomToFit();
-    setState((prev) => ({
-      ...prev,
-      zoomFactor: structure.sitplanview.getZoomFactor(),
-    }));
-  }, [structure]);
+    getView()?.zoomToFit();
+  }, [getView]);
 
   // Drawing modes
   const enableWallDrawing = useCallback(
-    (wallType: WallType) => {
-      if (!structure?.sitplanview) return;
-
-      // Disable other modes
-      structure.sitplanview.disableFreeformShapeDrawingMode();
-      structure.sitplanview.disableWindowDrawingMode();
-      structure.sitplanview.disableDoorDrawingMode();
-
-      // Enable wall drawing
-      structure.sitplanview.enableWallDrawingMode(wallType);
-      setState((prev) => ({
-        ...prev,
-        drawingMode: { type: "wall", wallType },
-      }));
-    },
-    [structure]
+    (wallType: WallType) => getView()?.setDrawingTool({ kind: "wall", wallType }),
+    [getView]
   );
 
-  const enableWindowDrawing = useCallback(() => {
-    if (!structure?.sitplanview) return;
+  const enableWindowDrawing = useCallback(
+    () => getView()?.setDrawingTool({ kind: "window" }),
+    [getView]
+  );
 
-    // Disable other modes
-    structure.sitplanview.disableWallDrawingMode();
-    structure.sitplanview.disableFreeformShapeDrawingMode();
-    structure.sitplanview.disableDoorDrawingMode();
-
-    // Enable window drawing
-    structure.sitplanview.enableWindowDrawingMode();
-    setState((prev) => ({ ...prev, drawingMode: { type: "window" } }));
-  }, [structure]);
-
-  const enableDoorDrawing = useCallback(() => {
-    if (!structure?.sitplanview) return;
-
-    // Disable other modes
-    structure.sitplanview.disableWallDrawingMode();
-    structure.sitplanview.disableFreeformShapeDrawingMode();
-    structure.sitplanview.disableWindowDrawingMode();
-
-    // Enable door drawing
-    structure.sitplanview.enableDoorDrawingMode();
-    setState((prev) => ({ ...prev, drawingMode: { type: "door" } }));
-  }, [structure]);
+  const enableDoorDrawing = useCallback(
+    () => getView()?.setDrawingTool({ kind: "door" }),
+    [getView]
+  );
 
   const enableShapeDrawing = useCallback(
-    (shapeType: FreeformShapeType) => {
-      if (!structure?.sitplanview) return;
-
-      // Disable other modes
-      structure.sitplanview.disableWallDrawingMode();
-      structure.sitplanview.disableWindowDrawingMode();
-      structure.sitplanview.disableDoorDrawingMode();
-
-      // Enable shape drawing
-      structure.sitplanview.enableFreeformShapeDrawingMode(shapeType);
-      setState((prev) => ({
-        ...prev,
-        drawingMode: { type: "shape", shapeType },
-      }));
-    },
-    [structure]
+    (shapeType: FreeformShapeType) =>
+      getView()?.setDrawingTool({ kind: "shape", shapeType }),
+    [getView]
   );
 
-  const disableDrawingMode = useCallback(() => {
-    if (!structure?.sitplanview) return;
-
-    structure.sitplanview.disableWallDrawingMode();
-    structure.sitplanview.disableFreeformShapeDrawingMode();
-    structure.sitplanview.disableWindowDrawingMode();
-    structure.sitplanview.disableDoorDrawingMode();
-
-    setState((prev) => ({ ...prev, drawingMode: null }));
-  }, [structure]);
+  const disableDrawingMode = useCallback(
+    () => getView()?.setDrawingTool(null),
+    [getView]
+  );
 
   // Element management
   const addElement = useCallback(
@@ -258,93 +233,79 @@ export function useSitPlan(
       x: number,
       y: number
     ): SituationPlanElement | null => {
-      if (!sitplan || !structure?.sitplanview) return null;
+      const view = getView();
+      if (!sitplan || !view || !structure) return null;
+      if (!structure.getElectroItemById(electroItemId)) return null;
 
-      const electroItem = structure.getElectroItemById(electroItemId);
-      if (!electroItem) return null;
-
-      const currentPage = structure.sitplanview.getCurrentPage();
-
-      const element = sitplan.addElementFromElectroItem(
+      const before = new Set(sitplan.getElements());
+      view.addElectroItem(
         electroItemId,
-        currentPage,
-        x,
-        y,
         "auto",
         "",
         "onder",
-        11,
+        sitplan.defaults?.fontsize ?? 11,
         sitplan.defaults.scale,
-        sitplan.defaults.rotate
+        sitplan.defaults.rotate,
+        x,
+        y
       );
-
-      if (element) {
-        structure.sitplanview.redraw();
-      }
-
-      return element;
+      return sitplan.getElements().find((e) => !before.has(e)) ?? null;
     },
-    [sitplan, structure]
+    [sitplan, structure, getView]
   );
 
   const updateElement = useCallback(
-    (element: SituationPlanElement) => {
-      if (!structure?.sitplanview) return;
-      structure.sitplanview.redraw();
+    (_element: SituationPlanElement) => {
+      getView()?.redraw();
     },
-    [structure]
+    [getView]
   );
 
   const deleteElement = useCallback(
     (element: SituationPlanElement) => {
-      if (!sitplan || !structure?.sitplanview) return;
-
+      const view = getView();
+      if (!sitplan || !view) return;
+      element.boxref?.remove();
+      element.boxlabelref?.remove();
       sitplan.removeElement(element);
-      structure.sitplanview.redraw();
+      view.clearSelection();
+      view.redraw();
     },
-    [sitplan, structure]
+    [sitplan, getView]
   );
 
   const selectElement = useCallback(
     (element: SituationPlanElement | null) => {
-      if (!structure?.sitplanview) return;
-
-      if (element) {
-        const box = document.getElementById(`SP_${element.id}`);
-        if (box) {
-          structure.sitplanview.selectOneBox(box);
-        }
-      } else {
-        structure.sitplanview.clearSelection();
-      }
+      const view = getView();
+      if (!view) return;
+      if (element?.boxref) view.selectOneBox(element.boxref);
+      else view.clearSelection();
     },
-    [structure]
+    [getView]
   );
 
   const clearSelection = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    structure.sitplanview.clearSelection();
-  }, [structure]);
+    getView()?.clearSelection();
+  }, [getView]);
+
+  const setSnapToGrid = useCallback(
+    (enabled: boolean) => {
+      getView()?.setSnapToGrid(enabled);
+    },
+    [getView]
+  );
 
   const redraw = useCallback(() => {
-    if (!structure?.sitplanview) return;
-    structure.sitplanview.redraw();
-  }, [structure]);
+    getView()?.redraw();
+  }, [getView]);
 
   const getCoordinatesFromEvent = useCallback(
-    (e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
-      if (!paperRef.current || !structure?.sitplanview) {
-        return { x: 0, y: 0 };
-      }
-
-      const rect = paperRef.current.getBoundingClientRect();
-      const zoomFactor = structure.sitplanview.getZoomFactor() || state.zoomFactor || 1;
-      const x = (e.clientX - rect.left) / zoomFactor;
-      const y = (e.clientY - rect.top) / zoomFactor;
-
-      return { x, y };
+    (e: { clientX: number; clientY: number }): { x: number; y: number } => {
+      const view = getView();
+      if (!view) return { x: 0, y: 0 };
+      return view.clientToPaper(e.clientX, e.clientY);
     },
-    [paperRef, structure, state.zoomFactor]
+    [getView]
   );
 
   return {
@@ -366,7 +327,9 @@ export function useSitPlan(
     deleteElement,
     selectElement,
     clearSelection,
+    setSnapToGrid,
     redraw,
+    getView,
     getCoordinatesFromEvent,
   };
 }

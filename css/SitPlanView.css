@@ -1,14 +1,26 @@
 /* SitPlan View - React specific styles */
 
 :root {
-  --paperPadding: 10px; /* Padding around the paper */
+  --paperPadding: 24px; /* Ruimte rond het papier */
+}
+
+.sitplan-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - var(--menu-height));
+  height: calc(100dvh - var(--menu-height));
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 #outerdiv {
   display: flex;
   position: relative;
+  top: auto;
   width: 100%;
-  height: 100%;
+  height: auto;
   flex: 1;
   overflow: hidden;
   background-color: var(--background);
@@ -32,27 +44,195 @@
   color: var(--text-primary);
 }
 
+/* Het canvas is het scrollbare gebied. De sizer heeft de grootte van het gezoomde papier
+   (plus marge) zodat het scrollgebied altijd klopt; margin:auto centreert hem zonder
+   onbereikbare zones wanneer hij groter is dan het canvas. */
 #canvas {
   position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  display: flex;
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   height: 100%;
   overflow: auto;
-  background-color: var(--background);
-  padding: var(--paperPadding);
-  min-height: 0; /* Important for flex children */
+  padding: 0;
   box-sizing: border-box;
+  background-color: var(--background);
+  overscroll-behavior: contain;
+}
+
+#paperSizer {
+  position: relative;
+  flex: 0 0 auto;
+  margin: auto;
 }
 
 #paper {
-  position: relative; /* Changed from absolute to relative */
-  width: 277mm; /* Useful drawing area on A4 landscape */
-  height: 190mm; /* Useful drawing area on A4 landscape */
+  position: absolute;
+  top: var(--paperPadding);
+  left: var(--paperPadding);
+  width: 277mm; /* Bruikbare tekenzone op A4 liggend (zoals in de print) */
+  height: 150mm; /* 210mm - marges - titelblok, zie printToJsPDF */
+  box-sizing: content-box; /* tekenzone exact 277 x 150 mm, rand komt erbuiten */
+  margin: 0;
+  flex: none;
   background-color: white;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
   border-radius: 2px;
   transform-origin: top left;
-  margin: 0 auto;
+  --sitplan-inverse-zoom: 1;
+}
+
+#paper.show-grid {
+  background-image:
+    linear-gradient(to right, rgba(31, 86, 194, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(31, 86, 194, 0.16) 1px, transparent 1px),
+    linear-gradient(to right, rgba(120, 120, 120, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 120, 120, 0.09) 1px, transparent 1px);
+  background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+}
+
+#paper.dragging .box,
+#paper.dragging .boxlabel {
+  cursor: grabbing;
+}
+
+#canvas.drawing,
+#canvas.drawing .box,
+#canvas.drawing .boxlabel,
+#canvas.drawing #paper {
+  cursor: crosshair;
+}
+
+#canvas.space-pan,
+#canvas.space-pan * {
+  cursor: grab !important;
+}
+
+#canvas.panning,
+#canvas.panning * {
+  cursor: grabbing !important;
+}
+
+/* Knoplabels met vaste breedte: de toolbar mag niet van breedte veranderen wanneer een
+   tekengereedschap gekozen wordt (anders verspringt de layout en wordt het canvas herschaald) */
+.tb-fixed-label {
+  display: inline-block;
+  width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.tb-fixed-label-short {
+  width: 76px;
+}
+
+.sitplan-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(calc(-50% + 140px));
+  max-width: calc(100% - 340px);
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  z-index: 50;
+}
+
+.sitplan-zoom-label {
+  width: 64px;
+  min-width: 64px;
+  padding: 0 4px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selectierechthoek */
+.sitplan-marquee {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100000;
+  border: calc(1px * var(--sitplan-inverse-zoom, 1)) dashed #1f56c2;
+  background: rgba(31, 86, 194, 0.08);
+  box-sizing: border-box;
+}
+
+/* Voorbeeld tijdens het tekenen van een bouwelement */
+.sitplan-draw-preview {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100000;
+  box-sizing: border-box;
+  opacity: 0.75;
+  outline: calc(1px * var(--sitplan-inverse-zoom, 1)) dashed #1f56c2;
+}
+
+.sitplan-draw-preview.wall-inner { background-color: #cccccc; }
+.sitplan-draw-preview.wall-outer { background-color: #999999; }
+.sitplan-draw-preview.window-preview {
+  background-color: #ffffff;
+  border: calc(2px * var(--sitplan-inverse-zoom, 1)) dashed #000000;
+}
+.sitplan-draw-preview.door-preview {
+  background-color: rgba(255, 255, 255, 0.6);
+  border-left: calc(2px * var(--sitplan-inverse-zoom, 1)) solid #000000;
+  border-bottom: calc(2px * var(--sitplan-inverse-zoom, 1)) solid #000000;
+  border-top-right-radius: 100%;
+}
+.sitplan-draw-preview.freeform-white { background-color: #ffffff; border: 1px solid #cccccc; }
+.sitplan-draw-preview.freeform-black { background-color: #000000; }
+.sitplan-draw-preview.freeform-gray { background-color: #999999; }
+.sitplan-draw-preview.freeform-darkgray { background-color: #555555; }
+
+.sitplan-draw-size {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: calc(4px * var(--sitplan-inverse-zoom, 1));
+  padding: calc(1px * var(--sitplan-inverse-zoom, 1)) calc(5px * var(--sitplan-inverse-zoom, 1));
+  font-size: calc(11px * var(--sitplan-inverse-zoom, 1));
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #ffffff;
+  background: #1f56c2;
+  border-radius: calc(3px * var(--sitplan-inverse-zoom, 1));
+  opacity: 1;
+}
+
+/* Voorbeeld van symbolen in de zijbalk */
+.sitplan-symbol-preview {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.sitplan-symbol-preview .svg-icon {
+  position: static;
+  transform: none;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
 }
 
 /* Toolbar (ribbon) */
@@ -62,6 +242,22 @@
   padding: 0 12px;
   overflow-x: auto;
   overflow-y: visible;
+}
+
+/* In het situatieschema maakt de ribbon deel uit van de layout (niet absoluut gepositioneerd),
+   zodat het canvas exact de resterende ruimte inneemt. Op smalle schermen loopt hij door op een tweede lijn. */
+.sitplan-root > #ribbon.tb {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  box-sizing: border-box;
+  height: auto;
+  min-height: var(--ribbon-height);
+  flex-wrap: wrap;
+  row-gap: 4px;
+  padding: 6px 12px;
+  overflow: visible;
 }
 
 .tb-group-row,
@@ -252,10 +448,16 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  touch-action: none;
 }
 
 .box[movable="false"] {
   cursor: default;
+  touch-action: auto;
+}
+
+.box[movable="true"] {
+  cursor: move;
 }
 
 .box.selected {
@@ -285,150 +487,57 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  touch-action: none;
 }
 
-/* Wall styles */
-.wall-inner {
-  background-color: #666666;
-  border: 1px solid #4d4d4d;
-}
-
-.wall-outer {
-  background-color: #333333;
-  background-image: repeating-linear-gradient(
-    45deg,
-    #333333,
-    #333333 2px,
-    #1a1a1a 2px,
-    #1a1a1a 4px
-  );
-  border: 1px solid #1a1a1a;
-}
-
-.wall-preview {
-  opacity: 0.6;
-  z-index: 1000;
-}
-
-.wall-preview.wall-inner {
-  background-color: #666666;
-  border: 2px dashed #4d4d4d;
-}
-
-.wall-preview.wall-outer {
-  background-color: #333333;
-  background-image: repeating-linear-gradient(
-    45deg,
-    #333333,
-    #333333 2px,
-    #1a1a1a 2px,
-    #1a1a1a 4px
-  );
-  border: 2px dashed #1a1a1a;
-}
-
-/* Freeform shape styles */
-.freeform-white {
-  background-color: #ffffff;
-  border: 1px solid #cccccc;
-}
-
-.freeform-black {
-  background-color: #000000;
-  border: 1px solid #000000;
-}
-
-.freeform-preview {
-  opacity: 0.6;
-  z-index: 1000;
-}
-
-.freeform-preview.freeform-white {
-  background-color: #ffffff;
-  border: 2px dashed #666666;
-}
-
-.freeform-preview.freeform-black {
-  background-color: #000000;
-  border: 2px dashed #333333;
-}
-
-/* Wall resize handles */
-.wall-resize-handle {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background-color: #1f56c2;
-  border: 1px solid white;
-  z-index: 1001;
-  pointer-events: auto;
-}
-
-.wall-resize-handle:hover {
-  background-color: #1a479f;
-  transform: scale(1.2);
-}
-
-/* Specific cursor styles for each handle */
-.wall-resize-handle.nw {
-  cursor: nw-resize;
-  top: -4px;
-  left: -4px;
-}
-.wall-resize-handle.n {
-  cursor: n-resize;
-  top: -4px;
-  left: calc(50% - 4px);
-}
-.wall-resize-handle.ne {
-  cursor: ne-resize;
-  top: -4px;
-  right: -4px;
-}
-.wall-resize-handle.e {
-  cursor: e-resize;
-  top: calc(50% - 4px);
-  right: -4px;
-}
-.wall-resize-handle.se {
-  cursor: se-resize;
-  bottom: -4px;
-  right: -4px;
-}
-.wall-resize-handle.s {
-  cursor: s-resize;
-  bottom: -4px;
-  left: calc(50% - 4px);
-}
-.wall-resize-handle.sw {
-  cursor: sw-resize;
-  bottom: -4px;
-  left: -4px;
-}
-.wall-resize-handle.w {
-  cursor: w-resize;
-  top: calc(50% - 4px);
-  left: -4px;
-}
-
-/* Rotation handle */
+/* Handvatten voor bouwelementen: blijven even groot op het scherm, ongeacht de zoom */
+.wall-resize-handle,
 .wall-rotation-handle {
+  --hs: calc(10px * var(--sitplan-inverse-zoom, 1));
   position: absolute;
-  width: 12px;
-  height: 12px;
-  background-color: #1f56c2;
-  border: 2px solid white;
-  border-radius: 50%;
-  top: -30px;
-  left: calc(50% - 6px);
+  width: var(--hs);
+  height: var(--hs);
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border: calc(1.5px * var(--sitplan-inverse-zoom, 1)) solid #1f56c2;
   z-index: 1001;
-  cursor: grab;
   pointer-events: auto;
+  touch-action: none;
 }
 
+.wall-resize-handle:hover,
 .wall-rotation-handle:hover {
-  background-color: #1a479f;
-  transform: scale(1.2);
+  background-color: #1f56c2;
+}
+
+.wall-resize-handle.nw { cursor: nwse-resize; top: calc(var(--hs) / -2); left: calc(var(--hs) / -2); }
+.wall-resize-handle.n { cursor: ns-resize; top: calc(var(--hs) / -2); left: calc(50% - var(--hs) / 2); }
+.wall-resize-handle.ne { cursor: nesw-resize; top: calc(var(--hs) / -2); right: calc(var(--hs) / -2); }
+.wall-resize-handle.e { cursor: ew-resize; top: calc(50% - var(--hs) / 2); right: calc(var(--hs) / -2); }
+.wall-resize-handle.se { cursor: nwse-resize; bottom: calc(var(--hs) / -2); right: calc(var(--hs) / -2); }
+.wall-resize-handle.s { cursor: ns-resize; bottom: calc(var(--hs) / -2); left: calc(50% - var(--hs) / 2); }
+.wall-resize-handle.sw { cursor: nesw-resize; bottom: calc(var(--hs) / -2); left: calc(var(--hs) / -2); }
+.wall-resize-handle.w { cursor: ew-resize; top: calc(50% - var(--hs) / 2); left: calc(var(--hs) / -2); }
+
+/* Rotatiehandvat met verbindingslijntje */
+.wall-rotation-handle {
+  --hs: calc(12px * var(--sitplan-inverse-zoom, 1));
+  border-radius: 50%;
+  top: calc(-28px * var(--sitplan-inverse-zoom, 1));
+  left: calc(50% - var(--hs) / 2);
+  cursor: grab;
+}
+
+.wall-rotation-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: calc(1px * var(--sitplan-inverse-zoom, 1));
+  height: calc(16px * var(--sitplan-inverse-zoom, 1));
+  background: #1f56c2;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .wall-rotation-handle:active {
@@ -441,4 +550,32 @@
 
 .boxlabel.hidden {
   display: none;
+}
+
+/* Tijdens het tekenen moeten aanraakbewegingen tekenen in plaats van scrollen */
+#canvas.drawing {
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  /* Toolbar op één lijn, horizontaal scrollbaar (zoals de rest van de mobiele layout) */
+  .sitplan-root > #ribbon.tb {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 6px;
+  }
+
+  /* Kolomlayout: het canvas neemt de resterende hoogte onder toolbar en paneel */
+  #canvas {
+    height: auto;
+    flex: 1 1 0;
+  }
+
+  .sitplan-hint {
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    bottom: 12px;
+  }
 }

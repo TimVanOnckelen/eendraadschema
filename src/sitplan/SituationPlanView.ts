@@ -4,16 +4,15 @@ import { AdresType, AdresLocation } from "./SituationPlanElement";
 import { SituationPlanView_Selected } from "./SituationPlanView_Selected";
 import { SituationPlanView_ChooseCustomElementPopup } from "./SituationPlanView_ChooseCustomElementPopup";
 import { ContextMenu } from "./ContextMenu";
-import { MouseDrag } from "./MouseDrag";
 import { EventManager } from "../EventManager";
 import { showSelectPopup, htmlspecialchars, randomId } from "../general";
-import { getXYRectangleSize } from "./GeometricFunctions";
+import { getXYRectangleSize, getRotatedRectangleSize } from "./GeometricFunctions";
 import { HelperTip } from "../documentation/HelperTip";
 import { Dialog } from "../documentation/Dialog";
 import { SituationPlanView_ElementPropertiesPopup } from "./SituationPlanView_ElementPropertiesPopup";
 import { SituationPlanView_MultiElementPropertiesPopup } from "./SituationPlanView_MultiElementPropertiesPopup";
 import { AskLegacySchakelaar } from "../importExport/AskLegacySchakelaar";
-import { WallType } from "./WallElement";
+import { WallElement, WallType } from "./WallElement";
 import { FreeformShapeType } from "./FreeformShapeElement";
 import { LayerManager } from "./LayerManager";
 import { dialogAlert } from "../utils/DialogHelpers";
@@ -25,24 +24,72 @@ enum MovableType {
   Undefined,
 }
 
+/** Gereedschap om rechthoekige bouwelementen te tekenen */
+export type SitPlanDrawingTool =
+  | { kind: "wall"; wallType: WallType }
+  | { kind: "window" }
+  | { kind: "door" }
+  | { kind: "shape"; shapeType: FreeformShapeType };
+
+/** Bewaarde zoom- en scrollpositie zodat een nieuwe view (bvb na undo) dezelfde weergave toont */
+interface ViewportState {
+  zoom: number;
+  scrollLeft: number;
+  scrollTop: number;
+  fitMode: boolean;
+}
+
+/** Events die de React-laag gebruikt om zich te synchroniseren met deze view */
+export const SITPLAN_EVENTS = {
+  selectionChange: "sitplan-selection-change",
+  viewChange: "sitplan-view-change",
+  toolChange: "sitplan-tool-change",
+} as const;
+
+const DRAG_THRESHOLD_PX = 3; // Aantal schermpixels voor een klik als sleepbeweging telt
+const AUTOSCROLL_EDGE_PX = 32; // Afstand tot de rand van het canvas waarbij automatisch gescrold wordt
+const AUTOSCROLL_MAX_SPEED = 18; // Maximaal aantal pixels per frame bij automatisch scrollen
+const MIN_DRAWN_SIZE = 4; // Minimale grootte (in papier-pixels) van een getekend bouwelement
+
 /**
  * Deze class behandelt het tekenen van het situatieplan.
  *
  * Er wordt regelmatig de terminologie Box gebruikt in de code. Een box is een sleepbaar element en kan zowel
  * een eendraadschema symbool zijn als een ingelezen extern bestand.
+ *
+ * Coördinaten:
+ *  - "client" coördinaten zijn schermcoördinaten (zoals in MouseEvent.clientX)
+ *  - "paper" coördinaten zijn coördinaten op het papier in CSS-pixels bij zoomfactor 1.
+ *  Alle omzettingen gebeuren via clientToPaper / paperToClient, die rechtstreeks de werkelijke
+ *  positie van het papier op het scherm gebruiken. Daardoor zijn ze ongevoelig voor layout, scroll en zoom.
  */
 
 export class SituationPlanView {
+  /** Grootte van het raster in papier-pixels (gebruikt om te snappen als het raster aan staat) */
+  public static readonly GRID_SIZE = 10;
+
+  /** Laatst gekende weergave, wordt hergebruikt wanneer een nieuwe view wordt aangemaakt (bvb na undo/redo) */
+  private static lastViewport: ViewportState | null = null;
+
+  /** De view die op dit moment actief is. Er mag er maar één tegelijk naar de DOM luisteren. */
+  private static activeView: SituationPlanView | null = null;
+
   private zoomfactor: number = 1;
+  private fitMode = true;
   private disposed = false;
-  private activeTransformCleanup: (() => void) | null = null;
+  private activeInteractionCleanup: (() => void) | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private spacePressed = false;
+  private snapToGrid = false;
 
   /** Referentie naar meerdere DIV's waar het stuatieplan wordt weergegeven
    *   - paper: hieronder hangen de reële elementen en dit stelt het printable gedeelte van het schema voor
+   *   - sizer: rond het papier, heeft de grootte van het gezoomde papier zodat het scrollgebied klopt
    *   - canvas: deze bevat paper en ook het niet printable gedeelte
    */
   private canvas: HTMLElement = null;
   private paper: HTMLElement = null;
+  private sizer: HTMLElement | null = null;
 
   // Public getters for checking if DOM refs are still valid
   public get canvasRef(): HTMLElement {
@@ -63,199 +110,217 @@ export class SituationPlanView {
     render: () => {}, // No-op, rendering is handled by React now
   };
 
-  private draggedBox: HTMLElement =
-    null; /** Box die op dit moment versleept wordt of null */
-  private draggedHalo: {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  } = { left: 0, top: 0, right: 0, bottom: 0 };
-
   private selected: SituationPlanView_Selected =
     new SituationPlanView_Selected();
 
-  private mousedrag: MouseDrag; /** behandelt het verslepen van een box */
+  private sitplan: any; // SituationPlan (gebruikt ook interne velden zoals elements en numPages)
 
-  private sitplan;
+  private event_manager: EventManager;
 
-  private event_manager;
-
-  // Wall drawing mode
-  private wallDrawingMode: WallType | null = null;
-  private wallDrawingStart: { x: number; y: number } | null = null;
-  private wallPreviewElement: HTMLDivElement | null = null;
-  private wallMouseDownHandler: ((e: MouseEvent) => void) | null = null;
-  private wallMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
-  private wallMouseUpHandler: ((e: MouseEvent) => void) | null = null;
-
-  // Freeform shape drawing mode
-  private freeformShapeDrawingMode: FreeformShapeType | null = null;
-  private freeformShapeDrawingStart: { x: number; y: number } | null = null;
-  private freeformShapePreviewElement: HTMLDivElement | null = null;
-  private freeformShapeMouseDownHandler: ((e: MouseEvent) => void) | null =
-    null;
-  private freeformShapeMouseMoveHandler: ((e: MouseEvent) => void) | null =
-    null;
-  private freeformShapeMouseUpHandler: ((e: MouseEvent) => void) | null = null;
-
-  // Window drawing mode
-  private windowDrawingMode: boolean = false;
-  private windowDrawingStart: { x: number; y: number } | null = null;
-  private windowPreviewElement: HTMLDivElement | null = null;
-  private windowMouseDownHandler: ((e: MouseEvent) => void) | null = null;
-  private windowMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
-  private windowMouseUpHandler: ((e: MouseEvent) => void) | null = null;
-
-  // Door drawing mode
-  private doorDrawingMode: boolean = false;
-  private doorDrawingStart: { x: number; y: number } | null = null;
-  private doorPreviewElement: HTMLDivElement | null = null;
-  private doorMouseDownHandler: ((e: MouseEvent) => void) | null = null;
-  private doorMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
-  private doorMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  // Teken-gereedschap voor bouwelementen (muur, raam, deur, vorm) of null
+  private drawingTool: SitPlanDrawingTool | null = null;
 
   constructor(canvas: HTMLElement, paper: HTMLElement, sitplan: SituationPlan) {
+    // Er kan maar één view tegelijk actief zijn, anders worden events dubbel verwerkt
+    if (SituationPlanView.activeView && SituationPlanView.activeView !== this)
+      SituationPlanView.activeView.dispose();
+    SituationPlanView.activeView = this;
+
     this.canvas = canvas;
     this.paper = paper;
+    this.sizer =
+      paper.parentElement && paper.parentElement !== canvas
+        ? paper.parentElement
+        : null;
     this.contextMenu = new ContextMenu();
 
     this.sitplan = sitplan;
     this.paper.style.transformOrigin = "top left"; // Keep the origin point consistent when scaling
 
-    this.mousedrag = new MouseDrag();
     this.event_manager = new EventManager();
 
     // Initialize layer manager (initially hidden)
     this.layerManager = new LayerManager(sitplan, this);
     this.layerManager.hide();
 
-    // Verwijder alle selecties wanneer we ergens anders klikken dan op een box
-    this.event_manager.addEventListener(canvas, "mousedown", () => {
-      if (
-        !this.isWallDrawingMode() &&
-        !this.isFreeformShapeDrawingMode() &&
-        !this.isWindowDrawingMode() &&
-        !this.isDoorDrawingMode()
-      ) {
-        this.contextMenu.hide();
-        this.clearSelection();
-      }
-    });
-    this.event_manager.addEventListener(canvas, "touchstart", () => {
-      if (
-        !this.isWallDrawingMode() &&
-        !this.isFreeformShapeDrawingMode() &&
-        !this.isWindowDrawingMode() &&
-        !this.isDoorDrawingMode()
-      ) {
-        this.contextMenu.hide();
-        this.clearSelection();
-      }
+    // Capture-fase: pannen (middelste muisknop of spatie + slepen) en tekenen van bouwelementen
+    // hebben voorrang op het selecteren/slepen van boxes.
+    this.event_manager.addEventListener(
+      canvas,
+      "pointerdown",
+      this.onCanvasPointerDownCapture as EventListener,
+      { capture: true }
+    );
+
+    // Bubble-fase: enkel bereikt wanneer niet op een box geklikt werd. Start een selectierechthoek.
+    this.event_manager.addEventListener(
+      canvas,
+      "pointerdown",
+      this.onCanvasPointerDown as EventListener
+    );
+
+    // Middelste muisknop mag geen autoscroll starten in de browser
+    this.event_manager.addEventListener(canvas, "mousedown", (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
     });
 
-    // Control wieltje om te zoomen
+    // Control wieltje (of pinch op een trackpad) om te zoomen rond de muis
     this.event_manager.addEventListener(
       canvas,
       "wheel",
       (event: WheelEvent) => {
         if (!event.ctrlKey && !event.metaKey) return;
         event.preventDefault();
-        const zoom = -event.deltaY / 1000;
-        if (Math.abs(zoom) >= 0.01) {
-          const menuHeight = parseFloat(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              "--menu-height"
-            )
-          );
-          const ribbonHeight = parseFloat(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              "--ribbon-height"
-            )
-          );
-          const sideBarWidth = parseFloat(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              "--sideBarWidth"
-            )
-          );
-          let canvasx = event.clientX - sideBarWidth;
-          let canvasy = event.clientY - menuHeight - ribbonHeight;
-          this.zoomIncrement(-event.deltaY / 2000, canvasx, canvasy);
-        }
+        let delta = event.deltaY;
+        if (event.deltaMode === 1) delta *= 16; // lijnen
+        else if (event.deltaMode === 2) delta *= 400; // pagina's
+        delta = Math.max(-200, Math.min(200, delta));
+        this.zoomAt(this.zoomfactor * Math.exp(-delta * 0.002), event.clientX, event.clientY);
       },
       { passive: false }
     );
 
-    // Voegt event handlers toe voor de pijltjestoesten
+    // Opnieuw passend maken wanneer het beschikbare venster wijzigt (enkel indien in "passend" modus)
+    if (typeof ResizeObserver !== "undefined") {
+      // Gebundeld per animatieframe, en beveiligd tegen terugkoppellussen: als een herschaling de
+      // layout rond het canvas wijzigt (bvb een toolbar die anders afbreekt) en het canvas daardoor
+      // heen en weer springt tussen twee groottes, stoppen we na de eerste keer.
+      let frame = 0;
+      const recentSizes: string[] = [];
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.disposed || frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (this.disposed) return;
+          const size = `${this.canvas.clientWidth}x${this.canvas.clientHeight}`;
+          if (recentSizes[recentSizes.length - 1] === size) return; // niets gewijzigd
+          const oscillating = recentSizes.length >= 2 && recentSizes[recentSizes.length - 2] === size;
+          recentSizes.push(size);
+          if (recentSizes.length > 4) recentSizes.shift();
+          if (this.fitMode && !oscillating) this.zoomToFit();
+          else this.updateSizer();
+        });
+      });
+      this.resizeObserver.observe(canvas);
+    }
+
+    // Voegt event handlers toe voor de pijltjestoesten en andere sneltoetsen
     this.attachArrowKeys();
+
+    // De ribbon knoppen bestaan reeds in de DOM (React). We koppelen ze één keer.
+    this.attachRibbonEventHandlers();
+
+    this.restoreViewport();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Coördinaten
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Zet een schermcoördinaat (clientX/clientY) om naar een coördinaat op het papier.
+   */
+  clientToPaper(clientX: number, clientY: number) {
+    const rect = this.paper.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) / this.zoomfactor - this.paper.clientLeft,
+      y: (clientY - rect.top) / this.zoomfactor - this.paper.clientTop,
+    };
   }
 
   /**
-   * Converteert een coördinaat van het zichtbare deel van het canvas (scherm-coordinaten die starten links boven het canvas)
+   * Zet een coördinaat op het papier om naar een schermcoördinaat.
+   */
+  paperToClient(paperx: number, papery: number) {
+    const rect = this.paper.getBoundingClientRect();
+    return {
+      x: rect.left + (paperx + this.paper.clientLeft) * this.zoomfactor,
+      y: rect.top + (papery + this.paper.clientTop) * this.zoomfactor,
+    };
+  }
+
+  /**
+   * Converteert een coördinaat van het zichtbare deel van het canvas (coördinaten die starten links boven het canvas)
    * naar een coördinaat op het papier.
-   *
-   * De coördinatentransformatie steunt op het volgende
-   *   canvasx = paperx * zoomfactor - canvas.scrollLeft + paperPadding
-   *   canvasy = papery * zoomfactor  - canvas.scrollTop + paperPadding
-   *
-   * @param {number} canvasx - De x-co ordinaat in het canvas.
-   * @param {number} canvasy - De y-co ordinaat in het canvas.
-   * @returns {Object} Object {x,y} met de x-coördinaat en y-coördinaat op het paper.
    */
   canvasPosToPaperPos(canvasx: number, canvasy: number) {
-    const paperPadding = parseFloat(
-      getComputedStyle(this.paper).getPropertyValue("--paperPadding")
+    const rect = this.canvas.getBoundingClientRect();
+    return this.clientToPaper(
+      rect.left + this.canvas.clientLeft + canvasx,
+      rect.top + this.canvas.clientTop + canvasy
     );
-
-    return {
-      x: (canvasx + this.canvas.scrollLeft - paperPadding) / this.zoomfactor,
-      y: (canvasy + this.canvas.scrollTop - paperPadding) / this.zoomfactor,
-    };
   }
 
   /**
-   * Converteert een punt oöordinaat op het papier naar een coördinaat op het canvas (omgekeerde van hierboven).
-   *
-   * @param {number} paperx - De x-coördinaat op het paper.
-   * @param {number} papery - De y-coördinaat op het papier.
-   * @returns {Object} Object {x,y} met de x-coördinaat en y-coördinaat op het canvas.
+   * Converteert een coördinaat op het papier naar een coördinaat op het canvas (omgekeerde van hierboven).
    */
-
   paperPosToCanvasPos(paperx: number, papery: number) {
-    const paperPadding = parseFloat(
-      getComputedStyle(this.paper).getPropertyValue("--paperPadding")
-    );
-
+    const rect = this.canvas.getBoundingClientRect();
+    const client = this.paperToClient(paperx, papery);
     return {
-      x: paperx * this.zoomfactor - this.canvas.scrollLeft + paperPadding,
-      y: papery * this.zoomfactor - this.canvas.scrollTop + paperPadding,
+      x: client.x - rect.left - this.canvas.clientLeft,
+      y: client.y - rect.top - this.canvas.clientTop,
     };
+  }
+
+  /** Breedte van het papier in papier-pixels */
+  getPaperWidth(): number {
+    return this.paper.clientWidth;
+  }
+
+  /** Hoogte van het papier in papier-pixels */
+  getPaperHeight(): number {
+    return this.paper.clientHeight;
   }
 
   /**
-   * Indien een gewenste coördinaat op zowel het canvas als het papier gegeven zijn, hoe moeten we dan scrollen?
-   *
-   * @param {number} canvasx - De x-co ordinaat in het canvas.
-   * @param {number} canvasy - De y-co ordinaat in het canvas.
-   * @param {number} paperx - De x-coördinaat op het paper.
-   * @param {number} papery - De y-coördinaat op het papier.
-   * @returns {Object} Object {x,y} met de gewenste scrollLeft en scrollTop.
+   * Geeft het midden van het zichtbare deel van het papier terug, beperkt tot het papier.
    */
-
-  canvasAndPaperPosToScrollPos(
-    canvasx: number,
-    canvasy: number,
-    paperx: number,
-    papery: number
-  ) {
-    const paperPadding = parseFloat(
-      getComputedStyle(this.paper).getPropertyValue("--paperPadding")
+  getVisiblePaperCenter() {
+    const p = this.canvasPosToPaperPos(
+      this.canvas.clientWidth / 2,
+      this.canvas.clientHeight / 2
     );
+    return this.clampToPaper(p.x, p.y);
+  }
+
+  private clampToPaper(x: number, y: number) {
     return {
-      x: paperx * this.zoomfactor - canvasx + paperPadding + 0.5,
-      y: papery * this.zoomfactor - canvasy + paperPadding + 0.5,
+      x: Math.min(this.getPaperWidth(), Math.max(0, x)),
+      y: Math.min(this.getPaperHeight(), Math.max(0, y)),
     };
   }
+
+  private getPaperPadding(): number {
+    const value = parseFloat(
+      getComputedStyle(this.paper).getPropertyValue("--paperPadding")
+    );
+    return isFinite(value) ? value : 16;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Raster
+  // ---------------------------------------------------------------------------
+
+  /** Schakelt het snappen aan het raster in of uit (wordt gebruikt wanneer het raster zichtbaar is) */
+  public setSnapToGrid(enabled: boolean) {
+    this.snapToGrid = enabled;
+  }
+
+  public isSnapToGrid(): boolean {
+    return this.snapToGrid;
+  }
+
+  /** Rondt een waarde af op het raster indien snappen aan staat (en Alt niet ingedrukt is) */
+  private snap(value: number, event?: { altKey?: boolean }): number {
+    if (!this.snapToGrid || event?.altKey) return value;
+    const g = SituationPlanView.GRID_SIZE;
+    return Math.round(value / g) * g;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Levenscyclus
+  // ---------------------------------------------------------------------------
 
   /**
    * Maakt deze instance ongedaan en verwijderd alle door deze instance aangemaakte elementen uit de DOM.
@@ -266,21 +331,19 @@ export class SituationPlanView {
    */
   dispose() {
     if (this.disposed) return;
+    this.saveViewport();
     this.disposed = true;
+    if (SituationPlanView.activeView === this) SituationPlanView.activeView = null;
     this.event_manager.dispose();
-    this.disableWallDrawingMode();
-    this.disableFreeformShapeDrawingMode();
-    this.disableWindowDrawingMode();
-    this.disableDoorDrawingMode();
-    document.removeEventListener("mousemove", this.processDrag);
-    document.removeEventListener("mouseup", this.stopDrag);
-    document.removeEventListener("touchmove", this.processDrag);
-    document.removeEventListener("touchend", this.stopDrag);
-    this.draggedBox = null;
-    this.activeTransformCleanup?.();
-    this.activeTransformCleanup = null;
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.cancelInteraction();
+    this.drawingTool = null;
     this.layerManager?.destroy();
     this.contextMenu.dispose();
+    this.paper
+      .querySelectorAll(".sitplan-draw-preview, .sitplan-marquee")
+      .forEach((e) => e.remove());
     for (const element of this.sitplan.elements) {
       element.boxref?.remove();
       element.boxlabelref?.remove();
@@ -288,6 +351,27 @@ export class SituationPlanView {
       element.boxlabelref = null;
       element.needsViewUpdate = true;
     }
+  }
+
+  public isDisposed(): boolean {
+    return this.disposed;
+  }
+
+  /** Start een interactie (slepen, tekenen, ...) en zorgt dat een eventuele vorige netjes wordt afgesloten */
+  private beginInteraction(cleanup: () => void) {
+    this.cancelInteraction();
+    this.activeInteractionCleanup = cleanup;
+  }
+
+  private cancelInteraction() {
+    const cleanup = this.activeInteractionCleanup;
+    this.activeInteractionCleanup = null;
+    cleanup?.();
+  }
+
+  private emit(eventName: string, detail: any = {}) {
+    if (this.disposed) return;
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
 
   /**
@@ -304,30 +388,69 @@ export class SituationPlanView {
     this.sitplan.syncToEendraadSchema();
   }
 
+  // ---------------------------------------------------------------------------
+  // Zoom
+  // ---------------------------------------------------------------------------
+
+  private saveViewport() {
+    if (this.disposed || !this.canvas) return;
+    SituationPlanView.lastViewport = {
+      zoom: this.zoomfactor,
+      scrollLeft: this.canvas.scrollLeft,
+      scrollTop: this.canvas.scrollTop,
+      fitMode: this.fitMode,
+    };
+  }
+
+  /**
+   * Herstelt de laatst gekende zoom en scrollpositie, of maakt het papier passend als er geen is.
+   */
+  restoreViewport() {
+    const state = SituationPlanView.lastViewport;
+    if (state == null || state.fitMode) {
+      this.zoomToFit();
+      return;
+    }
+    this.setzoom(state.zoom);
+    this.fitMode = false;
+    this.canvas.scrollLeft = state.scrollLeft;
+    this.canvas.scrollTop = state.scrollTop;
+  }
+
+  /**
+   * Past de grootte van de sizer aan aan het gezoomde papier zodat het scrollgebied klopt.
+   */
+  private updateSizer() {
+    if (!this.sizer) return;
+    const pad = this.getPaperPadding();
+    const width = this.paper.offsetWidth * this.zoomfactor + 2 * pad;
+    const height = this.paper.offsetHeight * this.zoomfactor + 2 * pad;
+    this.sizer.style.width = `${width}px`;
+    this.sizer.style.height = `${height}px`;
+  }
+
   /**
    * Stel de zoomfactor in zodat het paper-element volledig in het browser window wordt weergegeven
-   *
-   * @param paperPadding - De padding rond het papier in pixels. Dit wordt gebruikt
-   *   om te berekenen hoeveel ruimte beschikbaar is voor het papier. De standaard
-   *   is de CSS-waarde van --paperPadding.
    */
-  zoomToFit(
-    paperPadding: number = parseFloat(
-      getComputedStyle(this.paper).getPropertyValue("--paperPadding")
-    )
-  ) {
-    const sideBarWidth = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--sideBarWidth"
-      )
-    );
+  zoomToFit() {
+    if (this.disposed) return;
+    const pad = this.getPaperPadding();
+    const availableWidth = this.canvas.clientWidth - 2 * pad;
+    const availableHeight = this.canvas.clientHeight - 2 * pad;
+    if (availableWidth <= 0 || availableHeight <= 0) return; // nog niet zichtbaar
 
     const scale = Math.min(
-      (this.canvas.offsetWidth - paperPadding * 2) / this.paper.offsetWidth,
-      (this.canvas.offsetHeight - paperPadding * 2) / this.paper.offsetHeight
+      availableWidth / this.paper.offsetWidth,
+      availableHeight / this.paper.offsetHeight
     );
 
-    this.setzoom(scale);
+    const newZoom = Math.floor(scale * 1000) / 1000;
+    if (newZoom !== this.zoomfactor) this.setzoom(newZoom);
+    else this.updateSizer();
+    this.fitMode = true;
+    this.canvas.scrollLeft = 0;
+    this.canvas.scrollTop = 0;
+    this.emit(SITPLAN_EVENTS.viewChange);
   }
 
   /**
@@ -338,50 +461,79 @@ export class SituationPlanView {
     return this.zoomfactor;
   }
 
+  /** Geeft true terug indien het papier momenteel automatisch passend gemaakt wordt */
+  isFitMode() {
+    return this.fitMode;
+  }
+
   /**
    * Stel de zoomfactor in.
    * @param factor - De zoomfactor, standaard 1.
    */
   setzoom(factor: number = 1) {
+    const min = globalThis.SITPLANVIEW_ZOOMINTERVAL?.MIN ?? 0.1;
+    const max = globalThis.SITPLANVIEW_ZOOMINTERVAL?.MAX ?? 8;
+    if (!isFinite(factor) || factor <= 0) factor = 1;
+    factor = Math.min(max, Math.max(min, factor));
     this.zoomfactor = factor;
     this.paper.style.transform = `scale(${factor})`;
+    // Handvatten en selectiekaders blijven even groot op het scherm, onafhankelijk van de zoom
+    this.paper.style.setProperty("--sitplan-inverse-zoom", String(1 / factor));
+    this.updateSizer();
+    this.emit(SITPLAN_EVENTS.viewChange);
+  }
+
+  /**
+   * Zoomt naar een nieuwe zoomfactor waarbij het punt onder (clientX, clientY) op dezelfde plaats blijft.
+   */
+  zoomAt(factor: number, clientX?: number, clientY?: number) {
+    if (this.disposed) return;
+    const canvasRect = this.canvas.getBoundingClientRect();
+    if (clientX == null || clientY == null) {
+      clientX = canvasRect.left + this.canvas.clientWidth / 2;
+      clientY = canvasRect.top + this.canvas.clientHeight / 2;
+    }
+    const anchor = this.clientToPaper(clientX, clientY);
+    this.fitMode = false;
+    this.setzoom(factor);
+    const now = this.paperToClient(anchor.x, anchor.y);
+    this.canvas.scrollLeft += now.x - clientX;
+    this.canvas.scrollTop += now.y - clientY;
+    this.emit(SITPLAN_EVENTS.viewChange);
+  }
+
+  /** Zoomt in of uit met een vermenigvuldigingsfactor rond het midden van het zichtbare canvas */
+  zoomBy(multiplier: number) {
+    this.zoomAt(this.zoomfactor * multiplier);
   }
 
   /**
    * Verhoogt of verlaagt de zoomfactor met een bepaalde waarde.
    *
-   * @param increment - De waarde waarmee de zoomfactor moet worden aangepast.
-   *   Een positieve waarde vergroot de zoom, terwijl een negatieve waarde de zoom verkleint.
-   *   Standaard is deze waarde 0, wat betekent dat er geen aanpassing is.
+   * @param increment - De relatieve aanpassing van de zoomfactor (0.1 = 10% groter).
+   * @param canvasx - Optioneel punt op het canvas dat op zijn plaats moet blijven.
+   * @param canvasy - Optioneel punt op het canvas dat op zijn plaats moet blijven.
    */
-  zoomIncrement(
-    increment: number = 0,
-    canvasx: number = this.canvas.offsetWidth / 2,
-    canvasy: number = this.canvas.offsetHeight / 2
-  ) {
-    //increment is a value indicating how much we can zoom
-    /*const menuHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--menu-height'));
-        const ribbonHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ribbon-height'));
-        const sideBarWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sideBarWidth'));
-        const paperPadding = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--paperPadding'));*/
-    let mousePosOnPaper = this.canvasPosToPaperPos(canvasx, canvasy);
-    this.setzoom(
-      Math.min(
-        globalThis.SITPLANVIEW_ZOOMINTERVAL.MAX,
-        Math.max(
-          globalThis.SITPLANVIEW_ZOOMINTERVAL.MIN,
-          this.zoomfactor * (1 + increment)
-        )
-      )
-    );
-    const scrollPos = this.canvasAndPaperPosToScrollPos(
-      canvasx,
-      canvasy,
-      mousePosOnPaper.x,
-      mousePosOnPaper.y
-    );
-    this.canvas.scrollLeft = scrollPos.x;
-    this.canvas.scrollTop = scrollPos.y;
+  zoomIncrement(increment: number = 0, canvasx?: number, canvasy?: number) {
+    const factor = this.zoomfactor * (1 + increment);
+    if (canvasx == null || canvasy == null) {
+      this.zoomAt(factor);
+      return;
+    }
+    const rect = this.canvas.getBoundingClientRect();
+    this.zoomAt(factor, rect.left + canvasx, rect.top + canvasy);
+  }
+
+  /** Scrollt het canvas zodat het gegeven punt op het papier zichtbaar is */
+  scrollPaperPointIntoView(paperx: number, papery: number, margin: number = 40) {
+    const rect = this.canvas.getBoundingClientRect();
+    const p = this.paperToClient(paperx, papery);
+    if (p.x < rect.left + margin) this.canvas.scrollLeft -= rect.left + margin - p.x;
+    else if (p.x > rect.left + this.canvas.clientWidth - margin)
+      this.canvas.scrollLeft += p.x - (rect.left + this.canvas.clientWidth - margin);
+    if (p.y < rect.top + margin) this.canvas.scrollTop -= rect.top + margin - p.y;
+    else if (p.y > rect.top + this.canvas.clientHeight - margin)
+      this.canvas.scrollTop += p.y - (rect.top + this.canvas.clientHeight - margin);
   }
 
   private getSelectionMovability() {
@@ -702,12 +854,10 @@ export class SituationPlanView {
     }
     //this.updateSymbolAndLabelPosition(element); //pas als alles op de DOM zit kunnen we berekenen waar het label hoort
 
-    // Event handlers voor het bewegen met muis of touch
-    box.addEventListener("mousedown", this.startDrag);
-    box.addEventListener("touchstart", this.startDrag);
+    // Event handlers voor selecteren en slepen met muis, pen of touch
+    box.addEventListener("pointerdown", this.onBoxPointerDown);
     if (boxlabel) {
-      boxlabel.addEventListener("mousedown", this.startDrag);
-      boxlabel.addEventListener("touchstart", this.startDrag);
+      boxlabel.addEventListener("pointerdown", this.onBoxPointerDown);
       boxlabel.addEventListener("contextmenu", this.showContextMenu);
     }
     box.addEventListener("contextmenu", this.showContextMenu);
@@ -736,9 +886,17 @@ export class SituationPlanView {
 
     let svg = sitPlanElement.getScaledSVG(); // Deze call past ook viewUpdateNeeded aan en moet dus eerst gebeuren
 
-    if (sitPlanElement.needsViewUpdate || box.innerHTML !== svg) {
+    // Vergelijk met de laatst getekende SVG (niet met innerHTML: de browser serialiseert anders,
+    // waardoor elk element bij elke redraw herschreven werd en afbeeldingen zichtbaar flitsten)
+    if ((box as any).renderedSvg !== svg) {
+      (box as any).renderedSvg = svg;
       sitPlanElement.needsViewUpdate = false;
+      // Handvatten (bij een geselecteerd bouwelement) behouden wanneer de inhoud vernieuwd wordt
+      const handles = Array.from(
+        box.querySelectorAll(":scope > .wall-resize-handle, :scope > .wall-rotation-handle")
+      );
       box.innerHTML = svg ?? "";
+      handles.forEach((handle) => box.appendChild(handle));
     }
 
     if (boxlabel != null) {
@@ -991,15 +1149,17 @@ export class SituationPlanView {
       }
     }
 
-    this.updateRibbon();
+    this.refreshHandles();
 
     // Update layer manager if visible
     if (this.layerManager && this.layerManager.isVisible()) {
       this.layerManager.render();
     }
 
+    this.emit(SITPLAN_EVENTS.viewChange);
+
     const end = performance.now();
-    console.log(`Redraw took ${end - start}ms`);
+    if (end - start > 50) console.log(`Redraw took ${end - start}ms`);
   }
 
   /**
@@ -1029,17 +1189,30 @@ export class SituationPlanView {
   }
 
   /**
+   * Moet opgeroepen worden telkens de selectie wijzigt: werkt handvatten, undo-informatie,
+   * laagbeheer en de React-laag bij.
+   */
+  private selectionChanged() {
+    if (this.disposed) return;
+    this.refreshHandles();
+    globalThis.undostruct?.updateSelectedBoxes();
+    this.emit(SITPLAN_EVENTS.selectionChange);
+    if (this.layerManager && this.layerManager.isVisible()) {
+      this.layerManager.render();
+    }
+  }
+
+  /**
    * Maakt de gegeven box de geselecteerde box.
    *
    * @param box - Het element dat geselecteerd moet worden.
    */
   public selectOneBox(box: HTMLElement | null) {
     if (!box) return;
+    this.clearSelection(false);
     box.classList.add("selected");
     this.selected.selectOne(box);
-    globalThis.undostruct.updateSelectedBoxes();
-    // Notify React about selection change
-    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
+    this.selectionChanged();
   }
 
   /**
@@ -1051,44 +1224,9 @@ export class SituationPlanView {
     if (!box) return;
     box.classList.add("selected");
     this.selected.select(box);
-    globalThis.undostruct.updateSelectedBoxes();
-    // Notify React about selection change
-    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
-
-    // Add resize handles for walls, windows, doors and freeform shapes
-    const sitPlanElement = (box as any).sitPlanElementRef;
-    if (
-      sitPlanElement &&
-      (sitPlanElement.isWall() ||
-        sitPlanElement.isWindow() ||
-        sitPlanElement.isDoor() ||
-        sitPlanElement.isFreeformShape())
-    ) {
-      this.addWallResizeHandles(box, sitPlanElement);
-
-      // Show wall/window/freeform shape properties in sidebar
-      if (this.sideBar) {
-        this.sideBar.selectedWallElement = sitPlanElement;
-        this.sideBar.selectedElement = null; // Clear element selection
-        this.sideBar.render();
-      }
-    } else if (
-      sitPlanElement &&
-      (sitPlanElement.isEendraadschemaSymbool() || sitPlanElement.isImage())
-    ) {
-      // Show element properties in sidebar for symbols and images
-      if (this.sideBar) {
-        this.sideBar.selectedElement = sitPlanElement;
-        this.sideBar.selectedWallElement = null; // Clear wall selection
-        this.sideBar.render();
-      }
-    }
-
-    // Update layer manager
-    if (this.layerManager && this.layerManager.isVisible()) {
-      this.layerManager.render();
-    }
+    this.selectionChanged();
   }
+
   /**
    * Selecteert de gegeven box als deze niet al geselecteerd is, of deselecteert deze als deze al geselecteerd is.
    * De allerlaatste box in de selectie wordt nooit gedeselecteerd.
@@ -1100,39 +1238,22 @@ export class SituationPlanView {
     this.selected.toggleButNeverRemoveLast(box);
     if (this.selected.includes(box)) box.classList.add("selected");
     else box.classList.remove("selected");
-    globalThis.undostruct.updateSelectedBoxes();
+    this.selectionChanged();
   }
 
   /**
    * Verwijdert de selectie van alle boxes.
+   *
+   * @param notify - Indien false wordt de rest van de applicatie niet verwittigd (omdat er onmiddellijk een nieuwe selectie volgt).
    */
-  clearSelection() {
-    let boxes = document.querySelectorAll(".box");
-    boxes.forEach((b) => b.classList.remove("selected"));
+  clearSelection(notify: boolean = true) {
+    this.paper
+      .querySelectorAll(".box.selected")
+      .forEach((b) => b.classList.remove("selected"));
+    const hadSelection = this.selected.length() > 0;
     this.selected.clear();
-
-    // Remove all resize handles
     this.removeAllWallResizeHandles();
-
-    // Clear wall properties from sidebar
-    if (this.sideBar && this.sideBar.selectedWallElement) {
-      this.sideBar.selectedWallElement = null;
-      this.sideBar.render();
-    }
-
-    // Clear element properties from sidebar
-    if (this.sideBar && this.sideBar.selectedElement) {
-      this.sideBar.selectedElement = null;
-      this.sideBar.render();
-    }
-
-    // Notify React about selection change
-    window.dispatchEvent(new CustomEvent("sitplan-selection-change"));
-
-    // Update layer manager
-    if (this.layerManager && this.layerManager.isVisible()) {
-      this.layerManager.render();
-    }
+    if (notify && hadSelection) this.selectionChanged();
   }
 
   /**
@@ -1154,7 +1275,7 @@ export class SituationPlanView {
       this.sitplan.removeElement(sitPlanElement);
     }
     this.selected.clear();
-    this.sideBar.render();
+    this.selectionChanged();
   }
 
   /**
@@ -1372,10 +1493,7 @@ export class SituationPlanView {
 
     for (let selected of this.selected.getAllSelected()) {
       let element = (selected as any).sitPlanElementRef;
-      if (element == null) {
-        this.sitplan.syncToSitPlan();
-        return;
-      }
+      if (element == null) continue;
       if (element.movable == false) continue;
       selected.style.zIndex = newzindex.toString();
       if (element.boxlabelref != null)
@@ -1398,236 +1516,431 @@ export class SituationPlanView {
    *   - top: de afstand boven het element in het midden tot de boven rand van de unie
    *   - bottom: de afstand onder het element in het midden tot de onder rand van de unie
    */
-  private getDraggedHaloAroundElement(
-    sitPlanReferenceElement: SituationPlanElement
-  ) {
-    // Bereken de unie van de centra van alle geselecteerde boxes
-    let xmin = sitPlanReferenceElement.posx;
-    let ymin = sitPlanReferenceElement.posy;
-    let xmax = sitPlanReferenceElement.posx;
-    let ymax = sitPlanReferenceElement.posy;
+  // ---------------------------------------------------------------------------
+  // Pointer interacties: slepen, selectierechthoek, pannen
+  // ---------------------------------------------------------------------------
 
-    for (let selected of this.selected.getAllSelected()) {
-      if (selected == null || selected === this.draggedBox) continue;
-      const sitPlanElement = (selected as any).sitPlanElementRef;
-      if (sitPlanElement == null) continue;
-      if (sitPlanElement.movable == false) continue;
-      xmin = Math.min(xmin, sitPlanElement.posx);
-      ymin = Math.min(ymin, sitPlanElement.posy);
-      xmax = Math.max(xmax, sitPlanElement.posx);
-      ymax = Math.max(ymax, sitPlanElement.posy);
-    }
-
-    // Hoeveel ruimte moeten we laten rond de geselecteerde boxes
-    const halo = {
-      left: sitPlanReferenceElement.posx - xmin,
-      right: xmax - sitPlanReferenceElement.posx,
-      top: sitPlanReferenceElement.posy - ymin,
-      bottom: ymax - sitPlanReferenceElement.posy,
+  /** Begrenzende rechthoek (as-gealigneerd, in papier-coördinaten) van een element inclusief rotatie */
+  private getElementBounds(element: SituationPlanElement) {
+    const scale = element.getscale();
+    const size = getRotatedRectangleSize(
+      element.sizex * scale,
+      element.sizey * scale,
+      element.rotate || 0
+    );
+    return {
+      left: element.posx - size.width / 2,
+      top: element.posy - size.height / 2,
+      right: element.posx + size.width / 2,
+      bottom: element.posy + size.height / 2,
     };
+  }
 
-    return halo;
+  private getSelectedMovableElements(): SituationPlanElement[] {
+    return this.selected
+      .getAllSelected()
+      .map((box) => (box as any)?.sitPlanElementRef as SituationPlanElement)
+      .filter((e) => e != null && e.movable !== false);
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el || !el.tagName) return false;
+    return (
+      el.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)
+    );
   }
 
   /**
-   * Start een sleepactie voor een box in het situatieplan.
-   *
-   * @param event - De gebeurtenis die de sleepactie activeert (muisklik of touchstart).
+   * Automatisch scrollen wanneer de muis tijdens een sleepbeweging dicht bij de rand van het canvas komt.
+   * Geeft een functie terug om de autoscroll te stoppen.
    */
-  private startDrag = (event) => {
-    // Initialisatie
-    if (event == null) return;
+  private startAutoScroll(
+    getPointer: () => { x: number; y: number } | null,
+    onScroll: () => void
+  ): () => void {
+    let frame = 0;
+    const speed = (distance: number) =>
+      Math.ceil(
+        AUTOSCROLL_MAX_SPEED *
+          Math.min(1, (AUTOSCROLL_EDGE_PX - distance) / AUTOSCROLL_EDGE_PX)
+      );
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      const pointer = getPointer();
+      if (!pointer) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const left = rect.left + this.canvas.clientLeft;
+      const top = rect.top + this.canvas.clientTop;
+      const right = left + this.canvas.clientWidth;
+      const bottom = top + this.canvas.clientHeight;
+      let dx = 0;
+      let dy = 0;
+      if (pointer.x < left + AUTOSCROLL_EDGE_PX) dx = -speed(pointer.x - left);
+      else if (pointer.x > right - AUTOSCROLL_EDGE_PX) dx = speed(right - pointer.x);
+      if (pointer.y < top + AUTOSCROLL_EDGE_PX) dy = -speed(pointer.y - top);
+      else if (pointer.y > bottom - AUTOSCROLL_EDGE_PX) dy = speed(bottom - pointer.y);
+      if (dx === 0 && dy === 0) return;
+      const beforeLeft = this.canvas.scrollLeft;
+      const beforeTop = this.canvas.scrollTop;
+      this.canvas.scrollLeft += dx;
+      this.canvas.scrollTop += dy;
+      if (
+        this.canvas.scrollLeft !== beforeLeft ||
+        this.canvas.scrollTop !== beforeTop
+      )
+        onScroll();
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }
 
-    // Don't start drag if in wall drawing mode - wall drawing takes priority on paper
-    // But boxes should still be draggable
-    if (this.isWallDrawingMode() && event.target === this.paper) {
+  /**
+   * Registreert move/up listeners op window voor een pointer interactie.
+   * Geeft een cleanup functie terug.
+   */
+  private trackPointer(
+    pointerId: number,
+    onMove: (ev: PointerEvent) => void,
+    onEnd: (ev: PointerEvent | null, cancelled: boolean) => void
+  ): () => void {
+    let finished = false;
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      onMove(ev);
+    };
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      finish(ev, ev.type === "pointercancel");
+    };
+    const blur = () => finish(null, true);
+    const cleanup = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("blur", blur);
+    };
+    const finish = (ev: PointerEvent | null, cancelled: boolean) => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      if (this.activeInteractionCleanup === interactionCleanup)
+        this.activeInteractionCleanup = null;
+      onEnd(ev, cancelled);
+    };
+    const interactionCleanup = () => finish(null, true);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    window.addEventListener("blur", blur);
+    this.beginInteraction(interactionCleanup);
+    return interactionCleanup;
+  }
+
+  /**
+   * Capture-fase pointerdown op het canvas.
+   *  - middelste muisknop of spatie + linkermuisknop: pannen
+   *  - linkermuisknop in tekenmodus: bouwelement tekenen (ook bovenop andere elementen zoals een plattegrond)
+   */
+  private onCanvasPointerDownCapture = (event: PointerEvent) => {
+    if (this.disposed) return;
+    const target = event.target as HTMLElement;
+    if (target?.closest?.(".wall-resize-handle, .wall-rotation-handle")) return;
+
+    if (event.button === 1 || (event.button === 0 && this.spacePressed)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.startPan(event);
       return;
     }
 
-    const shiftPressed = event.shiftKey; //Controleert of de shift-toets is ingedrukt
-    if (event.button == 1) return; //Indien de middelste knop werd gebruikt doen we niets
+    if (this.drawingTool && event.button === 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.startDrawing(event);
+    }
+  };
+
+  /**
+   * Bubble-fase pointerdown op het canvas: er werd niet op een box geklikt.
+   */
+  private onCanvasPointerDown = (event: PointerEvent) => {
+    if (this.disposed) return;
     this.contextMenu.hide();
+    if (event.button !== 0) {
+      if (event.button === 2) this.clearSelection();
+      return;
+    }
+    // Op aanraakschermen laten we het canvas scrollen, een tik wist de selectie
+    if (event.pointerType === "touch") {
+      this.clearSelection();
+      return;
+    }
+    this.startMarquee(event, null);
+  };
 
-    // Geklikte box identificeren. Hou er rekening mee dat ook op een boxlabel kan geklikt zijn
-    let box: HTMLElement = null;
-    let sitPlanElement = event.target.sitPlanElementRef;
+  /**
+   * Pannen van het canvas door te slepen.
+   */
+  private startPan(event: PointerEvent) {
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startLeft = this.canvas.scrollLeft;
+    const startTop = this.canvas.scrollTop;
+    this.canvas.classList.add("panning");
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        this.canvas.scrollLeft = startLeft - (ev.clientX - startX);
+        this.canvas.scrollTop = startTop - (ev.clientY - startY);
+      },
+      () => {
+        this.canvas.classList.remove("panning");
+      }
+    );
+  }
+
+  /**
+   * Selectierechthoek. Indien clickBox gegeven is en de muis niet beweegt, wordt die box geselecteerd
+   * (wordt gebruikt voor vergrendelde elementen zoals een plattegrond waarop men een selectie wil trekken).
+   */
+  private startMarquee(event: PointerEvent, clickBox: HTMLElement | null) {
+    const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+    const startClient = { x: event.clientX, y: event.clientY };
+    const start = this.clientToPaper(event.clientX, event.clientY);
+    const initialSelection = additive ? [...this.selected.getAllSelected()] : [];
+    let lastPointer: { x: number; y: number } | null = null;
+    let moved = false;
+    let marquee: HTMLDivElement | null = null;
+    let hits: HTMLElement[] = [];
+    let stopAutoScroll: (() => void) | null = null;
+
+    const update = () => {
+      if (!lastPointer || !marquee) return;
+      const p = this.clientToPaper(lastPointer.x, lastPointer.y);
+      const left = Math.min(start.x, p.x);
+      const top = Math.min(start.y, p.y);
+      const right = Math.max(start.x, p.x);
+      const bottom = Math.max(start.y, p.y);
+      marquee.style.left = `${left}px`;
+      marquee.style.top = `${top}px`;
+      marquee.style.width = `${right - left}px`;
+      marquee.style.height = `${bottom - top}px`;
+
+      hits = [];
+      for (const element of this.sitplan.elements) {
+        if (element.page !== this.sitplan.activePage || !element.boxref) continue;
+        if (element.boxref.style.display === "none") continue; // verborgen via laagbeheer
+        const b = this.getElementBounds(element);
+        // Vergrendelde elementen (vaak een grote plattegrond) enkel indien volledig omsloten
+        const hit =
+          element.movable === false
+            ? b.left >= left && b.right <= right && b.top >= top && b.bottom <= bottom
+            : b.right >= left && b.left <= right && b.bottom >= top && b.top <= bottom;
+        if (hit) hits.push(element.boxref);
+      }
+      const selection = new Set<HTMLElement>([...initialSelection, ...hits]);
+      for (const element of this.sitplan.elements) {
+        if (!element.boxref) continue;
+        element.boxref.classList.toggle("selected", selection.has(element.boxref));
+      }
+    };
+
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        lastPointer = { x: ev.clientX, y: ev.clientY };
+        if (!moved) {
+          if (
+            Math.hypot(ev.clientX - startClient.x, ev.clientY - startClient.y) <
+            DRAG_THRESHOLD_PX
+          )
+            return;
+          moved = true;
+          marquee = document.createElement("div");
+          marquee.className = "sitplan-marquee";
+          this.paper.appendChild(marquee);
+          stopAutoScroll = this.startAutoScroll(() => lastPointer, update);
+        }
+        update();
+      },
+      (_ev, cancelled) => {
+        stopAutoScroll?.();
+        marquee?.remove();
+        if (!moved) {
+          if (cancelled) return;
+          if (clickBox) {
+            if (additive) this.selectToggleBox(clickBox);
+            else {
+              this.clearSelection();
+              this.selectBox(clickBox);
+            }
+          } else if (!additive) {
+            this.clearSelection();
+          }
+          return;
+        }
+        const finalSelection = [...new Set<HTMLElement>([...initialSelection, ...hits])];
+        this.clearSelection(false);
+        for (const box of finalSelection) {
+          box.classList.add("selected");
+          this.selected.select(box);
+        }
+        this.selectionChanged();
+      }
+    );
+  }
+
+  /**
+   * Pointerdown op een box of label: selecteren en eventueel slepen.
+   */
+  private onBoxPointerDown = (event: PointerEvent) => {
+    if (this.disposed || event == null) return;
+    if (event.button === 1) return; // pannen wordt in de capture-fase afgehandeld
+
+    const target = event.target as HTMLElement;
+    if (target?.closest?.(".wall-resize-handle, .wall-rotation-handle")) return;
+
+    const sitPlanElement: SituationPlanElement = (event.currentTarget as any)
+      ?.sitPlanElementRef;
     if (sitPlanElement == null) return;
-
-    if (event.target.classList.contains("box")) box = event.target;
-    else if (event.target.classList.contains("boxlabel"))
-      box = sitPlanElement.boxref;
+    const box = sitPlanElement.boxref as HTMLElement | null;
     if (box == null) return;
 
-    // Nu gaan we de box selecteren. Dit moet zowel voor de linker als de rechter muisknop
-    // Als de shift toets werd ingedrukt houden we ook de reeds bestaande selectie in stand
-    if (shiftPressed) {
-      this.selectToggleBox(box);
-    } else {
-      if (!this.selected.includes(box)) this.clearSelection(); // Wist bestaande selectie als de huidige box er nog niet in zit
-      this.selectBox(box); // Voegt de huidige box toe aan de selectie
-    }
-    event.stopPropagation(); // Voorkomt body klikgebeurtenis
-
-    // Indien de rechter muisknop werd gebruikt gaan we na selectie niet verder met slepen
-    if (event.button == 2) return;
-
-    // OK, het is een touch event of de linkse knop dus we gaan verder met slepen maar controlleren eerst of we dat wel mogen
-    // we doen dit op basis van de box waarop we geklikt hebben, dit bijft de referentie voor het slepen, ook al bewegen
-    // eventueel andere geselecteerde boxes mee. De checks moeten falen voor zowel waarden false als null
-    if (!box.classList.contains("selected")) return; // Dit kan vreemd lijken maar is perfect mogelijk, bijvoorbeeld als
-    // de shift toets werd ingedrukt om de selectie te verwijderen
-    if (box.getAttribute("movable") == "false") return;
-
-    this.draggedBox = box; // Houdt de box die we aan het slepen zijn
-
-    // Hoeveel ruimte slepen we mee in de halo van alle geselecteerde en movable boxes
-    this.draggedHalo = this.getDraggedHaloAroundElement(sitPlanElement);
-
-    switch (event.type) {
-      case "mousedown":
-        this.mousedrag.startDrag(
-          event.clientX,
-          event.clientY,
-          sitPlanElement.posx,
-          sitPlanElement.posy
-        );
-        document.addEventListener("mousemove", this.processDrag);
-        document.addEventListener("mouseup", this.stopDrag);
-        break;
-      case "touchstart":
-        const touch = event.touches[0];
-        this.mousedrag.startDrag(
-          touch.clientX,
-          touch.clientY,
-          sitPlanElement.posx,
-          sitPlanElement.posy
-        );
-        document.addEventListener("touchmove", this.processDrag, {
-          passive: false,
-        });
-        document.addEventListener("touchend", this.stopDrag);
-        break;
-      default:
-        console.error("Ongeldige event voor startDrag functie");
-    }
-  };
-
-  /**
-   * Stopt de sleepactie van een box in het situatieplan en stopt de eventlisteners.
-   *
-   * @param event - De gebeurtenis die de sleepactie stopt (muisklik release of touchend).
-   */
-  private stopDrag = (event) => {
-    function showArrowHelp() {
-      const helperTip = new HelperTip(globalThis.appDocStorage);
-      helperTip.show(
-        "sitplan.arrowdrag",
-        `<h3>Tip: Symbolen verplaatsen</h3>
-            <p>Voor fijnere controle tijdens het verschuiven van symbolen kan u ook de pijltjes op het toetsenbord gebruiken.</p>`,
-        true
-      );
-    }
-
+    this.contextMenu.hide();
     event.stopPropagation();
 
-    switch (event.type) {
-      case "mouseup":
-        document.removeEventListener("mousemove", this.processDrag);
-        document.removeEventListener("mouseup", this.stopDrag);
-        if (this.mousedrag.hassMoved) {
-          showArrowHelp();
-          globalThis.undostruct.store();
-        }
-        break;
-      case "touchend":
-        document.removeEventListener("touchmove", this.processDrag);
-        document.removeEventListener("touchend", this.stopDrag);
-        if (this.mousedrag.hassMoved) {
-          showArrowHelp();
-          globalThis.undostruct.store();
-        }
-        break;
-      default:
-        console.error("Ongeldige event voor stopDrag functie");
+    const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+
+    // Een vergrendeld element (bvb een plattegrond) gedraagt zich als achtergrond: slepen start een
+    // selectierechthoek, een klik selecteert het element.
+    if (
+      event.button === 0 &&
+      sitPlanElement.movable === false &&
+      event.pointerType !== "touch" &&
+      !this.selected.includes(box)
+    ) {
+      this.startMarquee(event, box);
+      return;
     }
-    this.draggedBox = null;
+
+    // Selecteren. Dit moet zowel voor de linker als de rechter muisknop.
+    if (additive) {
+      this.selectToggleBox(box);
+    } else if (!this.selected.includes(box)) {
+      this.clearSelection(false);
+      this.selectBox(box);
+    } else {
+      this.selectBox(box); // maakt van deze box de laatst geselecteerde (referentie)
+    }
+
+    if (event.button !== 0) return; // rechtermuisknop: enkel selecteren, het contextmenu volgt
+    if (!box.classList.contains("selected")) return; // bvb gedeselecteerd met shift
+    if (sitPlanElement.movable === false) return;
+
+    event.preventDefault();
+    this.startDrag(event, sitPlanElement);
   };
 
   /**
-   * Verwerkt een muisklik of touch event tijdens het slepen van een box in het situatieplan.
-   *
-   * @param event - De gebeurtenis die verwerkt wordt (muisklik of touchmove).
+   * Verplaatst alle geselecteerde (en verplaatsbare) elementen mee met de muis.
    */
-  private processDrag = (event) => {
-    if (this.draggedBox) {
-      // Initialisatie
-      event.preventDefault();
+  private startDrag(event: PointerEvent, reference: SituationPlanElement) {
+    const items = this.getSelectedMovableElements();
+    if (items.length === 0) return;
 
-      const sitPlanReferenceElement = (this.draggedBox as any)
-        .sitPlanElementRef;
-      if (sitPlanReferenceElement === null) return;
+    const startClient = { x: event.clientX, y: event.clientY };
+    const startPaper = this.clientToPaper(event.clientX, event.clientY);
+    const startPositions = items.map((e) => ({ e, x: e.posx, y: e.posy }));
+    const refStart = { x: reference.posx, y: reference.posy };
 
-      // Nieuwe locatie van het referentie-element bepalen
-      let newPaperPos: { x: number; y: number };
-      if (event.type === "mousemove")
-        newPaperPos = this.mousedrag.returnNewPaperPos(
-          event.clientX,
-          event.clientY
-        );
-      else if (event.type === "touchmove") {
-        const touch = event.touches[0];
-        newPaperPos = this.mousedrag.returnNewPaperPos(
-          touch.clientX,
-          touch.clientY
-        );
-      }
-
-      // De referentiebox moet in de viewBox (het zichtbare deel van het schema) blijven en geen van de geselecteerde
-      // elementen mogen links of boven een negatieve coordinaat krijgen en onbereikbaar worden
-      const paperPadding = parseFloat(
-        getComputedStyle(this.paper).getPropertyValue("--paperPadding")
-      );
-
-      const viewBox = {
-        x: (this.canvas.scrollLeft - paperPadding) / this.zoomfactor,
-        y: (this.canvas.scrollTop - paperPadding) / this.zoomfactor,
-        width: this.canvas.offsetWidth / this.zoomfactor,
-        height: this.canvas.offsetHeight / this.zoomfactor,
-      };
-
-      newPaperPos.x = Math.min(
-        viewBox.x + viewBox.width,
-        Math.max(
-          viewBox.x,
-          this.draggedHalo.left - paperPadding / this.zoomfactor,
-          newPaperPos.x
-        )
-      );
-      newPaperPos.y = Math.min(
-        viewBox.y + viewBox.height,
-        Math.max(
-          viewBox.y,
-          this.draggedHalo.top - paperPadding / this.zoomfactor,
-          newPaperPos.y
-        )
-      );
-
-      // Wijzig nu de positie van alle elementen en herteken
-      const shift = {
-        x: newPaperPos.x - sitPlanReferenceElement.posx,
-        y: newPaperPos.y - sitPlanReferenceElement.posy,
-      };
-      for (let selected of this.selected.getAllSelected()) {
-        if (selected == null) continue;
-        const sitPlanElement = (selected as any).sitPlanElementRef;
-        if (sitPlanElement == null) continue;
-        if (sitPlanElement.movable === false) continue;
-        sitPlanElement.posx += shift.x;
-        sitPlanElement.posy += shift.y;
-        this.updateSymbolAndLabelPosition(sitPlanElement);
-      }
+    // Alle middelpunten moeten op het papier blijven
+    const W = this.getPaperWidth();
+    const H = this.getPaperHeight();
+    let minDx = -Infinity,
+      maxDx = Infinity,
+      minDy = -Infinity,
+      maxDy = Infinity;
+    for (const { x, y } of startPositions) {
+      minDx = Math.max(minDx, -x);
+      maxDx = Math.min(maxDx, W - x);
+      minDy = Math.max(minDy, -y);
+      maxDy = Math.min(maxDy, H - y);
     }
-  };
+    // Indien een element al buiten het papier stond, laten we het toch toe om het terug te slepen
+    if (minDx > maxDx) [minDx, maxDx] = [-Infinity, Infinity];
+    if (minDy > maxDy) [minDy, maxDy] = [-Infinity, Infinity];
+
+    let moved = false;
+    let lastPointer: { x: number; y: number; shiftKey: boolean; altKey: boolean } | null = null;
+    let stopAutoScroll: (() => void) | null = null;
+
+    const apply = () => {
+      if (!lastPointer) return;
+      const p = this.clientToPaper(lastPointer.x, lastPointer.y);
+      let dx = p.x - startPaper.x;
+      let dy = p.y - startPaper.y;
+      if (lastPointer.shiftKey) {
+        // Beperk tot horizontaal of verticaal
+        if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
+      if (this.snapToGrid && !lastPointer.altKey) {
+        dx = this.snap(refStart.x + dx) - refStart.x;
+        dy = this.snap(refStart.y + dy) - refStart.y;
+      }
+      dx = Math.min(maxDx, Math.max(minDx, dx));
+      dy = Math.min(maxDy, Math.max(minDy, dy));
+      for (const { e, x, y } of startPositions) {
+        e.posx = x + dx;
+        e.posy = y + dy;
+        this.updateSymbolAndLabelPosition(e);
+      }
+    };
+
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        lastPointer = { x: ev.clientX, y: ev.clientY, shiftKey: ev.shiftKey, altKey: ev.altKey };
+        if (!moved) {
+          if (
+            Math.hypot(ev.clientX - startClient.x, ev.clientY - startClient.y) <
+            DRAG_THRESHOLD_PX
+          )
+            return;
+          moved = true;
+          this.paper.classList.add("dragging");
+          stopAutoScroll = this.startAutoScroll(() => lastPointer, apply);
+        }
+        ev.preventDefault();
+        apply();
+      },
+      (_ev, cancelled) => {
+        stopAutoScroll?.();
+        this.paper.classList.remove("dragging");
+        if (!moved) return;
+        if (cancelled) {
+          // Terugzetten naar de beginpositie
+          for (const { e, x, y } of startPositions) {
+            e.posx = x;
+            e.posy = y;
+            this.updateSymbolAndLabelPosition(e);
+          }
+          return;
+        }
+        globalThis.undostruct.store();
+        this.emit(SITPLAN_EVENTS.selectionChange);
+        const helperTip = new HelperTip(globalThis.appDocStorage);
+        helperTip.show(
+          "sitplan.arrowdrag",
+          `<h3>Tip: Symbolen verplaatsen</h3>
+            <p>Voor fijnere controle tijdens het verschuiven van symbolen kan u ook de pijltjes op het toetsenbord gebruiken (met Shift per 10 pixels).</p>`,
+          true
+        );
+      }
+    );
+  }
 
   /**
    * Selecteer een pagina.
@@ -1645,8 +1958,13 @@ export class SituationPlanView {
    * @param page - Het nummer van de pagina die getoond moet worden.
    */
   showPage(page: number) {
-    this.clearSelection();
+    // Elementen die niet op deze pagina staan kunnen niet geselecteerd blijven
+    const selectionOnOtherPage = this.selected
+      .getAllSelected()
+      .some((box) => (box as any)?.sitPlanElementRef?.page !== page || !box.isConnected);
+    if (selectionOnOtherPage) this.clearSelection();
     for (let element of this.sitplan.elements) {
+      if (!element.boxref) continue;
       if (element.page != page) {
         element.boxref.classList.add("hidden");
         if (element.boxlabelref) element.boxlabelref.classList.add("hidden");
@@ -1655,7 +1973,6 @@ export class SituationPlanView {
         if (element.boxlabelref) element.boxlabelref.classList.remove("hidden");
       }
     }
-    this.updateRibbon();
   }
 
   /**
@@ -1697,54 +2014,108 @@ export class SituationPlanView {
     if (this.selected.length() > 0) globalThis.undostruct.store();
   }
 
+  /**
+   * Tijdelijk de sneltoetsen uitschakelen (bvb terwijl een popup open staat).
+   */
+  private keyboardSuspended = false;
+
   unattachArrowKeys() {
-    this.event_manager.addEventListener(document, "keydown", () => {});
+    this.keyboardSuspended = true;
   }
 
   /**
-   * Voegt eventlisteners toe om pijltjestoetsen te hanteren.
-   *
-   * Wanneer een pijltjestoets wordt ingedrukt, en er is een box geselecteerd, dan wordt de positie van de box aangepast.
-   * De positie van de box wordt aangepast door de posx of posy van het element in het situatieplan te veranderen.
-   * Daarna wordt de functie updateSymbolAndLabelPosition aangeroepen om de positie van het symbool en het label van de box te updaten.
+   * Verschuift de geselecteerde verplaatsbare elementen. De middelpunten blijven op het papier.
+   */
+  private nudgeSelected(dx: number, dy: number) {
+    const items = this.getSelectedMovableElements();
+    if (items.length === 0) return;
+    const W = this.getPaperWidth();
+    const H = this.getPaperHeight();
+    for (const e of items) {
+      if (dx < 0) dx = Math.max(dx, Math.min(0, -e.posx));
+      if (dx > 0) dx = Math.min(dx, Math.max(0, W - e.posx));
+      if (dy < 0) dy = Math.max(dy, Math.min(0, -e.posy));
+      if (dy > 0) dy = Math.min(dy, Math.max(0, H - e.posy));
+    }
+    if (dx === 0 && dy === 0) return;
+    for (const e of items) {
+      e.posx += dx;
+      e.posy += dy;
+      this.updateSymbolAndLabelPosition(e);
+    }
+    // Opeenvolgende pijltjes worden samengevoegd tot één undo-stap
+    globalThis.undostruct.store(
+      "arrowMove" + items.map((e) => e.id).join(",")
+    );
+    this.emit(SITPLAN_EVENTS.selectionChange);
+  }
+
+  /**
+   * Verplaatst de geselecteerde elementen naar een andere pagina.
+   */
+  private moveSelectedToPage(newPage: number) {
+    const boxes = this.selected
+      .getAllSelected()
+      .filter(
+        (e) => e != null && (e as any).sitPlanElementRef?.movable !== false
+      );
+    if (boxes.length === 0) return;
+    for (const box of boxes) (box as any).sitPlanElementRef.changePage(newPage);
+    this.selectPage(newPage); // Naar de nieuwe pagina gaan
+    this.clearSelection(false);
+    for (const box of boxes) {
+      box.classList.add("selected");
+      this.selected.select(box);
+    }
+    this.selectionChanged();
+    this.bringToFront(false); // breng de verplaatste elementen naar voren
+    globalThis.undostruct.store();
+  }
+
+  /**
+   * Voegt eventlisteners toe om pijltjestoetsen en andere sneltoetsen te hanteren.
    */
   attachArrowKeys() {
-    this.event_manager.addEventListener(document, "keydown", (event) => {
-      this.contextMenu.hide();
-      if (this.disposed || !this.canvas.isConnected || document.getElementById("outerdiv")?.style.display === "none") return; // Check if we are really in the situationplan, if not, the default scrolling action will be executed by the browser
+    this.keyboardSuspended = false;
+
+    this.event_manager.addEventListener(document, "keyup", (event: KeyboardEvent) => {
+      if (event.code === "Space" || event.key === " ") {
+        this.spacePressed = false;
+        this.canvas.classList.remove("space-pan");
+      }
+    });
+
+    this.event_manager.addEventListener(window, "blur", () => {
+      this.spacePressed = false;
+      this.canvas.classList.remove("space-pan");
+    });
+
+    this.event_manager.addEventListener(document, "keydown", (event: KeyboardEvent) => {
+      if (this.disposed || this.keyboardSuspended || !this.canvas.isConnected) return;
       if (document.getElementById("popupOverlay") != null) return; // We need the keys when editing symbol properties.
+      if (document.querySelector(".editor-modal-overlay, [role='dialog'][aria-modal='true']")) return;
+      if (this.isEditableTarget(event.target)) return; // Typen in een invoerveld (bvb de zijbalk)
 
-      let selectedBoxes = this.selected
-        .getAllSelected()
-        .filter((e) => e != null);
-      let selectedMovableBoxes = selectedBoxes.filter(
-        (e) =>
-          (e as any).sitPlanElementRef != null &&
-          (e as any).sitPlanElementRef.movable
-      );
-      let selectedSitPlanElements = selectedBoxes
-        .map((e) => (e as any).sitPlanElementRef)
-        .filter((e) => e != null);
-      let selectedMovableSitPlanElements = selectedSitPlanElements.filter(
-        (e) => e.movable
-      );
+      if (event.key !== "Shift" && event.key !== "Control" && event.key !== "Alt")
+        this.contextMenu.hide();
 
-      const paperPadding = parseFloat(
-        getComputedStyle(this.paper).getPropertyValue("--paperPadding")
-      );
+      // Spatie ingedrukt houden om te pannen
+      if (event.code === "Space" || event.key === " ") {
+        event.preventDefault();
+        if (!this.spacePressed) {
+          this.spacePressed = true;
+          this.canvas.classList.add("space-pan");
+        }
+        return;
+      }
 
-      // Loop enkel voor undo-redo, andere acties beneden
-      if (event.ctrlKey) {
-        switch (event.key) {
-          case "z":
-            event.preventDefault();
-            globalThis.undostruct.undo();
-            return;
-          case "y":
-            event.preventDefault();
-            globalThis.undostruct.redo();
-            return;
-          case "r":
+      const ctrl = event.ctrlKey || event.metaKey;
+      const key = event.key;
+
+      // Sneltoetsen die altijd werken. Ongedaan maken/opnieuw wordt centraal in App.tsx behandeld.
+      if (ctrl) {
+        switch (key.toLowerCase()) {
+          case "r": {
             event.preventDefault();
             const helperTip = new HelperTip(globalThis.appDocStorage);
             helperTip.show(
@@ -1754,179 +2125,131 @@ export class SituationPlanView {
               true
             );
             return;
-          default:
-          //do nothing as we also have ctrl + arrow keys here below.
+          }
+          case "a":
+            event.preventDefault();
+            this.selectAllOnPage();
+            return;
+          case "0":
+            event.preventDefault();
+            this.zoomToFit();
+            return;
+          case "=":
+          case "+":
+            event.preventDefault();
+            this.zoomBy(1.25);
+            return;
+          case "-":
+            event.preventDefault();
+            this.zoomBy(1 / 1.25);
+            return;
         }
       }
 
-      // Loop indien box geselecteerd
-      if (this.selected.length() > 0) {
-        // Check if we have a selected box, if not, the default scrolling action will be executed by the browser
-        event.preventDefault();
-        const sitPlanElement = (this.selected.getLastSelected() as any)
-          .sitPlanElementRef;
-        if (!sitPlanElement) return;
+      if (key === "Escape") {
+        if (this.drawingTool) {
+          this.setDrawingTool(null);
+          return;
+        }
+        this.clearSelection();
+        return;
+      }
 
-        const draggedHalo = this.getDraggedHaloAroundElement(sitPlanElement);
-
-        if (event.ctrlKey) {
-          switch (event.key) {
-            case "ArrowLeft":
-              this.rotateSelectedBoxes(-90, true);
-              return;
-            case "ArrowRight":
-              this.rotateSelectedBoxes(90, true);
-              return;
-            case "l":
-            case "L":
-              this.toggleSelectedBoxesMovable();
-              return;
-            default:
-              return;
-          }
-        } else {
-          switch (event.key) {
-            case "ArrowLeft": {
-              const shiftx =
-                Math.max(
-                  draggedHalo.left - paperPadding / this.zoomfactor,
-                  sitPlanElement.posx - 1
-                ) - sitPlanElement.posx;
-              for (let element of selectedMovableSitPlanElements)
-                element.posx += shiftx;
-              globalThis.undostruct.store("arrowMove" + sitPlanElement.id); // technically this is not correct and should contain the list of all moved objects
-              break;
-            }
-            case "ArrowRight":
-              const shiftx = 1;
-              for (let element of selectedMovableSitPlanElements)
-                element.posx += shiftx;
-              globalThis.undostruct.store("arrowMove" + sitPlanElement.id); // technically this is not correct and should contain the list of all moved objects
-              break;
-            case "ArrowUp": {
-              const shifty =
-                Math.max(
-                  draggedHalo.top - paperPadding / this.zoomfactor,
-                  sitPlanElement.posy - 1
-                ) - sitPlanElement.posy;
-              for (let element of selectedMovableSitPlanElements)
-                element.posy += shifty;
-              globalThis.undostruct.store("arrowMove" + sitPlanElement.id); // technically this is not correct and should contain the list of all moved objects
-              break;
-            }
-            case "ArrowDown":
-              const shifty = 1;
-              for (let element of selectedMovableSitPlanElements)
-                element.posy += shifty;
-              globalThis.undostruct.store("arrowMove" + sitPlanElement.id); // technically this is not correct and should contain the list of all moved objects
-              break;
-            case "PageDown":
-              {
-                let oldPage = sitPlanElement.page;
-                let newPage = sitPlanElement.page + 1;
-                if (newPage > this.sitplan.numPages) newPage = 1;
-
-                if (newPage == oldPage) return;
-
-                for (let element of selectedMovableSitPlanElements)
-                  element.changePage(newPage);
-                this.selectPage(newPage); // Naar de nieuwe pagina gaan, dit wist ook de selectie
-
-                for (let box of selectedMovableBoxes) this.selectBox(box); // De geselecteerde elementen terug selecteren
-                this.bringToFront(false); // Indien de pagina is gewijzigd, breng de nog geselecteerde elementen naar voren
-
-                globalThis.undostruct.store();
-              }
-              break;
-            case "PageUp":
-              {
-                let oldPage = sitPlanElement.page;
-                let newPage = sitPlanElement.page - 1;
-                if (newPage < 1) newPage = this.sitplan.numPages;
-
-                if (newPage == oldPage) return;
-
-                const boxarray = this.selected.getAllSelected(); // eerst bestaande selectie bewaren
-
-                for (let element of selectedMovableSitPlanElements)
-                  element.changePage(newPage);
-                this.selectPage(newPage); // Naar de nieuwe pagina gaan, dit wist ook de selectie
-
-                for (let box of selectedMovableBoxes) this.selectBox(box); // De geselecteerde elementen terug selecteren
-                this.bringToFront(false); // Indien de pagina is gewijzigd, breng de nog geselecteerde elementen naar voren
-
-                globalThis.undostruct.store();
-              }
-              break;
-            case "Escape":
-              this.clearSelection();
-              break;
-            case "Enter":
-              this.editSelectedBox();
-              return;
-            case "Delete":
-              if (this.selected.length() > 0) {
-                this.deleteSelectedBoxes();
-                globalThis.undostruct.store();
-              }
-              break;
-            case "d":
-            case "D":
-              if (event.ctrlKey || event.metaKey) {
-                event.preventDefault();
-                if (this.selected.length() > 0) {
-                  this.duplicateSelectedBoxes();
-                  globalThis.undostruct.store();
-                }
-              }
-              break;
-            default:
-              return;
+      if (this.selected.length() === 0) {
+        if (key === "PageDown" || key === "PageUp") {
+          event.preventDefault();
+          let newPage = this.sitplan.activePage + (key === "PageDown" ? 1 : -1);
+          if (newPage > this.sitplan.numPages) newPage = 1;
+          if (newPage < 1) newPage = this.sitplan.numPages;
+          if (newPage !== this.sitplan.activePage) {
+            this.selectPage(newPage);
+            globalThis.undostruct.store("changePage");
           }
         }
+        return; // standaard browsergedrag (scrollen) voor andere toetsen
+      }
 
-        // We berekenen de selectie opnieuw want deze kan gewijzigd zijn, o.a. door de delete knop
-        selectedBoxes = this.selected.getAllSelected().filter((e) => e != null);
-        selectedMovableBoxes = selectedBoxes.filter(
-          (e) =>
-            (e as any).sitPlanElementRef != null &&
-            (e as any).sitPlanElementRef.movable
-        );
-        selectedSitPlanElements = selectedBoxes
-          .map((e) => (e as any).sitPlanElementRef)
-          .filter((e) => e != null);
-        selectedMovableSitPlanElements = selectedSitPlanElements.filter(
-          (e) => e.movable
-        );
+      const step = event.shiftKey ? 10 : 1;
 
-        for (let element of selectedMovableSitPlanElements)
-          this.updateSymbolAndLabelPosition(element);
-
-        // Loop indien geen box geselecteerd
-      } else {
-        switch (event.key) {
-          case "PageDown":
-            {
-              let oldPage = this.sitplan.activePage;
-              let newPage = oldPage + 1;
-              if (newPage > this.sitplan.numPages) newPage = 1;
-              this.selectPage(newPage);
-              if (newPage != oldPage) globalThis.undostruct.store("changePage");
-            }
-            break;
-          case "PageUp":
-            {
-              let oldPage = this.sitplan.activePage;
-              let newPage = oldPage - 1;
-              if (newPage < 1) newPage = this.sitplan.numPages;
-              this.selectPage(newPage);
-              if (newPage != this.sitplan.activePage)
-                globalThis.undostruct.store("changePage");
-            }
-            break;
+      if (ctrl) {
+        switch (key) {
+          case "ArrowLeft":
+            event.preventDefault();
+            this.rotateSelectedBoxes(-90, true);
+            return;
+          case "ArrowRight":
+            event.preventDefault();
+            this.rotateSelectedBoxes(90, true);
+            return;
+          case "l":
+          case "L":
+            event.preventDefault();
+            this.toggleSelectedBoxesMovable();
+            return;
+          case "d":
+          case "D":
+            event.preventDefault();
+            this.duplicateSelectedBoxes();
+            globalThis.undostruct.store();
+            return;
         }
+        return;
+      }
+
+      switch (key) {
+        case "ArrowLeft":
+          event.preventDefault();
+          this.nudgeSelected(-step, 0);
+          return;
+        case "ArrowRight":
+          event.preventDefault();
+          this.nudgeSelected(step, 0);
+          return;
+        case "ArrowUp":
+          event.preventDefault();
+          this.nudgeSelected(0, -step);
+          return;
+        case "ArrowDown":
+          event.preventDefault();
+          this.nudgeSelected(0, step);
+          return;
+        case "PageDown":
+        case "PageUp": {
+          event.preventDefault();
+          if (this.sitplan.numPages <= 1) return;
+          const reference = (this.selected.getLastSelected() as any)
+            ?.sitPlanElementRef as SituationPlanElement;
+          if (!reference) return;
+          let newPage = reference.page + (key === "PageDown" ? 1 : -1);
+          if (newPage > this.sitplan.numPages) newPage = 1;
+          if (newPage < 1) newPage = this.sitplan.numPages;
+          if (newPage !== reference.page) this.moveSelectedToPage(newPage);
+          return;
+        }
+        case "Enter":
+          event.preventDefault();
+          this.editSelectedBox();
+          return;
+        case "Delete":
+        case "Backspace":
+          event.preventDefault();
+          this.deleteSelectedBoxes();
+          globalThis.undostruct.store();
+          return;
       }
     });
+  }
+
+  /** Selecteert alle zichtbare elementen op de actieve pagina */
+  selectAllOnPage() {
+    this.clearSelection(false);
+    for (const element of this.sitplan.elements) {
+      if (element.page !== this.sitplan.activePage || !element.boxref) continue;
+      if (element.boxref.style.display === "none") continue;
+      element.boxref.classList.add("selected");
+      this.selected.select(element.boxref);
+    }
+    this.selectionChanged();
   }
 
   /**
@@ -2106,7 +2429,8 @@ export class SituationPlanView {
   ) => {
     if (options.undoStore == undefined) options.undoStore = true; // default is to store the action in the undo stack
 
-    let paperPos = this.canvasPosToPaperPos(50, 50);
+    // Standaard in het midden van het zichtbare deel van het papier
+    let paperPos = this.getVisiblePaperCenter();
 
     if (posx == null) posx = paperPos.x;
     if (posy == null) posy = paperPos.y;
@@ -2318,8 +2642,7 @@ export class SituationPlanView {
    * The React component is responsible for rendering the UI.
    */
   updateRibbon() {
-    // React mode: just attach event handlers to existing buttons
-    this.attachRibbonEventHandlers();
+    // De ribbon wordt door React gerenderd; event handlers worden één keer gekoppeld in de constructor.
   }
 
   /**
@@ -2457,680 +2780,263 @@ export class SituationPlanView {
     globalThis.undostruct.store("changePage");
   }
 
+  // ---------------------------------------------------------------------------
+  // Tekenen van bouwelementen (muren, ramen, deuren en vrije vormen)
+  // ---------------------------------------------------------------------------
+
   /**
-   * Enable wall drawing mode
-   * @param wallType Type of wall to draw ('inner' or 'outer')
+   * Activeert een tekengereedschap, of schakelt tekenen uit met null.
    */
+  public setDrawingTool(tool: SitPlanDrawingTool | null): void {
+    this.cancelInteraction();
+    this.drawingTool = tool;
+    this.canvas.classList.toggle("drawing", tool != null);
+    if (tool) this.clearSelection();
+    this.emit(SITPLAN_EVENTS.toolChange, { tool });
+  }
+
+  public getDrawingTool(): SitPlanDrawingTool | null {
+    return this.drawingTool;
+  }
+
   public enableWallDrawingMode(wallType: WallType): void {
-    this.wallDrawingMode = wallType;
-    this.canvas.style.cursor = "crosshair";
-    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
-    this.clearSelection();
-
-    // Store bound handler references so we can remove them later
-    this.wallMouseDownHandler = this.startWallDrawing.bind(this);
-
-    // Add mousedown listener to paper for wall drawing
-    this.paper.addEventListener("pointerdown", this.wallMouseDownHandler);
+    this.setDrawingTool({ kind: "wall", wallType });
   }
 
-  /**
-   * Disable wall drawing mode
-   */
   public disableWallDrawingMode(): void {
-    this.wallDrawingMode = null;
-    this.canvas.style.cursor = "default";
-    this.canvas.style.touchAction = "";
-
-    // Remove wall drawing listeners
-    if (this.wallMouseDownHandler) {
-      this.paper.removeEventListener("pointerdown", this.wallMouseDownHandler);
-      this.wallMouseDownHandler = null;
-    }
-    if (this.wallMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.wallMouseMoveHandler);
-      this.wallMouseMoveHandler = null;
-    }
-    if (this.wallMouseUpHandler) {
-      document.removeEventListener("pointerup", this.wallMouseUpHandler);
-      this.wallMouseUpHandler = null;
-    }
-
-    // Remove preview if exists
-    if (this.wallPreviewElement) {
-      this.wallPreviewElement.remove();
-      this.wallPreviewElement = null;
-    }
+    if (this.drawingTool?.kind === "wall") this.setDrawingTool(null);
   }
 
-  /**
-   * Check if wall drawing mode is active
-   */
   public isWallDrawingMode(): boolean {
-    return this.wallDrawingMode !== null;
+    return this.drawingTool?.kind === "wall";
   }
 
-  /**
-   * Get current wall drawing type
-   */
   public getWallDrawingType(): WallType | null {
-    return this.wallDrawingMode;
+    return this.drawingTool?.kind === "wall" ? this.drawingTool.wallType : null;
+  }
+
+  public enableFreeformShapeDrawingMode(shapeType: FreeformShapeType): void {
+    this.setDrawingTool({ kind: "shape", shapeType });
+  }
+
+  public disableFreeformShapeDrawingMode(): void {
+    if (this.drawingTool?.kind === "shape") this.setDrawingTool(null);
+  }
+
+  public isFreeformShapeDrawingMode(): boolean {
+    return this.drawingTool?.kind === "shape";
+  }
+
+  public getFreeformShapeDrawingType(): FreeformShapeType | null {
+    return this.drawingTool?.kind === "shape" ? this.drawingTool.shapeType : null;
+  }
+
+  public enableWindowDrawingMode(): void {
+    this.setDrawingTool({ kind: "window" });
+  }
+
+  public disableWindowDrawingMode(): void {
+    if (this.drawingTool?.kind === "window") this.setDrawingTool(null);
+  }
+
+  public isWindowDrawingMode(): boolean {
+    return this.drawingTool?.kind === "window";
+  }
+
+  public enableDoorDrawingMode(): void {
+    this.setDrawingTool({ kind: "door" });
+  }
+
+  public disableDoorDrawingMode(): void {
+    if (this.drawingTool?.kind === "door") this.setDrawingTool(null);
+  }
+
+  public isDoorDrawingMode(): boolean {
+    return this.drawingTool?.kind === "door";
+  }
+
+  /** Standaardgrootte wanneer met het gereedschap enkel geklikt wordt (zonder te slepen) */
+  private getDefaultToolSize(tool: SitPlanDrawingTool) {
+    switch (tool.kind) {
+      case "wall": {
+        const thickness =
+          tool.wallType === "outer"
+            ? WallElement.OUTER_WALL_THICKNESS
+            : WallElement.INNER_WALL_THICKNESS;
+        return { width: 150, height: thickness };
+      }
+      case "window":
+        return { width: 80, height: 10 };
+      case "door":
+        return { width: 60, height: 60 };
+      case "shape":
+      default:
+        return { width: 100, height: 100 };
+    }
+  }
+
+  private getPreviewClass(tool: SitPlanDrawingTool) {
+    switch (tool.kind) {
+      case "wall":
+        return tool.wallType === "outer" ? "wall-outer" : "wall-inner";
+      case "window":
+        return "window-preview";
+      case "door":
+        return "door-preview";
+      case "shape":
+        return `freeform-${tool.shapeType}`;
+    }
+  }
+
+  private createBuildingElement(
+    tool: SitPlanDrawingTool,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): SituationPlanElement {
+    const page = this.sitplan.activePage;
+    switch (tool.kind) {
+      case "wall":
+        return this.sitplan.addWallElement(tool.wallType, page, x, y, width, height);
+      case "window":
+        return this.sitplan.addWindowElement(page, x, y, width, height);
+      case "door":
+        return this.sitplan.addDoorElement(page, x, y, width, height);
+      case "shape":
+        return this.sitplan.addFreeformShapeElement(tool.shapeType, page, x, y, width, height);
+    }
   }
 
   /**
-   * Start drawing a wall
+   * Tekent een rechthoekig bouwelement door te slepen. Een klik zonder slepen plaatst een element
+   * met standaardafmetingen.
    */
-  private startWallDrawing = (event: MouseEvent): void => {
-    if (!this.wallDrawingMode) return;
+  private startDrawing(event: PointerEvent) {
+    const tool = this.drawingTool;
+    if (!tool) return;
 
-    event.stopPropagation();
-    event.preventDefault();
+    const startClient = { x: event.clientX, y: event.clientY };
+    const p0raw = this.clientToPaper(event.clientX, event.clientY);
+    const p0 = this.clampToPaper(this.snap(p0raw.x, event), this.snap(p0raw.y, event));
+    let rect = { x: p0.x, y: p0.y, width: 0, height: 0 };
+    let moved = false;
+    let lastPointer: { x: number; y: number; altKey: boolean; shiftKey: boolean } | null = null;
+    let stopAutoScroll: (() => void) | null = null;
 
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
+    const preview = document.createElement("div");
+    preview.className = `sitplan-draw-preview ${this.getPreviewClass(tool)}`;
+    const sizeLabel = document.createElement("span");
+    sizeLabel.className = "sitplan-draw-size";
+    preview.appendChild(sizeLabel);
 
-    this.wallDrawingStart = { x: paperPos.x, y: paperPos.y };
-
-    // Create preview element
-    this.wallPreviewElement = document.createElement("div");
-    this.wallPreviewElement.className = `wall-preview ${
-      this.wallDrawingMode === "outer" ? "wall-outer" : "wall-inner"
-    }`;
-    this.wallPreviewElement.style.position = "absolute";
-    this.wallPreviewElement.style.pointerEvents = "none";
-    this.paper.appendChild(this.wallPreviewElement);
-
-    // Store bound handlers
-    this.wallMouseMoveHandler = this.updateWallPreview.bind(this);
-    this.wallMouseUpHandler = this.finishWallDrawing.bind(this);
-
-    document.addEventListener("pointermove", this.wallMouseMoveHandler);
-    document.addEventListener("pointerup", this.wallMouseUpHandler);
-  };
-
-  /**
-   * Update wall preview while dragging
-   */
-  private updateWallPreview = (event: MouseEvent): void => {
-    if (!this.wallDrawingStart || !this.wallPreviewElement) return;
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.wallDrawingStart.x, paperPos.x);
-    const y = Math.min(this.wallDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.wallDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.wallDrawingStart.y);
-
-    this.wallPreviewElement.style.left = `${x}px`;
-    this.wallPreviewElement.style.top = `${y}px`;
-    this.wallPreviewElement.style.width = `${width}px`;
-    this.wallPreviewElement.style.height = `${height}px`;
-  };
-
-  /**
-   * Finish drawing a wall
-   */
-  private finishWallDrawing = (event: MouseEvent): void => {
-    if (!this.wallDrawingStart || !this.wallDrawingMode) return;
-
-    // Remove event listeners
-    if (this.wallMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.wallMouseMoveHandler);
-      this.wallMouseMoveHandler = null;
-    }
-    if (this.wallMouseUpHandler) {
-      document.removeEventListener("pointerup", this.wallMouseUpHandler);
-      this.wallMouseUpHandler = null;
-    }
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.wallDrawingStart.x, paperPos.x);
-    const y = Math.min(this.wallDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.wallDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.wallDrawingStart.y);
-
-    // Only create wall if it has minimum size
-    if (width > 5 && height > 5) {
-      const element = this.sitplan.addWallElement(
-        this.wallDrawingMode,
-        this.sitplan.activePage,
-        x,
-        y,
+    const update = () => {
+      if (!lastPointer) return;
+      const raw = this.clientToPaper(lastPointer.x, lastPointer.y);
+      const p = this.clampToPaper(this.snap(raw.x, lastPointer), this.snap(raw.y, lastPointer));
+      let width = Math.abs(p.x - p0.x);
+      let height = Math.abs(p.y - p0.y);
+      if (lastPointer.shiftKey && tool.kind !== "wall" && tool.kind !== "window") {
+        // Vierkant tekenen met Shift
+        const size = Math.max(width, height);
+        width = size;
+        height = size;
+      }
+      rect = {
+        x: p.x < p0.x ? p0.x - width : p0.x,
+        y: p.y < p0.y ? p0.y - height : p0.y,
         width,
-        height
-      );
+        height,
+      };
+      preview.style.left = `${rect.x}px`;
+      preview.style.top = `${rect.y}px`;
+      preview.style.width = `${rect.width}px`;
+      preview.style.height = `${rect.height}px`;
+      sizeLabel.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+    };
 
-      this.redraw();
-      globalThis.undostruct.store();
-    }
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        lastPointer = { x: ev.clientX, y: ev.clientY, altKey: ev.altKey, shiftKey: ev.shiftKey };
+        if (!moved) {
+          if (
+            Math.hypot(ev.clientX - startClient.x, ev.clientY - startClient.y) <
+            DRAG_THRESHOLD_PX
+          )
+            return;
+          moved = true;
+          this.paper.appendChild(preview);
+          stopAutoScroll = this.startAutoScroll(() => lastPointer, update);
+        }
+        ev.preventDefault();
+        update();
+      },
+      (_ev, cancelled) => {
+        stopAutoScroll?.();
+        preview.remove();
+        if (cancelled || this.disposed) return;
 
-    // Remove preview
-    if (this.wallPreviewElement) {
-      this.wallPreviewElement.remove();
-      this.wallPreviewElement = null;
-    }
+        let element: SituationPlanElement | null = null;
+        if (!moved) {
+          const size = this.getDefaultToolSize(tool);
+          element = this.createBuildingElement(
+            tool,
+            p0.x - size.width / 2,
+            p0.y - size.height / 2,
+            size.width,
+            size.height
+          );
+        } else if (rect.width >= MIN_DRAWN_SIZE && rect.height >= MIN_DRAWN_SIZE) {
+          element = this.createBuildingElement(tool, rect.x, rect.y, rect.width, rect.height);
+        }
+        if (!element) return;
 
-    this.wallDrawingStart = null;
-  };
-
-  /**
-   * Enable freeform shape drawing mode
-   * @param shapeType Type of freeform shape to draw ('white' or 'black')
-   */
-  public enableFreeformShapeDrawingMode(shapeType: FreeformShapeType): void {
-    this.freeformShapeDrawingMode = shapeType;
-    this.canvas.style.cursor = "crosshair";
-    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
-    this.clearSelection();
-
-    // Store bound handler references so we can remove them later
-    this.freeformShapeMouseDownHandler =
-      this.startFreeformShapeDrawing.bind(this);
-
-    // Add mousedown listener to paper for freeform shape drawing
-    this.paper.addEventListener(
-      "pointerdown",
-      this.freeformShapeMouseDownHandler
+        this.redraw();
+        this.clearSelection(false);
+        this.bringElementToFront(element);
+        this.selectBox(element.boxref);
+        globalThis.undostruct.store();
+      }
     );
   }
 
+  /** Zet een enkel element bovenaan de z-volgorde zonder undo-stap */
+  private bringElementToFront(element: SituationPlanElement) {
+    if (!element.boxref) return;
+    let maxZ = 0;
+    for (const e of this.sitplan.elements) {
+      if (e !== element && e.boxref)
+        maxZ = Math.max(maxZ, parseInt(e.boxref.style.zIndex) || 0);
+    }
+    element.boxref.style.zIndex = String(maxZ + 1);
+    if (element.boxlabelref) element.boxlabelref.style.zIndex = String(maxZ + 1);
+    this.sitplan.orderByZIndex();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handvatten om bouwelementen te vergroten/verkleinen en te roteren
+  // ---------------------------------------------------------------------------
+
   /**
-   * Disable freeform shape drawing mode
+   * Toont handvatten op het geselecteerde element als er precies één bouwelement geselecteerd is.
    */
-  public disableFreeformShapeDrawingMode(): void {
-    this.freeformShapeDrawingMode = null;
-    this.canvas.style.cursor = "default";
-    this.canvas.style.touchAction = "";
-
-    // Remove freeform shape drawing listeners
-    if (this.freeformShapeMouseDownHandler) {
-      this.paper.removeEventListener(
-        "pointerdown",
-        this.freeformShapeMouseDownHandler
-      );
-      this.freeformShapeMouseDownHandler = null;
-    }
-    if (this.freeformShapeMouseMoveHandler) {
-      document.removeEventListener(
-        "pointermove",
-        this.freeformShapeMouseMoveHandler
-      );
-      this.freeformShapeMouseMoveHandler = null;
-    }
-    if (this.freeformShapeMouseUpHandler) {
-      document.removeEventListener("pointerup", this.freeformShapeMouseUpHandler);
-      this.freeformShapeMouseUpHandler = null;
-    }
-
-    // Remove preview if exists
-    if (this.freeformShapePreviewElement) {
-      this.freeformShapePreviewElement.remove();
-      this.freeformShapePreviewElement = null;
-    }
+  private refreshHandles() {
+    this.removeAllWallResizeHandles();
+    if (this.selected.length() !== 1) return;
+    const box = this.selected.getLastSelected();
+    const element = (box as any)?.sitPlanElementRef as SituationPlanElement;
+    if (!box || !element || !element.isBuildingElement() || element.movable === false) return;
+    this.addWallResizeHandles(box, element);
   }
 
   /**
-   * Check if freeform shape drawing mode is active
-   */
-  public isFreeformShapeDrawingMode(): boolean {
-    return this.freeformShapeDrawingMode !== null;
-  }
-
-  /**
-   * Get current freeform shape drawing type
-   */
-  public getFreeformShapeDrawingType(): FreeformShapeType | null {
-    return this.freeformShapeDrawingMode;
-  }
-
-  /**
-   * Start drawing a freeform shape
-   */
-  private startFreeformShapeDrawing = (event: MouseEvent): void => {
-    if (!this.freeformShapeDrawingMode) return;
-
-    event.stopPropagation();
-    event.preventDefault();
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    this.freeformShapeDrawingStart = { x: paperPos.x, y: paperPos.y };
-
-    // Create preview element
-    this.freeformShapePreviewElement = document.createElement("div");
-    this.freeformShapePreviewElement.className = `freeform-preview ${
-      this.freeformShapeDrawingMode === "white"
-        ? "freeform-white"
-        : "freeform-black"
-    }`;
-    this.freeformShapePreviewElement.style.position = "absolute";
-    this.freeformShapePreviewElement.style.pointerEvents = "none";
-    this.freeformShapePreviewElement.style.border = "2px dashed #666";
-    this.freeformShapePreviewElement.style.backgroundColor =
-      this.freeformShapeDrawingMode === "white" ? "#ffffff" : "#000000";
-    this.paper.appendChild(this.freeformShapePreviewElement);
-
-    // Store bound handlers
-    this.freeformShapeMouseMoveHandler =
-      this.updateFreeformShapePreview.bind(this);
-    this.freeformShapeMouseUpHandler =
-      this.finishFreeformShapeDrawing.bind(this);
-
-    document.addEventListener("pointermove", this.freeformShapeMouseMoveHandler);
-    document.addEventListener("pointerup", this.freeformShapeMouseUpHandler);
-  };
-
-  /**
-   * Update freeform shape preview while dragging
-   */
-  private updateFreeformShapePreview = (event: MouseEvent): void => {
-    if (!this.freeformShapeDrawingStart || !this.freeformShapePreviewElement)
-      return;
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.freeformShapeDrawingStart.x, paperPos.x);
-    const y = Math.min(this.freeformShapeDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.freeformShapeDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.freeformShapeDrawingStart.y);
-
-    this.freeformShapePreviewElement.style.left = `${x}px`;
-    this.freeformShapePreviewElement.style.top = `${y}px`;
-    this.freeformShapePreviewElement.style.width = `${width}px`;
-    this.freeformShapePreviewElement.style.height = `${height}px`;
-  };
-
-  /**
-   * Finish drawing a freeform shape
-   */
-  private finishFreeformShapeDrawing = (event: MouseEvent): void => {
-    if (!this.freeformShapeDrawingStart || !this.freeformShapeDrawingMode)
-      return;
-
-    // Remove event listeners
-    if (this.freeformShapeMouseMoveHandler) {
-      document.removeEventListener(
-        "pointermove",
-        this.freeformShapeMouseMoveHandler
-      );
-      this.freeformShapeMouseMoveHandler = null;
-    }
-    if (this.freeformShapeMouseUpHandler) {
-      document.removeEventListener("pointerup", this.freeformShapeMouseUpHandler);
-      this.freeformShapeMouseUpHandler = null;
-    }
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.freeformShapeDrawingStart.x, paperPos.x);
-    const y = Math.min(this.freeformShapeDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.freeformShapeDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.freeformShapeDrawingStart.y);
-
-    // Only create freeform shape if it has minimum size
-    if (width > 5 && height > 5) {
-      const element = this.sitplan.addFreeformShapeElement(
-        this.freeformShapeDrawingMode,
-        this.sitplan.activePage,
-        x,
-        y,
-        width,
-        height
-      );
-
-      this.redraw();
-      globalThis.undostruct.store();
-    }
-
-    // Remove preview
-    if (this.freeformShapePreviewElement) {
-      this.freeformShapePreviewElement.remove();
-      this.freeformShapePreviewElement = null;
-    }
-
-    this.freeformShapeDrawingStart = null;
-  };
-
-  /**
-   * Enable window drawing mode
-   */
-  public enableWindowDrawingMode(): void {
-    this.windowDrawingMode = true;
-    this.canvas.style.cursor = "crosshair";
-    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
-    this.clearSelection();
-
-    // Store bound handler references so we can remove them later
-    this.windowMouseDownHandler = this.startWindowDrawing.bind(this);
-
-    // Add mousedown listener to paper for window drawing
-    this.paper.addEventListener("pointerdown", this.windowMouseDownHandler);
-  }
-
-  /**
-   * Disable window drawing mode
-   */
-  public disableWindowDrawingMode(): void {
-    this.windowDrawingMode = false;
-    this.canvas.style.cursor = "default";
-    this.canvas.style.touchAction = "";
-
-    // Remove window drawing listeners
-    if (this.windowMouseDownHandler) {
-      this.paper.removeEventListener("pointerdown", this.windowMouseDownHandler);
-      this.windowMouseDownHandler = null;
-    }
-    if (this.windowMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.windowMouseMoveHandler);
-      this.windowMouseMoveHandler = null;
-    }
-    if (this.windowMouseUpHandler) {
-      document.removeEventListener("pointerup", this.windowMouseUpHandler);
-      this.windowMouseUpHandler = null;
-    }
-
-    // Remove preview if exists
-    if (this.windowPreviewElement) {
-      this.windowPreviewElement.remove();
-      this.windowPreviewElement = null;
-    }
-  }
-
-  /**
-   * Check if window drawing mode is active
-   */
-  public isWindowDrawingMode(): boolean {
-    return this.windowDrawingMode;
-  }
-
-  /**
-   * Start drawing a window
-   */
-  private startWindowDrawing = (event: MouseEvent): void => {
-    if (!this.windowDrawingMode) return;
-
-    event.stopPropagation();
-    event.preventDefault();
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    this.windowDrawingStart = { x: paperPos.x, y: paperPos.y };
-
-    // Create preview element
-    this.windowPreviewElement = document.createElement("div");
-    this.windowPreviewElement.className = "window-preview";
-    this.windowPreviewElement.style.position = "absolute";
-    this.windowPreviewElement.style.pointerEvents = "none";
-    this.windowPreviewElement.style.border = "2px solid black";
-    this.windowPreviewElement.style.backgroundColor = "white";
-    this.paper.appendChild(this.windowPreviewElement);
-
-    // Store bound handlers
-    this.windowMouseMoveHandler = this.updateWindowPreview.bind(this);
-    this.windowMouseUpHandler = this.finishWindowDrawing.bind(this);
-
-    document.addEventListener("pointermove", this.windowMouseMoveHandler);
-    document.addEventListener("pointerup", this.windowMouseUpHandler);
-  };
-
-  /**
-   * Update window preview while dragging
-   */
-  private updateWindowPreview = (event: MouseEvent): void => {
-    if (!this.windowDrawingStart || !this.windowPreviewElement) return;
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.windowDrawingStart.x, paperPos.x);
-    const y = Math.min(this.windowDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.windowDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.windowDrawingStart.y);
-
-    this.windowPreviewElement.style.left = `${x}px`;
-    this.windowPreviewElement.style.top = `${y}px`;
-    this.windowPreviewElement.style.width = `${width}px`;
-    this.windowPreviewElement.style.height = `${height}px`;
-  };
-
-  /**
-   * Finish drawing a window
-   */
-  private finishWindowDrawing = (event: MouseEvent): void => {
-    if (!this.windowDrawingStart || !this.windowDrawingMode) return;
-
-    // Remove event listeners
-    if (this.windowMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.windowMouseMoveHandler);
-      this.windowMouseMoveHandler = null;
-    }
-    if (this.windowMouseUpHandler) {
-      document.removeEventListener("pointerup", this.windowMouseUpHandler);
-      this.windowMouseUpHandler = null;
-    }
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.windowDrawingStart.x, paperPos.x);
-    const y = Math.min(this.windowDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.windowDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.windowDrawingStart.y);
-
-    // Only create window if it has minimum size
-    if (width > 5 && height > 5) {
-      const element = this.sitplan.addWindowElement(
-        this.sitplan.activePage,
-        x,
-        y,
-        width,
-        height
-      );
-
-      this.redraw();
-      globalThis.undostruct.store();
-    }
-
-    // Remove preview
-    if (this.windowPreviewElement) {
-      this.windowPreviewElement.remove();
-      this.windowPreviewElement = null;
-    }
-
-    this.windowDrawingStart = null;
-  };
-
-  /**
-   * Enable door drawing mode
-   */
-  public enableDoorDrawingMode(): void {
-    this.doorDrawingMode = true;
-    this.canvas.style.cursor = "crosshair";
-    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
-    this.clearSelection();
-
-    // Store bound handler references so we can remove them later
-    this.doorMouseDownHandler = this.startDoorDrawing.bind(this);
-
-    // Add mousedown listener to paper for door drawing
-    this.paper.addEventListener("pointerdown", this.doorMouseDownHandler);
-  }
-
-  /**
-   * Disable door drawing mode
-   */
-  public disableDoorDrawingMode(): void {
-    this.doorDrawingMode = false;
-    this.canvas.style.cursor = "default";
-    this.canvas.style.touchAction = "";
-
-    // Remove door drawing listeners
-    if (this.doorMouseDownHandler) {
-      this.paper.removeEventListener("pointerdown", this.doorMouseDownHandler);
-      this.doorMouseDownHandler = null;
-    }
-    if (this.doorMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.doorMouseMoveHandler);
-      this.doorMouseMoveHandler = null;
-    }
-    if (this.doorMouseUpHandler) {
-      document.removeEventListener("pointerup", this.doorMouseUpHandler);
-      this.doorMouseUpHandler = null;
-    }
-
-    // Remove preview if exists
-    if (this.doorPreviewElement) {
-      this.doorPreviewElement.remove();
-      this.doorPreviewElement = null;
-    }
-  }
-
-  /**
-   * Check if door drawing mode is active
-   */
-  public isDoorDrawingMode(): boolean {
-    return this.doorDrawingMode;
-  }
-
-  /**
-   * Start drawing a door
-   */
-  private startDoorDrawing = (event: MouseEvent): void => {
-    if (!this.doorDrawingMode) return;
-
-    event.stopPropagation();
-    event.preventDefault();
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    this.doorDrawingStart = { x: paperPos.x, y: paperPos.y };
-
-    // Create preview element
-    this.doorPreviewElement = document.createElement("div");
-    this.doorPreviewElement.className = "door-preview";
-    this.doorPreviewElement.style.position = "absolute";
-    this.doorPreviewElement.style.pointerEvents = "none";
-    this.doorPreviewElement.style.border = "2px solid black";
-    this.doorPreviewElement.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-    this.paper.appendChild(this.doorPreviewElement);
-
-    // Store bound handlers
-    this.doorMouseMoveHandler = this.updateDoorPreview.bind(this);
-    this.doorMouseUpHandler = this.finishDoorDrawing.bind(this);
-
-    document.addEventListener("pointermove", this.doorMouseMoveHandler);
-    document.addEventListener("pointerup", this.doorMouseUpHandler);
-  };
-
-  /**
-   * Update door preview while dragging
-   */
-  private updateDoorPreview = (event: MouseEvent): void => {
-    if (!this.doorDrawingStart || !this.doorPreviewElement) return;
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.doorDrawingStart.x, paperPos.x);
-    const y = Math.min(this.doorDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.doorDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.doorDrawingStart.y);
-
-    this.doorPreviewElement.style.left = `${x}px`;
-    this.doorPreviewElement.style.top = `${y}px`;
-    this.doorPreviewElement.style.width = `${width}px`;
-    this.doorPreviewElement.style.height = `${height}px`;
-  };
-
-  /**
-   * Finish drawing a door
-   */
-  private finishDoorDrawing = (event: MouseEvent): void => {
-    if (!this.doorDrawingStart || !this.doorDrawingMode) return;
-
-    // Remove event listeners
-    if (this.doorMouseMoveHandler) {
-      document.removeEventListener("pointermove", this.doorMouseMoveHandler);
-      this.doorMouseMoveHandler = null;
-    }
-    if (this.doorMouseUpHandler) {
-      document.removeEventListener("pointerup", this.doorMouseUpHandler);
-      this.doorMouseUpHandler = null;
-    }
-
-    const rect = this.paper.getBoundingClientRect();
-    const canvasx = event.clientX - rect.left;
-    const canvasy = event.clientY - rect.top;
-    const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-    const x = Math.min(this.doorDrawingStart.x, paperPos.x);
-    const y = Math.min(this.doorDrawingStart.y, paperPos.y);
-    const width = Math.abs(paperPos.x - this.doorDrawingStart.x);
-    const height = Math.abs(paperPos.y - this.doorDrawingStart.y);
-
-    // Only create door if it has minimum size
-    if (width > 5 && height > 5) {
-      const element = this.sitplan.addDoorElement(
-        this.sitplan.activePage,
-        x,
-        y,
-        width,
-        height
-      );
-
-      this.redraw();
-      globalThis.undostruct.store();
-    }
-
-    // Remove preview
-    if (this.doorPreviewElement) {
-      this.doorPreviewElement.remove();
-      this.doorPreviewElement = null;
-    }
-
-    this.doorDrawingStart = null;
-  };
-
-  /**
-   * Add resize handles to a selected wall
+   * Add resize handles to a selected building element
    */
   private addWallResizeHandles(
     box: HTMLElement,
     sitPlanElement: SituationPlanElement
   ): void {
-    // Remove any existing handles first
-    this.removeAllWallResizeHandles();
-
     const handles = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
     handles.forEach((position) => {
@@ -3138,7 +3044,6 @@ export class SituationPlanView {
       handle.className = `wall-resize-handle ${position}`;
       handle.dataset.handlePosition = position;
       handle.dataset.wallId = sitPlanElement.id;
-
       handle.addEventListener("pointerdown", this.startWallResize);
       box.appendChild(handle);
     });
@@ -3147,6 +3052,7 @@ export class SituationPlanView {
     const rotationHandle = document.createElement("div");
     rotationHandle.className = "wall-rotation-handle";
     rotationHandle.dataset.wallId = sitPlanElement.id;
+    rotationHandle.title = "Roteren (Shift: per 15°)";
     rotationHandle.addEventListener("pointerdown", this.startWallRotation);
     box.appendChild(rotationHandle);
   }
@@ -3155,249 +3061,212 @@ export class SituationPlanView {
    * Remove all wall resize handles
    */
   private removeAllWallResizeHandles(): void {
-    const handles = document.querySelectorAll(
-      ".wall-resize-handle, .wall-rotation-handle"
-    );
-    handles.forEach((handle) => handle.remove());
+    this.paper
+      .querySelectorAll(".wall-resize-handle, .wall-rotation-handle")
+      .forEach((handle) => handle.remove());
+  }
+
+  private findElementForHandle(handle: HTMLElement): SituationPlanElement | null {
+    const id = handle.dataset.wallId;
+    const element = this.sitplan.getElements().find((el) => el.id === id);
+    if (!element || !element.isBuildingElement()) return null;
+    return element;
   }
 
   /**
-   * Start resizing a wall
+   * Vergroten/verkleinen van een bouwelement. Werkt in het lokale (geroteerde) assenstelsel van het element:
+   * de tegenoverliggende zijde blijft op zijn plaats.
    */
-  private startWallResize = (event: MouseEvent): void => {
+  private startWallResize = (event: PointerEvent): void => {
+    if (event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
 
-    const handle = event.target as HTMLElement;
-    const position = handle.dataset.handlePosition;
-    const wallId = handle.dataset.wallId;
+    const handle = event.currentTarget as HTMLElement;
+    const position = handle.dataset.handlePosition || "";
+    const element = this.findElementForHandle(handle);
+    if (!element) return;
 
-    const sitPlanElement = this.sitplan
-      .getElements()
-      .find((el) => el.id === wallId);
-    if (
-      !sitPlanElement ||
-      (!sitPlanElement.isWall() &&
-        !sitPlanElement.isWindow() &&
-        !sitPlanElement.isDoor() &&
-        !sitPlanElement.isFreeformShape())
-    )
-      return;
+    const sx = position.includes("e") ? 1 : position.includes("w") ? -1 : 0;
+    const sy = position.includes("s") ? 1 : position.includes("n") ? -1 : 0;
 
-    const wallElement = sitPlanElement.getWallElement();
-    const windowElement = sitPlanElement.getWindowElement();
-    const doorElement = sitPlanElement.getDoorElement();
-    const freeformShapeElement = sitPlanElement.getFreeformShapeElement();
-    const shapeElement =
-      wallElement || windowElement || doorElement || freeformShapeElement;
-    if (!shapeElement) return;
+    const theta = ((element.rotate || 0) * Math.PI) / 180;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const start = this.clientToPaper(event.clientX, event.clientY);
+    const startW = element.sizex;
+    const startH = element.sizey;
+    const startCx = element.posx;
+    const startCy = element.posy;
+    const MIN = 2;
+    let moved = false;
 
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startShapeX = shapeElement.x;
-    const startShapeY = shapeElement.y;
-    const startShapeWidth = shapeElement.width;
-    const startShapeHeight = shapeElement.height;
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        moved = true;
+        const p = this.clientToPaper(ev.clientX, ev.clientY);
+        const dxWorld = p.x - start.x;
+        const dyWorld = p.y - start.y;
+        // Naar lokale assen van het element
+        const dxLocal = dxWorld * cos + dyWorld * sin;
+        const dyLocal = -dxWorld * sin + dyWorld * cos;
 
-    const handleResize = (e: MouseEvent) => {
-      const deltaX = (e.clientX - startX) / this.zoomfactor;
-      const deltaY = (e.clientY - startY) / this.zoomfactor;
+        let newW = startW;
+        let newH = startH;
+        if (sx !== 0) newW = Math.max(MIN, startW + sx * dxLocal);
+        if (sy !== 0) newH = Math.max(MIN, startH + sy * dyLocal);
+        if (this.snapToGrid && !ev.altKey) {
+          if (sx !== 0) newW = Math.max(MIN, this.snap(newW));
+          if (sy !== 0) newH = Math.max(MIN, this.snap(newH));
+        }
+        if (ev.shiftKey && sx !== 0 && sy !== 0) {
+          // Verhoudingen behouden
+          const ratio = startW / startH;
+          if (newW / newH > ratio) newH = newW / ratio;
+          else newW = newH * ratio;
+        }
 
-      let newX = startShapeX;
-      let newY = startShapeY;
-      let newWidth = startShapeWidth;
-      let newHeight = startShapeHeight;
-
-      // Calculate new dimensions based on handle position
-      switch (position) {
-        case "nw":
-          newX = startShapeX + deltaX;
-          newY = startShapeY + deltaY;
-          newWidth = startShapeWidth - deltaX;
-          newHeight = startShapeHeight - deltaY;
-          break;
-        case "n":
-          newY = startShapeY + deltaY;
-          newHeight = startShapeHeight - deltaY;
-          break;
-        case "ne":
-          newY = startShapeY + deltaY;
-          newWidth = startShapeWidth + deltaX;
-          newHeight = startShapeHeight - deltaY;
-          break;
-        case "e":
-          newWidth = startShapeWidth + deltaX;
-          break;
-        case "se":
-          newWidth = startShapeWidth + deltaX;
-          newHeight = startShapeHeight + deltaY;
-          break;
-        case "s":
-          newHeight = startShapeHeight + deltaY;
-          break;
-        case "sw":
-          newX = startShapeX + deltaX;
-          newWidth = startShapeWidth - deltaX;
-          newHeight = startShapeHeight + deltaY;
-          break;
-        case "w":
-          newX = startShapeX + deltaX;
-          newWidth = startShapeWidth - deltaX;
-          break;
+        // Middelpunt verschuift met de helft van de groei, in de richting van het handvat
+        const shiftLocalX = (sx * (newW - startW)) / 2;
+        const shiftLocalY = (sy * (newH - startH)) / 2;
+        element.setBuildingGeometry({
+          posx: startCx + shiftLocalX * cos - shiftLocalY * sin,
+          posy: startCy + shiftLocalX * sin + shiftLocalY * cos,
+          width: newW,
+          height: newH,
+        });
+        this.updateBoxContent(element);
+        this.updateSymbolPosition(element);
+      },
+      (_ev, cancelled) => {
+        if (!moved) return;
+        if (cancelled) {
+          element.setBuildingGeometry({ posx: startCx, posy: startCy, width: startW, height: startH });
+          this.updateBoxContent(element);
+          this.updateSymbolPosition(element);
+          return;
+        }
+        globalThis.undostruct.store();
+        this.emit(SITPLAN_EVENTS.selectionChange);
       }
-
-      // Minimum size constraint
-      if (newWidth < 10) newWidth = 10;
-      if (newHeight < 10) newHeight = 10;
-
-      // Update wall or freeform shape element
-      shapeElement.x = newX;
-      shapeElement.y = newY;
-      shapeElement.width = newWidth;
-      shapeElement.height = newHeight;
-
-      // Update situation plan element
-      sitPlanElement.posx = newX + newWidth / 2;
-      sitPlanElement.posy = newY + newHeight / 2;
-      sitPlanElement.sizex = newWidth;
-      sitPlanElement.sizey = newHeight;
-      sitPlanElement.needsViewUpdate = true;
-
-      this.updateBoxContent(sitPlanElement);
-      this.updateSymbolPosition(sitPlanElement);
-
-      // Re-add resize handles if the box is selected
-      if (
-        sitPlanElement.boxref &&
-        sitPlanElement.boxref.classList.contains("selected")
-      ) {
-        this.removeAllWallResizeHandles();
-        this.addWallResizeHandles(sitPlanElement.boxref, sitPlanElement);
-      }
-    };
-
-    const cleanup = () => {
-      document.removeEventListener("pointermove", handleResize);
-      document.removeEventListener("pointerup", stopResize);
-      this.activeTransformCleanup = null;
-    };
-    const stopResize = () => {
-      cleanup();
-      globalThis.undostruct.store();
-    };
-    this.activeTransformCleanup?.();
-    this.activeTransformCleanup = cleanup;
-
-    document.addEventListener("pointermove", handleResize);
-    document.addEventListener("pointerup", stopResize);
+    );
   };
 
   /**
-   * Start rotating a wall or freeform shape
+   * Roteren van een bouwelement. Shift roteert per 15°, anders wordt er licht gesnapt op veelvouden van 90°.
    */
-  private startWallRotation = (event: MouseEvent): void => {
+  private startWallRotation = (event: PointerEvent): void => {
+    if (event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
 
-    const handle = event.target as HTMLElement;
-    const wallId = handle.dataset.wallId;
+    const handle = event.currentTarget as HTMLElement;
+    const element = this.findElementForHandle(handle);
+    if (!element) return;
 
-    const sitPlanElement = this.sitplan
-      .getElements()
-      .find((el) => el.id === wallId);
-    if (
-      !sitPlanElement ||
-      (!sitPlanElement.isWall() &&
-        !sitPlanElement.isWindow() &&
-        !sitPlanElement.isDoor() &&
-        !sitPlanElement.isFreeformShape())
-    )
-      return;
-
-    const centerX = sitPlanElement.posx;
-    const centerY = sitPlanElement.posy;
-
+    const centerX = element.posx;
+    const centerY = element.posy;
     const getAngle = (clientX: number, clientY: number) => {
-      const rect = this.paper.getBoundingClientRect();
-      const canvasx = clientX - rect.left;
-      const canvasy = clientY - rect.top;
-      const paperPos = this.canvasPosToPaperPos(canvasx, canvasy);
-
-      return (
-        (Math.atan2(paperPos.y - centerY, paperPos.x - centerX) * 180) / Math.PI
-      );
+      const p = this.clientToPaper(clientX, clientY);
+      return (Math.atan2(p.y - centerY, p.x - centerX) * 180) / Math.PI;
     };
 
     const startAngle = getAngle(event.clientX, event.clientY);
-    const startRotation = sitPlanElement.rotate || 0;
+    const startRotation = element.rotate || 0;
+    let moved = false;
 
-    const handleRotation = (e: MouseEvent) => {
-      const currentAngle = getAngle(e.clientX, e.clientY);
-      let newRotation = startRotation + (currentAngle - startAngle);
-
-      // Normalize to 0-360
-      while (newRotation < 0) newRotation += 360;
-      while (newRotation >= 360) newRotation -= 360;
-
-      sitPlanElement.rotate = newRotation;
-      this.updateSymbolPosition(sitPlanElement);
-
-      // Re-add resize handles if the box is selected
-      if (
-        sitPlanElement.boxref &&
-        sitPlanElement.boxref.classList.contains("selected")
-      ) {
-        this.removeAllWallResizeHandles();
-        this.addWallResizeHandles(sitPlanElement.boxref, sitPlanElement);
+    this.trackPointer(
+      event.pointerId,
+      (ev) => {
+        moved = true;
+        let rotation = startRotation + (getAngle(ev.clientX, ev.clientY) - startAngle);
+        rotation = ((rotation % 360) + 360) % 360;
+        if (ev.shiftKey) {
+          rotation = Math.round(rotation / 15) * 15;
+        } else {
+          const nearest = Math.round(rotation / 90) * 90;
+          if (Math.abs(rotation - nearest) < 3) rotation = nearest;
+        }
+        element.setBuildingGeometry({ rotate: rotation % 360 });
+        this.updateSymbolPosition(element);
+      },
+      (_ev, cancelled) => {
+        if (!moved) return;
+        if (cancelled) {
+          element.setBuildingGeometry({ rotate: startRotation });
+          this.updateSymbolPosition(element);
+          return;
+        }
+        globalThis.undostruct.store();
+        this.emit(SITPLAN_EVENTS.selectionChange);
       }
-    };
-
-    const cleanup = () => {
-      document.removeEventListener("pointermove", handleRotation);
-      document.removeEventListener("pointerup", stopRotation);
-      this.activeTransformCleanup = null;
-    };
-    const stopRotation = () => {
-      cleanup();
-      globalThis.undostruct.store();
-    };
-    this.activeTransformCleanup?.();
-    this.activeTransformCleanup = cleanup;
-
-    document.addEventListener("pointermove", handleRotation);
-    document.addEventListener("pointerup", stopRotation);
+    );
   };
+
+  /**
+   * Past de geometrie van een bouwelement aan (gebruikt door de eigenschappen in de zijbalk).
+   */
+  public updateBuildingElement(
+    element: SituationPlanElement,
+    geometry: { posx?: number; posy?: number; width?: number; height?: number; rotate?: number },
+    undoKey: string | null = null
+  ) {
+    if (!element.isBuildingElement()) return;
+    element.setBuildingGeometry(geometry);
+    this.updateBoxContent(element);
+    this.updateSymbolAndLabelPosition(element);
+    globalThis.undostruct.store(undoKey);
+  }
+
+  /** Geeft het geselecteerde element terug indien er precies één geselecteerd is */
+  public getSingleSelectedElement(): SituationPlanElement | null {
+    if (this.selected.length() !== 1) return null;
+    return ((this.selected.getLastSelected() as any)?.sitPlanElementRef as SituationPlanElement) ?? null;
+  }
+
+  public getSelectedCount(): number {
+    return this.selected.length();
+  }
 } // *** END CLASS ***
 
 /**
  * Toon de pagina voor het situatieplan
  */
 export function showSituationPlanPage() {
-  globalThis.toggleAppView("draw");
+  globalThis.toggleAppView?.("draw");
 
   if (!globalThis.structure.sitplan) {
     globalThis.structure.sitplan = new SituationPlan();
   }
 
-  if (!globalThis.structure.sitplanview) {
+  const canvas = document.getElementById("canvas");
+  const paper = document.getElementById("paper");
+  if (!canvas || !paper) return;
+
+  const existing: SituationPlanView | null = globalThis.structure.sitplanview;
+  if (
+    !existing ||
+    existing.isDisposed() ||
+    existing.canvasRef !== canvas ||
+    existing.paperRef !== paper
+  ) {
+    existing?.dispose();
     //Verwijder eerst alle elementen op de DOM met id beginnend met "SP_" om eventuele wezen
     //uit eerdere oefeningen te voorkomen
-    let elements = document.querySelectorAll('[id^="SP_"]');
-    elements.forEach((e) => e.remove());
+    paper.querySelectorAll('[id^="SP_"]').forEach((e) => e.remove());
     //Maak dan de SituationPlanView
     globalThis.structure.sitplanview = new SituationPlanView(
-      document.getElementById("canvas"),
-      document.getElementById("paper"),
+      canvas,
+      paper,
       globalThis.structure.sitplan
     );
-
-    globalThis.structure.sitplanview.zoomToFit();
   }
   if (globalThis.structure.properties.legacySchakelaars == null) {
     if (globalThis.structure.sitplan.heeftEenzameSchakelaars()) {
       let askLegacySchakelaar = new AskLegacySchakelaar();
       askLegacySchakelaar.show().then(() => {
-        globalThis.structure.sitplanview.redraw();
+        globalThis.structure.sitplanview?.redraw();
       });
       return;
     } else {
@@ -3406,13 +3275,4 @@ export function showSituationPlanPage() {
   }
 
   globalThis.structure.sitplanview.redraw();
-  const helperTip = new HelperTip(globalThis.appDocStorage);
-  helperTip.show(
-    "sitplan.introductie",
-    `<h3>Situatieschema tekenen</h3>
-    <p>Op deze pagina kan u een situatieschema tekenen.</p>
-    <p>Laad een plattegrond met de knop "Uit bestand" en voeg symbolen toe met de knop "Uit schema".</p>
-    <p>Klik <a href="Documentation/sitplandoc.pdf" target="_blank" rel="noopener noreferrer">hier</a> om in een nieuw venster de documentatie te bekijken.</p>
-    <p>We werken elke dag om dit programma beter te maken. Opmerkingen en ideeën zijn welkom in het "contact"-formulier.</p>`
-  );
 }
