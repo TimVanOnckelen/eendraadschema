@@ -9,42 +9,53 @@ import { SituationPlanView as SitPlanViewClass } from '../sitplan/SituationPlanV
 import { SituationPlanElement } from '../sitplan/SituationPlanElement';
 import { AskLegacySchakelaar } from '../importExport/AskLegacySchakelaar';
 import { HelperTip } from '../documentation/HelperTip';
-import { SitPlanSidebar } from './SitPlanSidebar';
+import { SitPlanSidebar, BuildingGeometry } from './SitPlanSidebar';
 import { useSitPlan } from '../hooks/useSitPlan';
 import { Icon } from './Icon';
+import { WallType } from '../sitplan/WallElement';
+
+const GRID_STORAGE_KEY = 'sitplan.showGrid';
+
+function readGridPreference(): boolean {
+  try {
+    return localStorage.getItem(GRID_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
 
 export const SitPlanView: React.FC = () => {
   const { structure, appDocStorage, undostruct } = useApp();
-  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  
+
   // Use the sitplan hook for state management
-  const sitPlan = useSitPlan(
-    structure?.sitplan || null,
-    structure || null,
-    canvasRef,
-    paperRef
-  );
-  
+  const sitPlan = useSitPlan(structure?.sitplan || null, structure || null);
+
   const [buildingElementsMenuOpen, setBuildingElementsMenuOpen] = useState<boolean>(false);
   const [shapesMenuOpen, setShapesMenuOpen] = useState<boolean>(false);
-  const [selectedElement, setSelectedElement] = useState<SituationPlanElement | null>(null);
-  const [showGrid, setShowGrid] = useState<boolean>(false);
+  const [showGrid, setShowGrid] = useState<boolean>(readGridPreference);
   const [showKeysDialog, setShowKeysDialog] = useState<boolean>(false);
 
+  const drawingMode = sitPlan.state.drawingMode;
+
   // Helper functions to check drawing modes from hook state
-  const isWallDrawingMode = (type: 'inner' | 'outer') => 
-    sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType === type;
-  
-  const isWindowDrawingMode = () => sitPlan.state.drawingMode?.type === 'window';
-  const isDoorDrawingMode = () => sitPlan.state.drawingMode?.type === 'door';
-  
+  const isWallDrawingMode = (type: WallType) =>
+    drawingMode?.type === 'wall' && drawingMode.wallType === type;
+  const isWindowDrawingMode = () => drawingMode?.type === 'window';
+  const isDoorDrawingMode = () => drawingMode?.type === 'door';
   const isShapeDrawingMode = (type: 'white' | 'black' | 'gray' | 'darkgray') =>
-    sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType === type;
+    drawingMode?.type === 'shape' && drawingMode.shapeType === type;
 
   // Close dropdown menus when clicking outside
   useEffect(() => {
+    if (!buildingElementsMenuOpen && !shapesMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (buildingElementsMenuOpen && !target.closest('[data-building-menu]')) {
@@ -56,18 +67,20 @@ export const SitPlanView: React.FC = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [buildingElementsMenuOpen]);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [buildingElementsMenuOpen, shapesMenuOpen]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Show keyboard shortcuts on "?"
-      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      if (isTypingTarget(e.target)) return;
+      if (e.key === '?') {
         e.preventDefault();
         setShowKeysDialog(true);
+      } else if (e.key === 'Escape') {
+        setShowKeysDialog(false);
+        setBuildingElementsMenuOpen(false);
+        setShapesMenuOpen(false);
       }
     };
 
@@ -79,23 +92,38 @@ export const SitPlanView: React.FC = () => {
   useEffect(() => {
     if (!structure || !canvasRef.current || !paperRef.current) return;
     if (!structure.sitplan) structure.sitplan = new SituationPlan();
-    structure.sitplanview?.dispose();
-    const view = new SitPlanViewClass(canvasRef.current, paperRef.current, structure.sitplan);
-    structure.sitplanview = view;
+
+    // Hergebruik een view die al aan deze DOM gekoppeld is (bvb aangemaakt door undo/redo),
+    // anders maken we een nieuwe.
+    let view = structure.sitplanview as SitPlanViewClass | null;
+    if (
+      !view ||
+      view.isDisposed() ||
+      view.canvasRef !== canvasRef.current ||
+      view.paperRef !== paperRef.current
+    ) {
+      view?.dispose();
+      view = new SitPlanViewClass(canvasRef.current, paperRef.current, structure.sitplan);
+      structure.sitplanview = view;
+    }
+    view.setSnapToGrid(showGrid);
+
     let active = true;
     const cleanup = () => {
       active = false;
-      view.dispose();
-      if (structure.sitplanview === view) structure.sitplanview = null;
+      // Bij een nieuwe structure (undo/redo, ander bestand) kan de view al vervangen zijn.
+      if (structure.sitplanview === view) {
+        view!.dispose();
+        structure.sitplanview = null;
+      }
     };
-    sitPlan.zoomToFit();
 
     // Check for legacy schakelaars
     if (structure.properties && structure.properties.legacySchakelaars == null) {
       if (structure.sitplan.heeftEenzameSchakelaars()) {
         const askLegacySchakelaar = new AskLegacySchakelaar();
         askLegacySchakelaar.show().then(() => {
-          if (active) view.redraw();
+          if (active) view!.redraw();
         });
         return cleanup;
       } else {
@@ -103,59 +131,59 @@ export const SitPlanView: React.FC = () => {
       }
     }
 
-    // Redraw the sitplan
-    if (structure.sitplanview) {
-      console.log('[SitPlanView] Calling redraw');
-      sitPlan.redraw();
-      
-      // Show helper tip (only if not shown before)
-      if (!appDocStorage.get('sitplan.introductie.shown')) {
-        const helperTip = new HelperTip(appDocStorage);
-        helperTip.show(
-          "sitplan.introductie",
-          `<h3>Situatieschema tekenen</h3>
-          <p>Op deze pagina kan u een situatieschema tekenen.</p>
-          <p>Laad een plattegrond met de knop "Uit bestand" en voeg symbolen toe met de knop "Uit schema".</p>
-          <p>Klik <a href="Documentation/sitplandoc.pdf" target="_blank" rel="noopener noreferrer">hier</a> om in een nieuw venster de documentatie te bekijken.</p>
-          <p>We werken elke dag om dit programma beter te maken. Opmerkingen en ideeën zijn welkom in het "contact"-formulier.</p>`
-        );
-      }
+    view.redraw();
+
+    // Show helper tip (only if not shown before)
+    if (!appDocStorage.get('sitplan.introductie.shown')) {
+      const helperTip = new HelperTip(appDocStorage);
+      helperTip.show(
+        "sitplan.introductie",
+        `<h3>Situatieschema tekenen</h3>
+        <p>Op deze pagina kan u een situatieschema tekenen.</p>
+        <p>Laad een plattegrond met de knop "Bestand" en sleep symbolen uit de zijbalk op het blad, of gebruik de knop "Schema".</p>
+        <p>Zoomen doet u met Ctrl + scrollwiel, verschuiven met de middelste muisknop of spatie + slepen. Druk op <b>?</b> voor alle sneltoetsen.</p>
+        <p>Klik <a href="Documentation/sitplandoc.pdf" target="_blank" rel="noopener noreferrer">hier</a> om in een nieuw venster de documentatie te bekijken.</p>`
+      );
     }
 
     return cleanup;
+    // showGrid wordt apart gesynchroniseerd hieronder
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structure, appDocStorage]);
 
-  // Drag and drop handlers for React events
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'copy';
+  // Raster tonen + snappen
+  useEffect(() => {
+    paperRef.current?.classList.toggle('show-grid', showGrid);
+    sitPlan.setSnapToGrid(showGrid);
+    try {
+      localStorage.setItem(GRID_STORAGE_KEY, showGrid ? '1' : '0');
+    } catch {
+      /* geen opslag beschikbaar */
     }
+  }, [showGrid, sitPlan.setSnapToGrid, structure]);
+
+  // Drag and drop handlers (symbolen uit de zijbalk)
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('text/plain')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    
-    // Get the electroItemId from dataTransfer
-    const dataTransferId = e.dataTransfer.getData('text/plain');
-    if (!dataTransferId) {
-      return;
-    }
-    
-    const electroItemId = parseInt(dataTransferId);
-    if (!electroItemId) {
-      return;
-    }
 
-    // Get drop position using the hook
-    const { x, y } = sitPlan.getCoordinatesFromEvent(e);
+    const electroItemId = parseInt(e.dataTransfer.getData('text/plain'));
+    if (!electroItemId) return;
 
-    // Add element using the hook
-    const element = sitPlan.addElement(electroItemId, x, y);
-    
-    if (element && undostruct) {
-      undostruct.store();
-    }
+    const view = sitPlan.getView();
+    if (!view) return;
+    let { x, y } = sitPlan.getCoordinatesFromEvent(e);
+    // Binnen het papier houden
+    x = Math.min(view.getPaperWidth(), Math.max(0, x));
+    y = Math.min(view.getPaperHeight(), Math.max(0, y));
+
+    // addElement selecteert het nieuwe symbool, brengt het naar voor en bewaart een undo-stap
+    sitPlan.addElement(electroItemId, x, y);
   };
 
   const handleUndo = () => {
@@ -170,184 +198,73 @@ export const SitPlanView: React.FC = () => {
     }
   };
 
-  const handleAddFromFile = () => {
-    const button = document.getElementById('button_Add') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleAddFromSchema = () => {
-    const button = document.getElementById('button_Add_electroItem') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleAddCustom = () => {
-    const button = document.getElementById('button_Add_customItem') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleDelete = () => {
-    const button = document.getElementById('button_Delete') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleSendBack = () => {
-    const button = document.getElementById('sendBack') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleBringFront = () => {
-    const button = document.getElementById('bringFront') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleZoomIn = () => {
-    const button = document.getElementById('button_zoomin') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleZoomOut = () => {
-    const button = document.getElementById('button_zoomout') as HTMLButtonElement;
-    if (button) button.click();
-  };
-
-  const handleZoomToFit = () => {
-    const button = document.getElementById('button_zoomToFit') as HTMLButtonElement;
-    if (button) button.click();
+  const clickHidden = (id: string) => {
+    const button = document.getElementById(id) as HTMLButtonElement | null;
+    button?.click();
   };
 
   const handlePageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const pageNum = parseInt(e.target.value);
-    sitPlan.changePage(pageNum);
+    sitPlan.changePage(parseInt(e.target.value));
   };
 
-  const handleAddPage = () => {
-    sitPlan.addPage();
+  const toggleWall = (type: WallType) => {
+    if (isWallDrawingMode(type)) sitPlan.disableDrawingMode();
+    else sitPlan.enableWallDrawing(type);
   };
 
-  const handleDeletePage = () => {
-    sitPlan.deletePage();
+  const toggleWindow = () => {
+    if (isWindowDrawingMode()) sitPlan.disableDrawingMode();
+    else sitPlan.enableWindowDrawing();
   };
 
-  const handleToggleInnerWall = () => {
-    const wallType = sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType;
-    if (wallType === 'inner') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableWallDrawing('inner');
-    }
+  const toggleDoor = () => {
+    if (isDoorDrawingMode()) sitPlan.disableDrawingMode();
+    else sitPlan.enableDoorDrawing();
   };
 
-  const handleToggleOuterWall = () => {
-    const wallType = sitPlan.state.drawingMode?.type === 'wall' && sitPlan.state.drawingMode.wallType;
-    if (wallType === 'outer') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableWallDrawing('outer');
-    }
-  };
-
-  const handleToggleWindow = () => {
-    if (sitPlan.state.drawingMode?.type === 'window') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableWindowDrawing();
-    }
-  };
-
-  const handleToggleDoor = () => {
-    if (sitPlan.state.drawingMode?.type === 'door') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableDoorDrawing();
-    }
+  const toggleShape = (type: 'white' | 'black' | 'gray' | 'darkgray') => {
+    if (isShapeDrawingMode(type)) sitPlan.disableDrawingMode();
+    else sitPlan.enableShapeDrawing(type);
   };
 
   const handleToggleLayerManager = () => {
-    if (!structure?.sitplanview?.layerManager) return;
-    structure.sitplanview.layerManager.toggle();
+    sitPlan.getView()?.layerManager?.toggle();
   };
 
-  const handleToggleWhiteShape = () => {
-    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
-    if (shapeType === 'white') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableShapeDrawing('white');
+  const handleUpdateBuilding = (element: SituationPlanElement, geometry: BuildingGeometry) => {
+    const view = sitPlan.getView();
+    if (!view) return;
+    if (geometry.wallType && element.isWall()) {
+      const wall = element.getWallElement();
+      if (wall) wall.type = geometry.wallType;
     }
-  };
-
-  const handleToggleBlackShape = () => {
-    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
-    if (shapeType === 'black') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableShapeDrawing('black');
-    }
-  };
-
-  const handleToggleGrayShape = () => {
-    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
-    if (shapeType === 'gray') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableShapeDrawing('gray');
-    }
-  };
-
-  const handleToggleDarkGrayShape = () => {
-    const shapeType = sitPlan.state.drawingMode?.type === 'shape' && sitPlan.state.drawingMode.shapeType;
-    if (shapeType === 'darkgray') {
-      sitPlan.disableDrawingMode();
-    } else {
-      sitPlan.enableShapeDrawing('darkgray');
-    }
-  };
-
-  const handleUpdateElement = (element: SituationPlanElement) => {
-    sitPlan.updateElement(element);
-    if (undostruct) {
-      undostruct.store('updateElement');
-    }
+    view.updateBuildingElement(element, geometry, `sidebarGeometry_${element.id}`);
   };
 
   const handleUpdateKringColor = (kringId: number, color: string | null) => {
     structure?.sitplan?.setKringColor(kringId, color);
     sitPlan.redraw();
-    if (undostruct) {
-      undostruct.store('updateKringColor');
-    }
+    undostruct?.store('updateKringColor');
   };
 
-  const handleCloseSidebar = () => {
-    setSelectedElement(null);
-  };
-
-  const handleToggleGrid = () => {
-    setShowGrid(!showGrid);
-    if (paperRef.current) {
-      if (!showGrid) {
-        paperRef.current.style.backgroundImage = 'linear-gradient(0deg, transparent 24%, rgba(150,150,150,.08) 25%, rgba(150,150,150,.08) 26%, transparent 27%, transparent 74%, rgba(150,150,150,.08) 75%, rgba(150,150,150,.08) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(150,150,150,.08) 25%, rgba(150,150,150,.08) 26%, transparent 27%, transparent 74%, rgba(150,150,150,.08) 75%, rgba(150,150,150,.08) 76%, transparent 77%, transparent)';
-        paperRef.current.style.backgroundSize = '50px 50px';
-      } else {
-        paperRef.current.style.backgroundImage = 'none';
-      }
-    }
-  };
+  const selectedBuildingElement =
+    sitPlan.state.selectedElement?.isBuildingElement() ? sitPlan.state.selectedElement : null;
 
   const buildingModeActive = Boolean(
-    sitPlan.state.drawingMode &&
-    (sitPlan.state.drawingMode.type === 'wall' || sitPlan.state.drawingMode.type === 'window' || sitPlan.state.drawingMode.type === 'door')
+    drawingMode && (drawingMode.type === 'wall' || drawingMode.type === 'window' || drawingMode.type === 'door')
   );
-  const shapeModeActive = sitPlan.state.drawingMode?.type === 'shape';
+  const shapeModeActive = drawingMode?.type === 'shape';
   const canUndo = Boolean(undostruct && undostruct.undoStackSize() > 0);
   const canRedo = Boolean(undostruct && undostruct.redoStackSize() > 0);
+  const zoomPercent = Math.round(sitPlan.state.zoomFactor * 100);
 
   const menuItem = (
     label: string,
     icon: React.ReactNode,
     active: boolean,
     onSelect: () => void,
-    close: () => void
+    close: () => void,
+    hint?: string
   ) => (
     <button
       type="button"
@@ -358,6 +275,7 @@ export const SitPlanView: React.FC = () => {
         onSelect();
         close();
       }}
+      title={hint}
     >
       {icon}
       <span>{label}</span>
@@ -369,8 +287,12 @@ export const SitPlanView: React.FC = () => {
     <span className="tb-swatch" style={{ background: color }} />
   );
 
+  const drawingHint = drawingMode
+    ? 'Sleep op het blad om te tekenen, of klik om een standaardgrootte te plaatsen. Esc om te stoppen.'
+    : null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100vh', overflow: 'hidden', margin: 0, padding: 0 }}>
+    <div className="sitplan-root">
       {/* Ribbon for sitplan controls */}
       <div id="ribbon" className="tb">
         <div className="tb-group-row">
@@ -389,15 +311,15 @@ export const SitPlanView: React.FC = () => {
           {/* Add items */}
           <div className="tb-group">
             <span className="tb-label">Toevoegen</span>
-            <button type="button" className="tb-btn" onClick={handleAddFromFile} title="Achtergrondafbeelding toevoegen">
+            <button type="button" className="tb-btn" onClick={() => clickHidden('button_Add')} title="Achtergrondafbeelding of plattegrond toevoegen">
               <Icon name="image" />
               <span>Bestand</span>
             </button>
-            <button type="button" className="tb-btn" onClick={handleAddFromSchema} title="Symbool uit schema toevoegen">
+            <button type="button" className="tb-btn" onClick={() => clickHidden('button_Add_electroItem')} title="Symbool uit schema toevoegen">
               <Icon name="schema" />
               <span>Schema</span>
             </button>
-            <button type="button" className="tb-btn" onClick={handleAddCustom} title="Los symbool toevoegen">
+            <button type="button" className="tb-btn" onClick={() => clickHidden('button_Add_customItem')} title="Los symbool toevoegen">
               <Icon name="plus" />
               <span>Los</span>
             </button>
@@ -414,9 +336,11 @@ export const SitPlanView: React.FC = () => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  setShapesMenuOpen(false);
                   setBuildingElementsMenuOpen(!buildingElementsMenuOpen);
                 }}
-                title="Bouwelementen"
+                title="Bouwelementen tekenen"
+                aria-expanded={buildingElementsMenuOpen}
               >
                 <Icon name="wall" />
                 <span>
@@ -431,10 +355,10 @@ export const SitPlanView: React.FC = () => {
 
               {buildingElementsMenuOpen && (
                 <div className="tb-menu">
-                  {menuItem('Binnenmuur', <Icon name="wall" />, isWallDrawingMode('inner'), handleToggleInnerWall, () => setBuildingElementsMenuOpen(false))}
-                  {menuItem('Buitenmuur', <Icon name="wall" strokeWidth={2.5} />, isWallDrawingMode('outer'), handleToggleOuterWall, () => setBuildingElementsMenuOpen(false))}
-                  {menuItem('Raam', <Icon name="window" />, isWindowDrawingMode(), handleToggleWindow, () => setBuildingElementsMenuOpen(false))}
-                  {menuItem('Deur', <Icon name="door" />, isDoorDrawingMode(), handleToggleDoor, () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Binnenmuur', <Icon name="wall" />, isWallDrawingMode('inner'), () => toggleWall('inner'), () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Buitenmuur', <Icon name="wall" strokeWidth={2.5} />, isWallDrawingMode('outer'), () => toggleWall('outer'), () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Raam', <Icon name="window" />, isWindowDrawingMode(), toggleWindow, () => setBuildingElementsMenuOpen(false))}
+                  {menuItem('Deur', <Icon name="door" />, isDoorDrawingMode(), toggleDoor, () => setBuildingElementsMenuOpen(false))}
                 </div>
               )}
             </div>
@@ -447,9 +371,11 @@ export const SitPlanView: React.FC = () => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  setBuildingElementsMenuOpen(false);
                   setShapesMenuOpen(!shapesMenuOpen);
                 }}
-                title="Vormen & Patronen"
+                title="Vormen tekenen"
+                aria-expanded={shapesMenuOpen}
               >
                 <Icon name="shape" />
                 <span>
@@ -464,13 +390,25 @@ export const SitPlanView: React.FC = () => {
 
               {shapesMenuOpen && (
                 <div className="tb-menu">
-                  {menuItem('Wit', swatch('#ffffff'), isShapeDrawingMode('white'), handleToggleWhiteShape, () => setShapesMenuOpen(false))}
-                  {menuItem('Zwart', swatch('#000000'), isShapeDrawingMode('black'), handleToggleBlackShape, () => setShapesMenuOpen(false))}
-                  {menuItem('Grijs', swatch('#999999'), isShapeDrawingMode('gray'), handleToggleGrayShape, () => setShapesMenuOpen(false))}
-                  {menuItem('Donkergrijs', swatch('#555555'), isShapeDrawingMode('darkgray'), handleToggleDarkGrayShape, () => setShapesMenuOpen(false))}
+                  {menuItem('Wit', swatch('#ffffff'), isShapeDrawingMode('white'), () => toggleShape('white'), () => setShapesMenuOpen(false))}
+                  {menuItem('Zwart', swatch('#000000'), isShapeDrawingMode('black'), () => toggleShape('black'), () => setShapesMenuOpen(false))}
+                  {menuItem('Grijs', swatch('#999999'), isShapeDrawingMode('gray'), () => toggleShape('gray'), () => setShapesMenuOpen(false))}
+                  {menuItem('Donkergrijs', swatch('#555555'), isShapeDrawingMode('darkgray'), () => toggleShape('darkgray'), () => setShapesMenuOpen(false))}
                 </div>
               )}
             </div>
+
+            {drawingMode && (
+              <button
+                type="button"
+                className="tb-btn icon-only"
+                onClick={() => sitPlan.disableDrawingMode()}
+                title="Stop met tekenen (Esc)"
+                aria-label="Stop met tekenen"
+              >
+                <Icon name="x" />
+              </button>
+            )}
           </div>
 
           <span className="tb-sep" />
@@ -481,13 +419,13 @@ export const SitPlanView: React.FC = () => {
               <Icon name="layers" />
               <span>Lagen</span>
             </button>
-            <button type="button" className="tb-btn icon-only" onClick={handleSendBack} title="Naar achter verplaatsen" aria-label="Naar achter">
+            <button type="button" className="tb-btn icon-only" onClick={() => clickHidden('sendBack')} disabled={sitPlan.state.selectedCount === 0} title="Naar achter verplaatsen" aria-label="Naar achter">
               <Icon name="send-back" />
             </button>
-            <button type="button" className="tb-btn icon-only" onClick={handleBringFront} title="Naar voor verplaatsen" aria-label="Naar voor">
+            <button type="button" className="tb-btn icon-only" onClick={() => clickHidden('bringFront')} disabled={sitPlan.state.selectedCount === 0} title="Naar voor verplaatsen" aria-label="Naar voor">
               <Icon name="bring-front" />
             </button>
-            <button type="button" className="tb-btn icon-only danger" onClick={handleDelete} title="Geselecteerde symbool verwijderen (Del)" aria-label="Verwijder">
+            <button type="button" className="tb-btn icon-only danger" onClick={() => clickHidden('button_Delete')} disabled={sitPlan.state.selectedCount === 0} title="Selectie verwijderen (Del)" aria-label="Verwijder">
               <Icon name="trash" />
             </button>
           </div>
@@ -498,11 +436,11 @@ export const SitPlanView: React.FC = () => {
           <button
             type="button"
             className={`tb-btn${showGrid ? ' active' : ''}`}
-            onClick={handleToggleGrid}
-            title={showGrid ? 'Raster verbergen' : 'Raster tonen'}
+            onClick={() => setShowGrid((value) => !value)}
+            title={showGrid ? 'Raster verbergen (elementen klikken niet meer vast)' : 'Raster tonen en elementen aan het raster laten vastklikken (Alt ingedrukt houden om tijdelijk vrij te plaatsen)'}
             aria-pressed={showGrid}
           >
-            <Icon name="window" />
+            <Icon name="square" />
             <span>Raster</span>
           </button>
 
@@ -527,9 +465,9 @@ export const SitPlanView: React.FC = () => {
                 <button
                   type="button"
                   className="tb-btn icon-only"
-                  onClick={handleAddPage}
+                  onClick={() => sitPlan.addPage()}
                   disabled={sitPlan.state.currentPage !== sitPlan.state.numPages}
-                  title="Nieuwe pagina toevoegen"
+                  title={sitPlan.state.currentPage !== sitPlan.state.numPages ? 'Ga naar de laatste pagina om een pagina toe te voegen' : 'Nieuwe pagina toevoegen'}
                   aria-label="Nieuwe pagina toevoegen"
                 >
                   <Icon name="plus" />
@@ -537,7 +475,7 @@ export const SitPlanView: React.FC = () => {
                 <button
                   type="button"
                   className="tb-btn icon-only danger"
-                  onClick={handleDeletePage}
+                  onClick={() => sitPlan.deletePage()}
                   disabled={sitPlan.state.numPages <= 1}
                   title="Huidige pagina verwijderen"
                   aria-label="Huidige pagina verwijderen"
@@ -552,49 +490,64 @@ export const SitPlanView: React.FC = () => {
 
           {/* Zoom controls */}
           <div className="tb-group">
-            <button type="button" className="tb-btn icon-only" onClick={handleZoomOut} title="Zoom uit" aria-label="Zoom uit">
+            <button type="button" className="tb-btn icon-only" onClick={sitPlan.zoomOut} title="Zoom uit (Ctrl + -)" aria-label="Zoom uit">
               <Icon name="zoom-out" />
             </button>
-            <button type="button" className="tb-btn icon-only" onClick={handleZoomIn} title="Zoom in" aria-label="Zoom in">
+            <button
+              type="button"
+              className="tb-btn sitplan-zoom-label"
+              onClick={() => sitPlan.setZoomFactor(1)}
+              title="Zoomniveau — klik voor 100%"
+              aria-label={`Zoomniveau ${zoomPercent}%, klik voor 100%`}
+            >
+              {zoomPercent}%
+            </button>
+            <button type="button" className="tb-btn icon-only" onClick={sitPlan.zoomIn} title="Zoom in (Ctrl + +)" aria-label="Zoom in">
               <Icon name="zoom-in" />
             </button>
-            <button type="button" className="tb-btn icon-only" onClick={handleZoomToFit} title="Zoom om passend te maken" aria-label="Zoom om passend te maken">
+            <button
+              type="button"
+              className={`tb-btn icon-only${sitPlan.state.fitMode ? ' active' : ''}`}
+              onClick={sitPlan.zoomToFit}
+              title="Passend maken (Ctrl + 0)"
+              aria-label="Zoom om passend te maken"
+            >
               <Icon name="zoom-fit" />
             </button>
           </div>
+
+          <span className="tb-sep" />
+
+          <button type="button" className="tb-btn icon-only" onClick={() => setShowKeysDialog(true)} title="Sneltoetsen (?)" aria-label="Sneltoetsen">
+            <Icon name="keyboard" />
+          </button>
         </div>
       </div>
 
       {/* Main sitplan area */}
-      <div id="outerdiv" ref={containerRef} style={{ 
-        display: 'flex', 
-        width: '100%', 
-        flex: 1,
-        overflow: 'hidden',
-        minHeight: 0,
-        margin: 0,
-        padding: 0
-      }}>
+      <div id="outerdiv">
         {/* React Sidebar Component */}
         <SitPlanSidebar
-          selectedElement={selectedElement}
-          onClose={handleCloseSidebar}
-          onUpdateElement={handleUpdateElement}
+          selectedElement={selectedBuildingElement}
+          selectionRevision={sitPlan.state.selectionRevision}
+          onClose={sitPlan.clearSelection}
+          onUpdateBuilding={handleUpdateBuilding}
           onUpdateKringColor={handleUpdateKringColor}
           structure={structure}
         />
-        
-        <div 
-          id="canvas" 
+
+        <div
+          id="canvas"
           ref={canvasRef}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
         >
-          <div 
-            id="paper" 
-            ref={paperRef}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          ></div>
+          <div id="paperSizer">
+            <div id="paper" ref={paperRef}></div>
+          </div>
         </div>
+
+        {drawingHint && <div className="sitplan-hint" role="status">{drawingHint}</div>}
       </div>
 
       {/* Hidden buttons for legacy code compatibility */}
@@ -606,14 +559,11 @@ export const SitPlanView: React.FC = () => {
         <button id="button_edit"></button>
         <button id="sendBack"></button>
         <button id="bringFront"></button>
-        <button id="button_zoomin"></button>
-        <button id="button_zoomout"></button>
-        <button id="button_zoomToFit"></button>
       </div>
 
       {/* Keyboard Shortcuts Dialog */}
       {showKeysDialog && (
-        <div 
+        <div
           className="keyboard-shortcuts-overlay editor-modal-overlay"
           onClick={(e) => {
             if ((e.target as HTMLElement).classList.contains('keyboard-shortcuts-overlay')) {
@@ -621,7 +571,7 @@ export const SitPlanView: React.FC = () => {
             }
           }}
         >
-          <div className="keyboard-shortcuts-dialog editor-modal" style={{ maxWidth: '560px' }}>
+          <div className="keyboard-shortcuts-dialog editor-modal" style={{ maxWidth: '600px' }}>
             <button className="editor-modal-close" onClick={() => setShowKeysDialog(false)} aria-label="Sluiten">
               <Icon name="x" />
             </button>
@@ -629,49 +579,44 @@ export const SitPlanView: React.FC = () => {
             <h2>Sneltoetsen</h2>
 
             <div style={{ display: 'grid', gap: '20px' }}>
-              {/* Situatieschema shortcuts */}
               <div>
-                <h3>
-                  Situatieschema
-                </h3>
+                <h3>Selecteren en verplaatsen</h3>
                 <div>
-                  <div className="shortcut-row">
-                    <span>Klik en sleep</span>
-                    <span>Symbolen toevoegen</span>
-                  </div>
-                  <div className="shortcut-row">
-                    <span>Shift + Klik</span>
-                    <span>Selecteer element</span>
-                  </div>
-                  <div className="shortcut-row">
-                    <span>Delete / Backspace</span>
-                    <span>Verwijder geselecteerd element</span>
-                  </div>
-                  <div className="shortcut-row">
-                    <span>Ctrl + Scroll</span>
-                    <span>Zoom in/uit</span>
-                  </div>
-                  <div className="shortcut-row">
-                    <span>?</span>
-                    <span>Toon dit scherm</span>
-                  </div>
+                  <div className="shortcut-row"><span>Klik / sleep</span><span>Element selecteren / verplaatsen</span></div>
+                  <div className="shortcut-row"><span>Sleep op lege plek</span><span>Selectierechthoek</span></div>
+                  <div className="shortcut-row"><span>Shift/Ctrl + klik</span><span>Selectie uitbreiden</span></div>
+                  <div className="shortcut-row"><span>Shift + slepen</span><span>Enkel horizontaal of verticaal</span></div>
+                  <div className="shortcut-row"><span>Pijltjes (+ Shift)</span><span>Verschuif 1 px (10 px)</span></div>
+                  <div className="shortcut-row"><span>Ctrl + ← / →</span><span>Draai 90°</span></div>
+                  <div className="shortcut-row"><span>Ctrl + A</span><span>Alles op deze pagina selecteren</span></div>
+                  <div className="shortcut-row"><span>Ctrl + D</span><span>Dupliceren</span></div>
+                  <div className="shortcut-row"><span>Ctrl + L</span><span>Vergrendelen / ontgrendelen</span></div>
+                  <div className="shortcut-row"><span>Enter</span><span>Eigenschappen bewerken</span></div>
+                  <div className="shortcut-row"><span>Delete / Backspace</span><span>Verwijderen</span></div>
+                  <div className="shortcut-row"><span>PgUp / PgDn</span><span>Selectie naar andere pagina</span></div>
+                  <div className="shortcut-row"><span>Esc</span><span>Selectie wissen / stop met tekenen</span></div>
                 </div>
               </div>
 
-              {/* General tips */}
               <div>
-                <h3>
-                  Tips
-                </h3>
+                <h3>Weergave</h3>
                 <div>
-                  <div className="shortcut-row">
-                    <span>Sleep symbolen</span>
-                    <span>van sidebar naar scherm</span>
-                  </div>
-                  <div className="shortcut-row">
-                    <span>Zoeken</span>
-                    <span>in de linkerzijbalk</span>
-                  </div>
+                  <div className="shortcut-row"><span>Ctrl + scrollwiel</span><span>Zoom rond de muis</span></div>
+                  <div className="shortcut-row"><span>Ctrl + + / − / 0</span><span>Zoom in / uit / passend</span></div>
+                  <div className="shortcut-row"><span>Spatie + slepen</span><span>Verschuiven</span></div>
+                  <div className="shortcut-row"><span>Middelste muisknop</span><span>Verschuiven</span></div>
+                  <div className="shortcut-row"><span>Alt (tijdens slepen)</span><span>Niet aan raster vastklikken</span></div>
+                  <div className="shortcut-row"><span>?</span><span>Toon dit scherm</span></div>
+                </div>
+              </div>
+
+              <div>
+                <h3>Bouwelementen</h3>
+                <div>
+                  <div className="shortcut-row"><span>Slepen</span><span>Muur, raam, deur of vorm tekenen</span></div>
+                  <div className="shortcut-row"><span>Klik</span><span>Element met standaardgrootte plaatsen</span></div>
+                  <div className="shortcut-row"><span>Handvatten</span><span>Afmetingen wijzigen (Shift: verhouding)</span></div>
+                  <div className="shortcut-row"><span>Rond handvat</span><span>Roteren (Shift: per 15°)</span></div>
                 </div>
               </div>
             </div>

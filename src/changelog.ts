@@ -1,4 +1,5 @@
 export const changelog = [
+  { date: "2026-11-02", msg: "Situatieschema herwerkt: correct zoomen en scrollen (Ctrl + scrollwiel rond de muis, spatie of middelste muisknop om te verschuiven), betrouwbaar slepen ook ingezoomd, selectierechthoek, raster met vastklikken, muren/ramen/deuren tekenen op een plattegrond en eigenschappen in de zijbalk." },
   { date: "2025-09-18", msg: "Eerste stapjes om symbolen toe te voegen aan het situatieschema die niet in het ééndraadschema zitten." },
   { date: "2025-08-22", msg: "Aftakdoos kan nu meerdere kinderen bevatten." },
   { date: "2025-08-19", msg: "Kring en Aansluiting kennen nu ook de bescherming \"zekeringscheider\"." },

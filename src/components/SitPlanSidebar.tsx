@@ -23,18 +23,31 @@ interface KringOption {
   name: string;
 }
 
+export interface BuildingGeometry {
+  posx?: number;
+  posy?: number;
+  width?: number;
+  height?: number;
+  rotate?: number;
+  wallType?: WallType;
+}
+
 interface SitPlanSidebarProps {
+  /** Geselecteerd bouwelement (muur, raam, deur, vorm) of null */
   selectedElement: SituationPlanElement | null;
+  /** Wordt verhoogd wanneer de selectie of het geselecteerde element wijzigt (bvb na slepen) */
+  selectionRevision: number;
   onClose: () => void;
-  onUpdateElement: (element: SituationPlanElement) => void;
+  onUpdateBuilding: (element: SituationPlanElement, geometry: BuildingGeometry) => void;
   onUpdateKringColor: (kringId: number, color: string | null) => void;
   structure: any; // TODO: Type this properly
 }
 
 export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
   selectedElement,
+  selectionRevision,
   onClose,
-  onUpdateElement,
+  onUpdateBuilding,
   onUpdateKringColor,
   structure,
 }) => {
@@ -66,160 +79,57 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
     "Meerdere verbruikers",
   ];
 
-  // Update state when selected element changes
+  // Waarden overnemen van het geselecteerde bouwelement (ook na slepen, roteren of vergroten)
   useEffect(() => {
-    if (!selectedElement) return;
+    if (!selectedElement || !selectedElement.isBuildingElement()) return;
+    const w = selectedElement.sizex;
+    const h = selectedElement.sizey;
+    setWallType(selectedElement.getWallElement()?.type ?? 'inner');
+    setX(Math.round(selectedElement.posx - w / 2));
+    setY(Math.round(selectedElement.posy - h / 2));
+    setWidth(Math.round(w));
+    setHeight(Math.round(h));
+    setRotation(Math.round(selectedElement.rotate || 0));
+  }, [selectedElement, selectionRevision]);
 
-    if (selectedElement.isWall()) {
-      const wallElement = selectedElement.getWallElement();
-      if (wallElement) {
-        setWallType(wallElement.type);
-        setX(Math.round(wallElement.x));
-        setY(Math.round(wallElement.y));
-        setWidth(Math.round(wallElement.width));
-        setHeight(Math.round(wallElement.height));
-        setRotation(Math.round(wallElement.rotate || 0));
-      }
-    } else if (selectedElement.isWindow()) {
-      const windowElement = selectedElement.getWindowElement();
-      if (windowElement) {
-        setX(Math.round(windowElement.x));
-        setY(Math.round(windowElement.y));
-        setWidth(Math.round(windowElement.width));
-        setHeight(Math.round(windowElement.height));
-        setRotation(Math.round(windowElement.rotate || 0));
-      }
-    } else if (selectedElement.isDoor()) {
-      const doorElement = selectedElement.getDoorElement();
-      if (doorElement) {
-        setX(Math.round(doorElement.x));
-        setY(Math.round(doorElement.y));
-        setWidth(Math.round(doorElement.width));
-        setHeight(Math.round(doorElement.height));
-        setRotation(Math.round(doorElement.rotate || 0));
-      }
-    } else if (selectedElement.isFreeformShape()) {
-      const shapeElement = selectedElement.getFreeformShapeElement();
-      if (shapeElement) {
-        setX(Math.round(shapeElement.x));
-        setY(Math.round(shapeElement.y));
-        setWidth(Math.round(shapeElement.width));
-        setHeight(Math.round(shapeElement.height));
-        setRotation(Math.round(shapeElement.rotate || 0));
-      }
-    }
-  }, [selectedElement]);
+  const toNumber = (value: string, fallback: number) => {
+    const n = parseFloat(value.replace(',', '.'));
+    return isFinite(n) ? n : fallback;
+  };
 
-  // Handle property updates
+  // Handle property updates. X/Y zijn de linkerbovenhoek van het (niet-geroteerde) element.
   const handleWallTypeChange = (newType: WallType) => {
     setWallType(newType);
-    if (selectedElement?.isWall()) {
-      const wallElement = selectedElement.getWallElement();
-      if (wallElement) {
-        wallElement.type = newType;
-        onUpdateElement(selectedElement);
-      }
-    }
+    if (selectedElement?.isWall()) onUpdateBuilding(selectedElement, { wallType: newType });
   };
 
   const handlePositionChange = (newX: number, newY: number) => {
     setX(newX);
     setY(newY);
-    
-    if (selectedElement?.isWall()) {
-      const wallElement = selectedElement.getWallElement();
-      if (wallElement) {
-        wallElement.x = newX;
-        wallElement.y = newY;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isWindow()) {
-      const windowElement = selectedElement.getWindowElement();
-      if (windowElement) {
-        windowElement.x = newX;
-        windowElement.y = newY;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isDoor()) {
-      const doorElement = selectedElement.getDoorElement();
-      if (doorElement) {
-        doorElement.x = newX;
-        doorElement.y = newY;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isFreeformShape()) {
-      const shapeElement = selectedElement.getFreeformShapeElement();
-      if (shapeElement) {
-        shapeElement.x = newX;
-        shapeElement.y = newY;
-        onUpdateElement(selectedElement);
-      }
-    }
+    if (!selectedElement) return;
+    onUpdateBuilding(selectedElement, {
+      posx: newX + selectedElement.sizex / 2,
+      posy: newY + selectedElement.sizey / 2,
+    });
   };
 
   const handleDimensionChange = (newWidth: number, newHeight: number) => {
     setWidth(newWidth);
     setHeight(newHeight);
-    
-    if (selectedElement?.isWall()) {
-      const wallElement = selectedElement.getWallElement();
-      if (wallElement) {
-        wallElement.width = newWidth;
-        wallElement.height = newHeight;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isWindow()) {
-      const windowElement = selectedElement.getWindowElement();
-      if (windowElement) {
-        windowElement.width = newWidth;
-        windowElement.height = newHeight;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isDoor()) {
-      const doorElement = selectedElement.getDoorElement();
-      if (doorElement) {
-        doorElement.width = newWidth;
-        doorElement.height = newHeight;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isFreeformShape()) {
-      const shapeElement = selectedElement.getFreeformShapeElement();
-      if (shapeElement) {
-        shapeElement.width = newWidth;
-        shapeElement.height = newHeight;
-        onUpdateElement(selectedElement);
-      }
-    }
+    if (!selectedElement || newWidth < 1 || newHeight < 1) return;
+    // Linkerbovenhoek blijft op zijn plaats
+    onUpdateBuilding(selectedElement, {
+      width: newWidth,
+      height: newHeight,
+      posx: x + newWidth / 2,
+      posy: y + newHeight / 2,
+    });
   };
 
   const handleRotationChange = (newRotation: number) => {
     setRotation(newRotation);
-    
-    if (selectedElement?.isWall()) {
-      const wallElement = selectedElement.getWallElement();
-      if (wallElement) {
-        wallElement.rotate = newRotation;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isWindow()) {
-      const windowElement = selectedElement.getWindowElement();
-      if (windowElement) {
-        windowElement.rotate = newRotation;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isDoor()) {
-      const doorElement = selectedElement.getDoorElement();
-      if (doorElement) {
-        doorElement.rotate = newRotation;
-        onUpdateElement(selectedElement);
-      }
-    } else if (selectedElement?.isFreeformShape()) {
-      const shapeElement = selectedElement.getFreeformShapeElement();
-      if (shapeElement) {
-        shapeElement.rotate = newRotation;
-        onUpdateElement(selectedElement);
-      }
-    }
+    if (!selectedElement) return;
+    onUpdateBuilding(selectedElement, { rotate: newRotation });
   };
 
   const getKringen = (): KringOption[] => {
@@ -341,19 +251,13 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
         const type = item.getType?.() || '';
         
         // Skip excluded types and attributes
-        if (excludedTypes.includes(type) || item.isAttribuut?.()) {
-          console.log(`[SitPlanSidebar] Skipping excluded type: ${type}`);
-          continue;
-        }
+        if (excludedTypes.includes(type) || item.isAttribuut?.()) continue;
         
         const maxElements = item.maxSituationPlanElements?.();
         const currentCount = structure.sitplan?.countByElectroItemId?.(item.id) || 0;
         const canAdd = maxElements === null || currentCount < maxElements;
         
-        if (!canAdd) {
-          console.log(`[SitPlanSidebar] Cannot add ${item.id} (${type}): max=${maxElements}, current=${currentCount}`);
-          continue;
-        }
+        if (!canAdd) continue;
         
         const kringId = structure.findKringId?.(item.id);
         if (kringId == null) continue;
@@ -491,48 +395,12 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                   title="Sleep naar het canvas om toe te voegen"
                 >
                   {svgContent ? (
-                    <div style={{
-                      flexShrink: 0,
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'white',
-                      borderRadius: '3px',
-                      border: '1px solid var(--border)',
-                      overflow: 'hidden',
-                      padding: '2px',
-                    }}>
-                      <svg
-                        viewBox="0 0 60 60"
-                        xmlns="http://www.w3.org/2000/svg"
-                        dangerouslySetInnerHTML={{ __html: svgContent }}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          overflow: 'hidden',
-                          maxWidth: '100%',
-                          maxHeight: '100%',
-                          display: 'block',
-                        }}
-                      />
-                    </div>
+                    <div
+                      className="sitplan-symbol-preview"
+                      dangerouslySetInnerHTML={{ __html: svgContent }}
+                    />
                   ) : (
-                    <div style={{
-                      flexShrink: 0,
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderRadius: '3px',
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-muted)',
-                      fontSize: '9px',
-                      fontWeight: 'bold',
-                    }}>
+                    <div className="sitplan-symbol-preview" style={{ color: 'var(--text-muted)', fontSize: '9px', fontWeight: 'bold' }}>
                       —
                     </div>
                   )}
@@ -769,7 +637,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <input
                   type="number"
                   value={x}
-                  onChange={(e) => handlePositionChange(Number(e.target.value), y)}
+                  onChange={(e) => handlePositionChange(toNumber(e.target.value, x), y)}
                   style={{
                     width: '100%',
                     padding: '6px',
@@ -791,7 +659,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <input
                   type="number"
                   value={y}
-                  onChange={(e) => handlePositionChange(x, Number(e.target.value))}
+                  onChange={(e) => handlePositionChange(x, toNumber(e.target.value, y))}
                   style={{
                     width: '100%',
                     padding: '6px',
@@ -832,7 +700,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <input
                   type="number"
                   value={width}
-                  onChange={(e) => handleDimensionChange(Number(e.target.value), height)}
+                  onChange={(e) => handleDimensionChange(toNumber(e.target.value, width), height)}
                   style={{
                     width: '100%',
                     padding: '6px',
@@ -854,7 +722,7 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
                 <input
                   type="number"
                   value={height}
-                  onChange={(e) => handleDimensionChange(width, Number(e.target.value))}
+                  onChange={(e) => handleDimensionChange(width, toNumber(e.target.value, height))}
                   style={{
                     width: '100%',
                     padding: '6px',
@@ -881,9 +749,8 @@ export const SitPlanSidebar: React.FC<SitPlanSidebarProps> = ({
             <input
               type="number"
               value={rotation}
-              onChange={(e) => handleRotationChange(Number(e.target.value))}
-              min="0"
-              max="359"
+              onChange={(e) => handleRotationChange(toNumber(e.target.value, rotation))}
+              step="15"
               style={{
                 width: '100%',
                 padding: '8px',
