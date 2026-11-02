@@ -12,6 +12,7 @@ import { HelperTip } from '../documentation/HelperTip';
 import { SitPlanSidebar } from './SitPlanSidebar';
 import { useSitPlan } from '../hooks/useSitPlan';
 import { Icon } from './Icon';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export const SitPlanView: React.FC = () => {
   const { structure, appDocStorage, undostruct } = useApp();
@@ -30,6 +31,12 @@ export const SitPlanView: React.FC = () => {
   const [buildingElementsMenuOpen, setBuildingElementsMenuOpen] = useState<boolean>(false);
   const [shapesMenuOpen, setShapesMenuOpen] = useState<boolean>(false);
   const [selectedElement, setSelectedElement] = useState<SituationPlanElement | null>(null);
+  const isMobile = useIsMobile();
+  // On mobile the sidebar is a collapsible panel below the toolbar.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useEffect(() => {
+    if (isMobile && selectedElement) setMobileSidebarOpen(true);
+  }, [isMobile, selectedElement]);
   const [showGrid, setShowGrid] = useState<boolean>(false);
   const [showKeysDialog, setShowKeysDialog] = useState<boolean>(false);
 
@@ -322,6 +329,22 @@ export const SitPlanView: React.FC = () => {
     setSelectedElement(null);
   };
 
+  // Tap alternative for drag & drop: drop the symbol in the middle of the visible canvas.
+  const handleAddSymbolAtCenter = (electroItemId: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const { x, y } = sitPlan.getCoordinatesFromEvent({
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    } as MouseEvent);
+    const element = sitPlan.addElement(electroItemId, x, y);
+    if (element && undostruct) {
+      undostruct.store();
+    }
+    if (isMobile) setMobileSidebarOpen(false);
+  };
+
   const handleToggleGrid = () => {
     setShowGrid(!showGrid);
     if (paperRef.current) {
@@ -370,7 +393,7 @@ export const SitPlanView: React.FC = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100vh', overflow: 'hidden', margin: 0, padding: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100dvh - var(--menu-height))', overflow: 'hidden', margin: 0, padding: 0 }}>
       {/* Ribbon for sitplan controls */}
       <div id="ribbon" className="tb">
         <div className="tb-group-row">
@@ -575,14 +598,30 @@ export const SitPlanView: React.FC = () => {
         margin: 0,
         padding: 0
       }}>
+        {isMobile && (
+          <button
+            type="button"
+            className="sitplan-mobile-panel-toggle"
+            aria-expanded={mobileSidebarOpen}
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          >
+            <Icon name={selectedElement ? 'pencil' : 'plus'} size={15} />
+            <span>{selectedElement ? 'Eigenschappen' : 'Symbolen'}</span>
+            <Icon name={mobileSidebarOpen ? 'chevron-up' : 'chevron-down'} size={14} />
+          </button>
+        )}
+
         {/* React Sidebar Component */}
-        <SitPlanSidebar
-          selectedElement={selectedElement}
-          onClose={handleCloseSidebar}
-          onUpdateElement={handleUpdateElement}
-          onUpdateKringColor={handleUpdateKringColor}
-          structure={structure}
-        />
+        <div className={`sitplan-sidebar-wrap${isMobile && !mobileSidebarOpen ? ' collapsed' : ''}`}>
+          <SitPlanSidebar
+            selectedElement={selectedElement}
+            onClose={handleCloseSidebar}
+            onUpdateElement={handleUpdateElement}
+            onUpdateKringColor={handleUpdateKringColor}
+            onAddSymbol={handleAddSymbolAtCenter}
+            structure={structure}
+          />
+        </div>
         
         <div 
           id="canvas" 

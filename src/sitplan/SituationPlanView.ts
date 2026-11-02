@@ -2464,13 +2464,14 @@ export class SituationPlanView {
   public enableWallDrawingMode(wallType: WallType): void {
     this.wallDrawingMode = wallType;
     this.canvas.style.cursor = "crosshair";
+    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
     this.clearSelection();
 
     // Store bound handler references so we can remove them later
     this.wallMouseDownHandler = this.startWallDrawing.bind(this);
 
     // Add mousedown listener to paper for wall drawing
-    this.paper.addEventListener("mousedown", this.wallMouseDownHandler);
+    this.paper.addEventListener("pointerdown", this.wallMouseDownHandler);
   }
 
   /**
@@ -2479,18 +2480,19 @@ export class SituationPlanView {
   public disableWallDrawingMode(): void {
     this.wallDrawingMode = null;
     this.canvas.style.cursor = "default";
+    this.canvas.style.touchAction = "";
 
     // Remove wall drawing listeners
     if (this.wallMouseDownHandler) {
-      this.paper.removeEventListener("mousedown", this.wallMouseDownHandler);
+      this.paper.removeEventListener("pointerdown", this.wallMouseDownHandler);
       this.wallMouseDownHandler = null;
     }
     if (this.wallMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.wallMouseMoveHandler);
+      document.removeEventListener("pointermove", this.wallMouseMoveHandler);
       this.wallMouseMoveHandler = null;
     }
     if (this.wallMouseUpHandler) {
-      document.removeEventListener("mouseup", this.wallMouseUpHandler);
+      document.removeEventListener("pointerup", this.wallMouseUpHandler);
       this.wallMouseUpHandler = null;
     }
 
@@ -2544,8 +2546,8 @@ export class SituationPlanView {
     this.wallMouseMoveHandler = this.updateWallPreview.bind(this);
     this.wallMouseUpHandler = this.finishWallDrawing.bind(this);
 
-    document.addEventListener("mousemove", this.wallMouseMoveHandler);
-    document.addEventListener("mouseup", this.wallMouseUpHandler);
+    document.addEventListener("pointermove", this.wallMouseMoveHandler);
+    document.addEventListener("pointerup", this.wallMouseUpHandler);
   };
 
   /**
@@ -2578,11 +2580,11 @@ export class SituationPlanView {
 
     // Remove event listeners
     if (this.wallMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.wallMouseMoveHandler);
+      document.removeEventListener("pointermove", this.wallMouseMoveHandler);
       this.wallMouseMoveHandler = null;
     }
     if (this.wallMouseUpHandler) {
-      document.removeEventListener("mouseup", this.wallMouseUpHandler);
+      document.removeEventListener("pointerup", this.wallMouseUpHandler);
       this.wallMouseUpHandler = null;
     }
 
@@ -2627,6 +2629,7 @@ export class SituationPlanView {
   public enableFreeformShapeDrawingMode(shapeType: FreeformShapeType): void {
     this.freeformShapeDrawingMode = shapeType;
     this.canvas.style.cursor = "crosshair";
+    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
     this.clearSelection();
 
     // Store bound handler references so we can remove them later
@@ -2635,7 +2638,7 @@ export class SituationPlanView {
 
     // Add mousedown listener to paper for freeform shape drawing
     this.paper.addEventListener(
-      "mousedown",
+      "pointerdown",
       this.freeformShapeMouseDownHandler
     );
   }
@@ -2646,24 +2649,25 @@ export class SituationPlanView {
   public disableFreeformShapeDrawingMode(): void {
     this.freeformShapeDrawingMode = null;
     this.canvas.style.cursor = "default";
+    this.canvas.style.touchAction = "";
 
     // Remove freeform shape drawing listeners
     if (this.freeformShapeMouseDownHandler) {
       this.paper.removeEventListener(
-        "mousedown",
+        "pointerdown",
         this.freeformShapeMouseDownHandler
       );
       this.freeformShapeMouseDownHandler = null;
     }
     if (this.freeformShapeMouseMoveHandler) {
       document.removeEventListener(
-        "mousemove",
+        "pointermove",
         this.freeformShapeMouseMoveHandler
       );
       this.freeformShapeMouseMoveHandler = null;
     }
     if (this.freeformShapeMouseUpHandler) {
-      document.removeEventListener("mouseup", this.freeformShapeMouseUpHandler);
+      document.removeEventListener("pointerup", this.freeformShapeMouseUpHandler);
       this.freeformShapeMouseUpHandler = null;
     }
 
@@ -2724,8 +2728,8 @@ export class SituationPlanView {
     this.freeformShapeMouseUpHandler =
       this.finishFreeformShapeDrawing.bind(this);
 
-    document.addEventListener("mousemove", this.freeformShapeMouseMoveHandler);
-    document.addEventListener("mouseup", this.freeformShapeMouseUpHandler);
+    document.addEventListener("pointermove", this.freeformShapeMouseMoveHandler);
+    document.addEventListener("pointerup", this.freeformShapeMouseUpHandler);
   };
 
   /**
@@ -2761,13 +2765,13 @@ export class SituationPlanView {
     // Remove event listeners
     if (this.freeformShapeMouseMoveHandler) {
       document.removeEventListener(
-        "mousemove",
+        "pointermove",
         this.freeformShapeMouseMoveHandler
       );
       this.freeformShapeMouseMoveHandler = null;
     }
     if (this.freeformShapeMouseUpHandler) {
-      document.removeEventListener("mouseup", this.freeformShapeMouseUpHandler);
+      document.removeEventListener("pointerup", this.freeformShapeMouseUpHandler);
       this.freeformShapeMouseUpHandler = null;
     }
 
@@ -2811,13 +2815,14 @@ export class SituationPlanView {
   public enableWindowDrawingMode(): void {
     this.windowDrawingMode = true;
     this.canvas.style.cursor = "crosshair";
+    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
     this.clearSelection();
 
     // Store bound handler references so we can remove them later
     this.windowMouseDownHandler = this.startWindowDrawing.bind(this);
 
     // Add mousedown listener to paper for window drawing
-    this.paper.addEventListener("mousedown", this.windowMouseDownHandler);
+    this.paper.addEventListener("pointerdown", this.windowMouseDownHandler);
   }
 
   /**
@@ -2826,18 +2831,19 @@ export class SituationPlanView {
   public disableWindowDrawingMode(): void {
     this.windowDrawingMode = false;
     this.canvas.style.cursor = "default";
+    this.canvas.style.touchAction = "";
 
     // Remove window drawing listeners
     if (this.windowMouseDownHandler) {
-      this.paper.removeEventListener("mousedown", this.windowMouseDownHandler);
+      this.paper.removeEventListener("pointerdown", this.windowMouseDownHandler);
       this.windowMouseDownHandler = null;
     }
     if (this.windowMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.windowMouseMoveHandler);
+      document.removeEventListener("pointermove", this.windowMouseMoveHandler);
       this.windowMouseMoveHandler = null;
     }
     if (this.windowMouseUpHandler) {
-      document.removeEventListener("mouseup", this.windowMouseUpHandler);
+      document.removeEventListener("pointerup", this.windowMouseUpHandler);
       this.windowMouseUpHandler = null;
     }
 
@@ -2884,8 +2890,8 @@ export class SituationPlanView {
     this.windowMouseMoveHandler = this.updateWindowPreview.bind(this);
     this.windowMouseUpHandler = this.finishWindowDrawing.bind(this);
 
-    document.addEventListener("mousemove", this.windowMouseMoveHandler);
-    document.addEventListener("mouseup", this.windowMouseUpHandler);
+    document.addEventListener("pointermove", this.windowMouseMoveHandler);
+    document.addEventListener("pointerup", this.windowMouseUpHandler);
   };
 
   /**
@@ -2918,11 +2924,11 @@ export class SituationPlanView {
 
     // Remove event listeners
     if (this.windowMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.windowMouseMoveHandler);
+      document.removeEventListener("pointermove", this.windowMouseMoveHandler);
       this.windowMouseMoveHandler = null;
     }
     if (this.windowMouseUpHandler) {
-      document.removeEventListener("mouseup", this.windowMouseUpHandler);
+      document.removeEventListener("pointerup", this.windowMouseUpHandler);
       this.windowMouseUpHandler = null;
     }
 
@@ -2965,13 +2971,14 @@ export class SituationPlanView {
   public enableDoorDrawingMode(): void {
     this.doorDrawingMode = true;
     this.canvas.style.cursor = "crosshair";
+    this.canvas.style.touchAction = "none"; // keep touch drags for drawing, not scrolling
     this.clearSelection();
 
     // Store bound handler references so we can remove them later
     this.doorMouseDownHandler = this.startDoorDrawing.bind(this);
 
     // Add mousedown listener to paper for door drawing
-    this.paper.addEventListener("mousedown", this.doorMouseDownHandler);
+    this.paper.addEventListener("pointerdown", this.doorMouseDownHandler);
   }
 
   /**
@@ -2980,18 +2987,19 @@ export class SituationPlanView {
   public disableDoorDrawingMode(): void {
     this.doorDrawingMode = false;
     this.canvas.style.cursor = "default";
+    this.canvas.style.touchAction = "";
 
     // Remove door drawing listeners
     if (this.doorMouseDownHandler) {
-      this.paper.removeEventListener("mousedown", this.doorMouseDownHandler);
+      this.paper.removeEventListener("pointerdown", this.doorMouseDownHandler);
       this.doorMouseDownHandler = null;
     }
     if (this.doorMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.doorMouseMoveHandler);
+      document.removeEventListener("pointermove", this.doorMouseMoveHandler);
       this.doorMouseMoveHandler = null;
     }
     if (this.doorMouseUpHandler) {
-      document.removeEventListener("mouseup", this.doorMouseUpHandler);
+      document.removeEventListener("pointerup", this.doorMouseUpHandler);
       this.doorMouseUpHandler = null;
     }
 
@@ -3038,8 +3046,8 @@ export class SituationPlanView {
     this.doorMouseMoveHandler = this.updateDoorPreview.bind(this);
     this.doorMouseUpHandler = this.finishDoorDrawing.bind(this);
 
-    document.addEventListener("mousemove", this.doorMouseMoveHandler);
-    document.addEventListener("mouseup", this.doorMouseUpHandler);
+    document.addEventListener("pointermove", this.doorMouseMoveHandler);
+    document.addEventListener("pointerup", this.doorMouseUpHandler);
   };
 
   /**
@@ -3072,11 +3080,11 @@ export class SituationPlanView {
 
     // Remove event listeners
     if (this.doorMouseMoveHandler) {
-      document.removeEventListener("mousemove", this.doorMouseMoveHandler);
+      document.removeEventListener("pointermove", this.doorMouseMoveHandler);
       this.doorMouseMoveHandler = null;
     }
     if (this.doorMouseUpHandler) {
-      document.removeEventListener("mouseup", this.doorMouseUpHandler);
+      document.removeEventListener("pointerup", this.doorMouseUpHandler);
       this.doorMouseUpHandler = null;
     }
 
@@ -3131,7 +3139,7 @@ export class SituationPlanView {
       handle.dataset.handlePosition = position;
       handle.dataset.wallId = sitPlanElement.id;
 
-      handle.addEventListener("mousedown", this.startWallResize);
+      handle.addEventListener("pointerdown", this.startWallResize);
       box.appendChild(handle);
     });
 
@@ -3139,7 +3147,7 @@ export class SituationPlanView {
     const rotationHandle = document.createElement("div");
     rotationHandle.className = "wall-rotation-handle";
     rotationHandle.dataset.wallId = sitPlanElement.id;
-    rotationHandle.addEventListener("mousedown", this.startWallRotation);
+    rotationHandle.addEventListener("pointerdown", this.startWallRotation);
     box.appendChild(rotationHandle);
   }
 
@@ -3269,8 +3277,8 @@ export class SituationPlanView {
     };
 
     const cleanup = () => {
-      document.removeEventListener("mousemove", handleResize);
-      document.removeEventListener("mouseup", stopResize);
+      document.removeEventListener("pointermove", handleResize);
+      document.removeEventListener("pointerup", stopResize);
       this.activeTransformCleanup = null;
     };
     const stopResize = () => {
@@ -3280,8 +3288,8 @@ export class SituationPlanView {
     this.activeTransformCleanup?.();
     this.activeTransformCleanup = cleanup;
 
-    document.addEventListener("mousemove", handleResize);
-    document.addEventListener("mouseup", stopResize);
+    document.addEventListener("pointermove", handleResize);
+    document.addEventListener("pointerup", stopResize);
   };
 
   /**
@@ -3345,8 +3353,8 @@ export class SituationPlanView {
     };
 
     const cleanup = () => {
-      document.removeEventListener("mousemove", handleRotation);
-      document.removeEventListener("mouseup", stopRotation);
+      document.removeEventListener("pointermove", handleRotation);
+      document.removeEventListener("pointerup", stopRotation);
       this.activeTransformCleanup = null;
     };
     const stopRotation = () => {
@@ -3356,8 +3364,8 @@ export class SituationPlanView {
     this.activeTransformCleanup?.();
     this.activeTransformCleanup = cleanup;
 
-    document.addEventListener("mousemove", handleRotation);
-    document.addEventListener("mouseup", stopRotation);
+    document.addEventListener("pointermove", handleRotation);
+    document.addEventListener("pointerup", stopRotation);
   };
 } // *** END CLASS ***
 

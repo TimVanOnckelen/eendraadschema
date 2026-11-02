@@ -86,7 +86,7 @@ export class LayerManager {
 
   private attachEventListeners() {
     // Dragging functionality
-    this.header.addEventListener("mousedown", (e) => {
+    this.header.addEventListener("pointerdown", (e) => {
       if ((e.target as HTMLElement).tagName === "BUTTON") return;
       this.isDragging = true;
       const rect = this.container.getBoundingClientRect();
@@ -94,8 +94,8 @@ export class LayerManager {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       };
-      document.addEventListener("mousemove", this.handleDrag);
-      document.addEventListener("mouseup", this.handleDragEnd);
+      document.addEventListener("pointermove", this.handleDrag);
+      document.addEventListener("pointerup", this.handleDragEnd);
     });
 
     // Close button
@@ -129,8 +129,8 @@ export class LayerManager {
 
   private handleDragEnd = () => {
     this.isDragging = false;
-    document.removeEventListener("mousemove", this.handleDrag);
-    document.removeEventListener("mouseup", this.handleDragEnd);
+    document.removeEventListener("pointermove", this.handleDrag);
+    document.removeEventListener("pointerup", this.handleDragEnd);
   };
 
   private toggleCollapse() {
@@ -477,7 +477,7 @@ export class LayerManager {
 
   public destroy() {
     this.container.remove();
-    document.removeEventListener("mousemove", this.handleDrag);
-    document.removeEventListener("mouseup", this.handleDragEnd);
+    document.removeEventListener("pointermove", this.handleDrag);
+    document.removeEventListener("pointerup", this.handleDragEnd);
   }
 }
