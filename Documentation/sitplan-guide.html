@@ -239,19 +239,17 @@
     <ul>
       <li><span class="toolbar-item">↩️ Ongedaan maken</span> - Laatste actie ongedaan maken (<span class="keyboard-key">Ctrl+Z</span>)</li>
       <li><span class="toolbar-item">↪️ Opnieuw</span> - Ongedaan gemaakte actie herstellen (<span class="keyboard-key">Ctrl+Y</span>)</li>
-      <li><span class="toolbar-item">📁 Uit bestand</span> - Afbeelding toevoegen van uw computer</li>
-      <li><span class="toolbar-item">⚡ Uit schema</span> - Elektrische symbolen uit uw schema</li>
-      <li><strong>Tekentoolsgroep</strong> (gegroepeerd in grijze box):
-        <ul style="margin-top: 5px;">
-          <li><span class="toolbar-item">🧱 Binnen</span> - Binnenmuur tekenmodus</li>
-          <li><span class="toolbar-item">🧱 Buiten</span> - Buitenmuur tekenmodus (met textuur)</li>
-          <li><span class="toolbar-item">⬜ Wit</span> - Witte vrije vorm tekenen</li>
-          <li><span class="toolbar-item">⬛ Zwart</span> - Zwarte vrije vorm tekenen</li>
-        </ul>
-      </li>
+      <li><span class="toolbar-item">📁 Bestand</span> - Afbeelding of plattegrond toevoegen van uw computer</li>
+      <li><span class="toolbar-item">⚡ Schema</span> - Elektrische symbolen uit uw schema</li>
+      <li><span class="toolbar-item">➕ Los</span> - Los symbool toevoegen dat niet in het ééndraadschema staat</li>
+      <li><span class="toolbar-item">🧱 Bouwelementen</span> - Menu met binnenmuur, buitenmuur, raam en deur</li>
+      <li><span class="toolbar-item">⬠ Vormen</span> - Menu met witte, zwarte, grijze en donkergrijze vlakken</li>
+      <li><span class="toolbar-item">✕</span> - Stop met tekenen (<span class="keyboard-key">Esc</span>)</li>
       <li><span class="toolbar-item">🗑️</span> - Geselecteerd element verwijderen (<span class="keyboard-key">Del</span>)</li>
       <li><span class="toolbar-item">📤 Naar achter</span> / <span class="toolbar-item">📥 Naar voor</span> - Z-volgorde aanpassen</li>
-      <li><span class="toolbar-item">🔍 Zoom</span> - In-/uitzoomen en zoom reset</li>
+      <li><span class="toolbar-item">🔍 Zoom</span> - In-/uitzoomen, zoompercentage (klik voor 100%) en passend maken</li>
+      <li><span class="toolbar-item">▦ Raster</span> - Raster tonen; elementen klikken dan vast aan het raster (houd <span class="keyboard-key">Alt</span> ingedrukt om vrij te plaatsen)</li>
+      <li><span class="toolbar-item">⌨️</span> - Overzicht van alle sneltoetsen (<span class="keyboard-key">?</span>)</li>
       <li><span class="toolbar-item">📄 Pagina</span> - Vorige/volgende pagina, toevoegen/verwijderen</li>
       <li><span class="toolbar-item">🗂️ Lagen</span> - Layer manager tonen/verbergen</li>
     </ul>
@@ -261,14 +259,16 @@
       De sidebar heeft twee functies:
     </p>
     <ul>
-      <li><strong>Symbolen lijst</strong> - Sleep symbolen naar het canvas om ze toe te voegen</li>
-      <li><strong>Properties paneel</strong> - Verschijnt automatisch bij selectie van een element</li>
+      <li><strong>Symbolen lijst</strong> - Sleep symbolen naar het canvas, of klik/tik op <span class="button">+</span> om ze in het midden van het zichtbare blad te plaatsen</li>
+      <li><strong>Properties paneel</strong> - Verschijnt automatisch bij selectie van één muur, raam, deur of vorm</li>
     </ul>
 
     <h3>2.3 Canvas (midden)</h3>
     <p>
-      Het werkgebied waar u tekent. Het witte gebied is de afdrukbare pagina. 
-      U kunt pannen door het canvas te slepen en zoomen met de toolbar of <span class="keyboard-key">Ctrl+Scroll</span>.
+      Het werkgebied waar u tekent. Het witte blad (277 × 150 mm) is exact de zone die wordt afgedrukt.
+      Zoomen doet u met de toolbar of <span class="keyboard-key">Ctrl+Scroll</span> (zoomt rond de muis).
+      Verschuiven doet u met de scrollbalken, door <span class="keyboard-key">Spatie</span> ingedrukt te houden en te slepen,
+      of met de middelste muisknop. Het blad past zich automatisch aan de venstergrootte aan zolang u niet zelf zoomt.
     </p>
 
     <h2 id="plattegrond">3. Plattegrond toevoegen</h2>
@@ -300,24 +300,24 @@
     <h2 id="muren">4. Muren en vormen tekenen</h2>
     
     <p>
-      De tekentoolsgroep bevat vier verschillende tekeninstrumenten om uw plattegrond vorm te geven:
-      muren (binnen en buiten) en vrije vormen (wit en zwart). Alle tools werken op dezelfde manier.
+      Via de menu's <span class="button">🧱 Bouwelementen</span> en <span class="button">⬠ Vormen</span> tekent u muren,
+      ramen, deuren en vlakken. Alle tools werken op dezelfde manier, ook bovenop een plattegrond-afbeelding.
     </p>
 
     <h3>4.1 Binnenmuren</h3>
     <ol>
-      <li>Klik op <span class="button">🧱 Binnen</span> in de tekentoolsgroep</li>
-      <li>Klik op het canvas voor het startpunt</li>
-      <li>Beweeg de muis naar het eindpunt</li>
-      <li>Klik opnieuw om de muur te plaatsen</li>
+      <li>Kies <span class="button">Binnenmuur</span> in het menu <span class="button">🧱 Bouwelementen</span></li>
+      <li>Klik en sleep op het blad om de muur te tekenen; de afmetingen worden getoond tijdens het slepen</li>
+      <li>Laat los om de muur te plaatsen, of klik zonder te slepen voor een muur met standaardgrootte</li>
       <li>Herhaal voor meer muren of druk <span class="keyboard-key">Esc</span> om te stoppen</li>
     </ol>
 
     <h3>4.2 Buitenmuren</h3>
     <ol>
-      <li>Klik op <span class="button">🧱 Buiten</span> in de tekentoolsgroep</li>
+      <li>Kies <span class="button">Buitenmuur</span> in het menu <span class="button">🧱 Bouwelementen</span></li>
       <li>Teken op dezelfde manier als binnenmuren</li>
-      <li>Buitenmuren hebben een diagonale textuur voor visuele herkenning</li>
+      <li>Buitenmuren worden donkerder grijs weergegeven dan binnenmuren</li>
+      <li>Ramen en deuren tekent u op dezelfde manier</li>
     </ol>
 
     <h3>4.3 Vrije vormen (Wit en Zwart)</h3>
@@ -325,8 +325,8 @@
       Gebruik vrije vormen om vlakken te creëren, ruimtes te markeren, of decoratieve elementen toe te voegen:
     </p>
     <ol>
-      <li>Klik op <span class="button">⬜ Wit</span> of <span class="button">⬛ Zwart</span> in de tekentoolsgroep</li>
-      <li>Klik en sleep op het canvas om een rechthoek te tekenen</li>
+      <li>Kies een kleur in het menu <span class="button">⬠ Vormen</span></li>
+      <li>Klik en sleep op het canvas om een rechthoek te tekenen (<span class="keyboard-key">Shift</span> voor een vierkant)</li>
       <li>Laat de muisknop los om de vorm te plaatsen</li>
       <li>Herhaal voor meer vormen of druk <span class="keyboard-key">Esc</span> om te stoppen</li>
     </ol>
@@ -341,12 +341,9 @@
     </div>
 
     <div class="feature-box">
-      <strong>✨ Snapping:</strong> Muren snappen automatisch naar:
-      <ul style="margin-bottom: 0;">
-        <li>Horizontale en verticale lijnen (rechthoeken)</li>
-        <li>45° diagonalen</li>
-        <li>Eindpunten van andere muren (verbindingen)</li>
-      </ul>
+      <strong>✨ Raster:</strong> Zet <span class="button">▦ Raster</span> aan om tekenen, verplaatsen en
+      vergroten aan een raster van 10 pixels vast te klikken. Houd <span class="keyboard-key">Alt</span> ingedrukt om
+      tijdelijk vrij te plaatsen.
     </div>
 
     <h3>4.4 Muren en vormen bewerken</h3>
@@ -355,17 +352,19 @@
     </p>
     <ul>
       <li><strong>8 vierkante handvatten</strong> - Aan de hoeken en zijkanten voor resize</li>
-      <li><strong>Groen rond handvat</strong> - Boven het element voor rotatie</li>
+      <li><strong>Rond handvat</strong> - Boven het element voor rotatie (<span class="keyboard-key">Shift</span> draait per 15°)</li>
     </ul>
+    <p>De tegenoverliggende zijde blijft op haar plaats, ook bij een gedraaid element.
+       <span class="keyboard-key">Shift</span> op een hoekhandvat behoudt de verhoudingen.</p>
 
     <div class="tip-box">
       <strong>💡 Sneltoetsen voor muren en vormen:</strong>
       <ul style="margin-bottom: 0;">
         <li><span class="keyboard-key">↑</span><span class="keyboard-key">↓</span><span class="keyboard-key">←</span><span class="keyboard-key">→</span> - Verplaats 1px</li>
         <li><span class="keyboard-key">Shift</span> + pijltjes - Verplaats 10px</li>
-        <li><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">↑</span><span class="keyboard-key">↓</span> - Roteer 15°</li>
+        <li><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">←</span><span class="keyboard-key">→</span> - Roteer 90°</li>
         <li><span class="keyboard-key">Ctrl+D</span> - Dupliceer geselecteerd element</li>
-        <li><span class="keyboard-key">Del</span> - Verwijder element</li>
+        <li><span class="keyboard-key">Del</span> / <span class="keyboard-key">Backspace</span> - Verwijder element</li>
         <li><span class="keyboard-key">Esc</span> - Stop tekenmodus</li>
       </ul>
     </div>
